@@ -467,6 +467,7 @@ symbols! {
         cfg_version,
         cfi,
         char,
+        circuit,
         client,
         clippy,
         clobber_abi,

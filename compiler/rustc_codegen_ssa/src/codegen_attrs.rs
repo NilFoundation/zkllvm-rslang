@@ -150,6 +150,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_COVERAGE;
         } else if attr.has_name(sym::rustc_std_internal_symbol) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
+        } else if attr.has_name(sym::circuit) {
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::CIRCUIT;
         } else if attr.has_name(sym::used) {
             let inner = attr.meta_item_list();
             match inner.as_deref() {

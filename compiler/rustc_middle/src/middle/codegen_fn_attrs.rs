@@ -99,6 +99,8 @@ bitflags! {
         const REALLOCATOR               = 1 << 18;
         /// `#[rustc_allocator_zeroed]`: a hint to LLVM that the function only allocates zeroed memory.
         const ALLOCATOR_ZEROED          = 1 << 19;
+        /// `#[circuit]`: entry point for circuit generation.
+        const CIRCUIT                   = 1 << 20;
     }
 }
 
