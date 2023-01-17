@@ -207,6 +207,8 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::AlwaysInline;
   case ByVal:
     return Attribute::ByVal;
+  case Circuit:
+    return Attribute::Circuit;
   case Cold:
     return Attribute::Cold;
   case InlineHint:

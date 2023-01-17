@@ -195,6 +195,7 @@ pub enum AttributeKind {
     AllocatedPointer = 38,
     AllocAlign = 39,
     SanitizeSafeStack = 40,
+    Circuit = 41,
 }
 
 /// LLVMIntPredicate

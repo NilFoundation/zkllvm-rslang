@@ -482,6 +482,7 @@ symbols! {
         cfi,
         cfi_encoding,
         char,
+        circuit,
         client,
         clippy,
         clobber_abi,

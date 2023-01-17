@@ -102,6 +102,8 @@ bitflags! {
         const ALLOCATOR_ZEROED          = 1 << 19;
         /// `#[no_builtins]`: indicates that disable implicit builtin knowledge of functions for the function.
         const NO_BUILTINS               = 1 << 20;
+        /// `#[circuit]`: entry point for circuit generation.
+        const CIRCUIT                   = 1 << 21;
     }
 }
 
