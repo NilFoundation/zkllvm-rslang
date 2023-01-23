@@ -30,6 +30,7 @@ pub fn can_type_implement_copy<'tcx>(
         ty::Uint(_)
         | ty::Int(_)
         | ty::Bool
+        | ty::Field(_)
         | ty::Float(_)
         | ty::Char
         | ty::RawPtr(..)

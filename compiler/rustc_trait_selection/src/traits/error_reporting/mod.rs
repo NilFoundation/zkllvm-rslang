@@ -1735,6 +1735,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ty::Adt(def, _) if tcx.is_diagnostic_item(sym::String, def.did()) => Some(2),
                 ty::Int(..)
                 | ty::Uint(..)
+                | ty::Field(..)
                 | ty::Float(..)
                 | ty::Infer(ty::IntVar(..) | ty::FloatVar(..)) => Some(4),
                 ty::Ref(..) | ty::RawPtr(..) => Some(5),

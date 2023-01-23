@@ -1620,6 +1620,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     | ty::Char
                     | ty::Int(_)
                     | ty::Uint(_)
+                    | ty::Field(_)
                     | ty::Float(_)
                     | ty::Adt(..)
                     | ty::Foreign(_)
@@ -1677,6 +1678,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     | ty::Char
                     | ty::Int(_)
                     | ty::Uint(_)
+                    | ty::Field(_)
                     | ty::Float(_)
                     | ty::Str
                     | ty::Array(..)
