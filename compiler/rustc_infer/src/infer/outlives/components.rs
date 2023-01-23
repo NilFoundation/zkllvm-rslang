@@ -165,6 +165,7 @@ fn compute_components<'tcx>(
             ty::Char |            // OutlivesScalar
             ty::Int(..) |         // OutlivesScalar
             ty::Uint(..) |        // OutlivesScalar
+            ty::Field(..) |       // OutlivesScalar
             ty::Float(..) |       // OutlivesScalar
             ty::Never |           // ...
             ty::Adt(..) |         // OutlivesNominalType
