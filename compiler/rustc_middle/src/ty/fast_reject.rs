@@ -15,6 +15,7 @@ pub enum SimplifiedType {
     CharSimplifiedType,
     IntSimplifiedType(ty::IntTy),
     UintSimplifiedType(ty::UintTy),
+    FieldSimplifiedType(ty::FieldTy),
     FloatSimplifiedType(ty::FloatTy),
     AdtSimplifiedType(DefId),
     ForeignSimplifiedType(DefId),
@@ -92,6 +93,7 @@ pub fn simplify_type<'tcx>(
         ty::Char => Some(CharSimplifiedType),
         ty::Int(int_type) => Some(IntSimplifiedType(int_type)),
         ty::Uint(uint_type) => Some(UintSimplifiedType(uint_type)),
+        ty::Field(field_type) => Some(FieldSimplifiedType(field_type)),
         ty::Float(float_type) => Some(FloatSimplifiedType(float_type)),
         ty::Adt(def, _) => Some(AdtSimplifiedType(def.did())),
         ty::Str => Some(StrSimplifiedType),
@@ -192,6 +194,7 @@ impl DeepRejectCtxt {
             | ty::Char
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
             | ty::Float(_)
             | ty::Adt(..)
             | ty::Str
@@ -220,6 +223,7 @@ impl DeepRejectCtxt {
             | ty::Char
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
             | ty::Float(_)
             | ty::Str
             | ty::Never
