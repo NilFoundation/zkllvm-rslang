@@ -1931,6 +1931,7 @@ impl<'tcx> Ty<'tcx> {
             self.kind(),
             Bool | Char
                 | Int(_)
+                | Field(_)
                 | Float(_)
                 | Uint(_)
                 | FnDef(..)
@@ -1978,7 +1979,8 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_integral(self) -> bool {
-        matches!(self.kind(), Infer(IntVar(_)) | Int(_) | Uint(_))
+        // FIXME: (aleasims) probably field should not be treated as integral type.
+        matches!(self.kind(), Infer(IntVar(_)) | Int(_) | Uint(_) | Field(_))
     }
 
     #[inline]
@@ -2162,6 +2164,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Char
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
             | ty::Float(_)
             | ty::Adt(..)
             | ty::Foreign(_)
@@ -2202,6 +2205,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
+            | ty::Field(_)
             | ty::Float(_)
             | ty::FnDef(..)
             | ty::FnPtr(_)
@@ -2288,6 +2292,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
+            | ty::Field(_)
             | ty::Float(_)
             | ty::FnDef(..)
             | ty::FnPtr(_)
@@ -2337,6 +2342,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
             | ty::Int(..)
             | ty::Uint(..)
+            | ty::Field(..)
             | ty::Float(..) => true,
 
             // The voldemort ZSTs are fine.
@@ -2381,6 +2387,14 @@ impl<'tcx> Ty<'tcx> {
         match self.kind() {
             ty::Bool => Some(sym::bool),
             ty::Char => Some(sym::char),
+            ty::Field(f) => match f {
+                rustc_type_ir::FieldTy::Bls12381Base => Some(sym::__zkllvm_field_bls12381_base),
+                rustc_type_ir::FieldTy::Bls12381Scalar => Some(sym::__zkllvm_field_bls12381_scalar),
+                rustc_type_ir::FieldTy::Curve25519Base => Some(sym::__zkllvm_field_curve25519_base),
+                rustc_type_ir::FieldTy::Curve25519Scalar => Some(sym::__zkllvm_field_curve25519_scalar),
+                rustc_type_ir::FieldTy::PallasBase => Some(sym::__zkllvm_field_pallas_base),
+                rustc_type_ir::FieldTy::PallasScalar => Some(sym::__zkllvm_field_pallas_scalar),
+            },
             ty::Float(f) => match f {
                 ty::FloatTy::F32 => Some(sym::f32),
                 ty::FloatTy::F64 => Some(sym::f64),

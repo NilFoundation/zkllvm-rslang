@@ -23,6 +23,7 @@ use crate::ty::{
     ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVar, TyVid, TypeAndMut, TypeckResults, UintTy,
     Visibility,
 };
+use crate::ty::FieldTy;
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -235,6 +236,12 @@ impl<'tcx> CtxtInterners<'tcx> {
 }
 
 pub struct CommonTypes<'tcx> {
+    pub __zkllvm_field_bls12381_base: Ty<'tcx>,
+    pub __zkllvm_field_bls12381_scalar: Ty<'tcx>,
+    pub __zkllvm_field_curve25519_base: Ty<'tcx>,
+    pub __zkllvm_field_curve25519_scalar: Ty<'tcx>,
+    pub __zkllvm_field_pallas_base: Ty<'tcx>,
+    pub __zkllvm_field_pallas_scalar: Ty<'tcx>,
     pub unit: Ty<'tcx>,
     pub bool: Ty<'tcx>,
     pub char: Ty<'tcx>,
@@ -283,6 +290,12 @@ impl<'tcx> CommonTypes<'tcx> {
         let mk = |ty| interners.intern_ty(ty, sess, untracked);
 
         CommonTypes {
+            __zkllvm_field_bls12381_base: mk(Field(ty::FieldTy::Bls12381Base)),
+            __zkllvm_field_bls12381_scalar: mk(Field(ty::FieldTy::Bls12381Scalar)),
+            __zkllvm_field_curve25519_base: mk(Field(ty::FieldTy::Curve25519Base)),
+            __zkllvm_field_curve25519_scalar: mk(Field(ty::FieldTy::Curve25519Scalar)),
+            __zkllvm_field_pallas_base: mk(Field(ty::FieldTy::PallasBase)),
+            __zkllvm_field_pallas_scalar: mk(Field(ty::FieldTy::PallasScalar)),
             unit: mk(Tuple(List::empty())),
             bool: mk(Bool),
             char: mk(Char),
@@ -1393,7 +1406,7 @@ macro_rules! sty_debug_print {
                 for &InternedInSet(t) in types {
                     let variant = match t.internee {
                         ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
-                            ty::Float(..) | ty::Str | ty::Never => continue,
+                            ty::Field(..) | ty::Float(..) | ty::Str | ty::Never => continue,
                         ty::Error(_) => /* unimportant */ continue,
                         $(ty::$variant(..) => &mut $variant,)*
                     };
@@ -1752,6 +1765,17 @@ impl<'tcx> TyCtxt<'tcx> {
             UintTy::U32 => self.types.u32,
             UintTy::U64 => self.types.u64,
             UintTy::U128 => self.types.u128,
+        }
+    }
+
+    pub fn mk_mach_field(self, tm: FieldTy) -> Ty<'tcx> {
+        match tm {
+            FieldTy::Bls12381Base => self.types.__zkllvm_field_bls12381_base,
+            FieldTy::Bls12381Scalar => self.types.__zkllvm_field_bls12381_scalar,
+            FieldTy::Curve25519Base => self.types.__zkllvm_field_curve25519_base,
+            FieldTy::Curve25519Scalar => self.types.__zkllvm_field_curve25519_scalar,
+            FieldTy::PallasBase => self.types.__zkllvm_field_pallas_base,
+            FieldTy::PallasScalar => self.types.__zkllvm_field_pallas_scalar,
         }
     }
 
