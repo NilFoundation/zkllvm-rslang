@@ -25,6 +25,7 @@ where
     CharSimplifiedType,
     IntSimplifiedType(ty::IntTy),
     UintSimplifiedType(ty::UintTy),
+    FieldSimplifiedType(ty::FieldTy),
     FloatSimplifiedType(ty::FloatTy),
     AdtSimplifiedType(D),
     ForeignSimplifiedType(D),
@@ -103,6 +104,7 @@ pub fn simplify_type<'tcx>(
         ty::Char => Some(CharSimplifiedType),
         ty::Int(int_type) => Some(IntSimplifiedType(int_type)),
         ty::Uint(uint_type) => Some(UintSimplifiedType(uint_type)),
+        ty::Field(field_type) => Some(FieldSimplifiedType(field_type)),
         ty::Float(float_type) => Some(FloatSimplifiedType(float_type)),
         ty::Adt(def, _) => Some(AdtSimplifiedType(def.did())),
         ty::Str => Some(StrSimplifiedType),
@@ -167,6 +169,7 @@ impl<D: Copy + Debug + Eq> SimplifiedTypeGen<D> {
             CharSimplifiedType => CharSimplifiedType,
             IntSimplifiedType(t) => IntSimplifiedType(t),
             UintSimplifiedType(t) => UintSimplifiedType(t),
+            FieldSimplifiedType(t) => FieldSimplifiedType(t),
             FloatSimplifiedType(t) => FloatSimplifiedType(t),
             AdtSimplifiedType(d) => AdtSimplifiedType(map(d)),
             ForeignSimplifiedType(d) => ForeignSimplifiedType(map(d)),
@@ -236,6 +239,7 @@ impl DeepRejectCtxt {
             | ty::Char
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
             | ty::Float(_)
             | ty::Adt(..)
             | ty::Str
@@ -265,6 +269,7 @@ impl DeepRejectCtxt {
             | ty::Char
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
             | ty::Float(_)
             | ty::Str
             | ty::Never
