@@ -1148,6 +1148,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
+            ty::Field(_) => {
+                // we can support FFI for field types potentially
+                unimplemented!();
+            }
+
             ty::Param(..)
             | ty::Projection(..)
             | ty::Infer(..)
