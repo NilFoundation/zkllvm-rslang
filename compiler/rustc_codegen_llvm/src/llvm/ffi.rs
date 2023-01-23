@@ -860,6 +860,16 @@ extern "C" {
     pub fn LLVMFloatTypeInContext(C: &Context) -> &Type;
     pub fn LLVMDoubleTypeInContext(C: &Context) -> &Type;
 
+    // Operations on galois field types
+    pub fn LLVMGaloisFieldPallasbaseTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMGaloisFieldPallasscalarTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMGaloisFieldVestabaseTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMGaloisFieldVestascalarTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMGaloisFieldBLS12381baseTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMGaloisFieldBLS12381scalarTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMGaloisFieldCurve25519baseTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMGaloisFieldCurve25519scalarTypeInContext(C: &Context) -> &Type;
+
     // Operations on function types
     pub fn LLVMFunctionType<'a>(
         ReturnType: &'a Type,

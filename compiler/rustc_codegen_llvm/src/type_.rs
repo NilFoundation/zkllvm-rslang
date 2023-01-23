@@ -105,6 +105,17 @@ impl<'ll> CodegenCx<'ll, '_> {
         }
     }
 
+    pub(crate) fn type_field_from_ty(&self, t: ty::FieldTy) -> &'ll Type {
+        match t {
+            ty::FieldTy::Bls12381Base => self.type_field_bls12381_base(),
+            ty::FieldTy::Bls12381Scalar => self.type_field_bls12381_scalar(),
+            ty::FieldTy::Curve25519Base => self.type_field_curve25519_base(),
+            ty::FieldTy::Curve25519Scalar => self.type_field_curve25519_scalar(),
+            ty::FieldTy::PallasBase => self.type_field_pallas_base(),
+            ty::FieldTy::PallasScalar => self.type_field_pallas_scalar(),
+        }
+    }
+
     pub(crate) fn type_float_from_ty(&self, t: ty::FloatTy) -> &'ll Type {
         match t {
             ty::FloatTy::F32 => self.type_f32(),
@@ -154,6 +165,30 @@ impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn type_isize(&self) -> &'ll Type {
         self.isize_ty
+    }
+
+    fn type_field_bls12381_base(&self) -> Self::Type {
+        unsafe { llvm::LLVMGaloisFieldBLS12381baseTypeInContext(self.llcx) }
+    }
+
+    fn type_field_bls12381_scalar(&self) -> Self::Type {
+        unsafe { llvm::LLVMGaloisFieldBLS12381scalarTypeInContext(self.llcx) }
+    }
+
+    fn type_field_curve25519_base(&self) -> Self::Type {
+        unsafe { llvm::LLVMGaloisFieldCurve25519baseTypeInContext(self.llcx) }
+    }
+
+    fn type_field_curve25519_scalar(&self) -> Self::Type {
+        unsafe { llvm::LLVMGaloisFieldCurve25519scalarTypeInContext(self.llcx) }
+    }
+
+    fn type_field_pallas_base(&self) -> Self::Type {
+        unsafe { llvm::LLVMGaloisFieldPallasbaseTypeInContext(self.llcx) }
+    }
+
+    fn type_field_pallas_scalar(&self) -> Self::Type {
+        unsafe { llvm::LLVMGaloisFieldPallasscalarTypeInContext(self.llcx) }
     }
 
     fn type_f32(&self) -> &'ll Type {

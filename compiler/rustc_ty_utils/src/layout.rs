@@ -136,6 +136,11 @@ fn layout_of_uncached<'tcx>(
         )),
         ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
         ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
+        ty::Field(_) => {
+            // FIXME: This is a really dirty hack here.
+            // Maybe we should consider creating own abi primitive.
+            scalar(Int(Integer::I64, false))
+        }
         ty::Float(fty) => scalar(match fty {
             ty::FloatTy::F32 => F32,
             ty::FloatTy::F64 => F64,

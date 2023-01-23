@@ -227,6 +227,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
                 ty::FnPtr(sig) => {
                     cx.fn_ptr_backend_type(cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
                 }
+                ty::Field(ty) => cx.type_field_from_ty(ty),
                 _ => self.scalar_llvm_type_at(cx, scalar),
             };
             cx.scalar_lltypes.borrow_mut().insert(self.ty, llty);
