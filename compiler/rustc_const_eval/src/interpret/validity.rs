@@ -504,7 +504,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 );
                 Ok(true)
             }
-            ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
+            ty::Float(_) | ty::Int(_) | ty::Uint(_) | ty::Field(_) => {
                 // NOTE: Keep this in sync with the array optimization for int/float
                 // types below!
                 self.read_scalar(

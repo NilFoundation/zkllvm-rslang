@@ -86,7 +86,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
             *num_nodes += 1;
             Ok(ty::ValTree::zst())
         }
-        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
+        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Field(_) | ty::Float(_) | ty::Char => {
             let Ok(val) = ecx.read_immediate(place) else {
                 return Err(ValTreeCreationError::Other);
             };
@@ -227,7 +227,7 @@ pub fn valtree_to_const_value<'tcx>(
             assert!(valtree.unwrap_branch().is_empty());
             ConstValue::ZeroSized
         }
-        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => match valtree {
+        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Field(_) | ty::Float(_) | ty::Char => match valtree {
             ty::ValTree::Leaf(scalar_int) => ConstValue::Scalar(Scalar::Int(scalar_int)),
             ty::ValTree::Branch(_) => bug!(
                 "ValTrees for Bool, Int, Uint, Float or Char should have the form ValTree::Leaf"
@@ -378,6 +378,7 @@ fn valtree_into_mplace<'tcx>(
             debug!("dump of place after writing discriminant:");
             dump_place(ecx, place);
         }
+        ty::Field(_) => unimplemented!("no field constants yet"),
         _ => bug!("shouldn't have created a ValTree for {:?}", ty),
     }
 }
