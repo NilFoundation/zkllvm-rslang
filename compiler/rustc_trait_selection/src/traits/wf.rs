@@ -605,6 +605,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 | ty::Char
                 | ty::Int(..)
                 | ty::Uint(..)
+                | ty::Field(..)
                 | ty::Float(..)
                 | ty::Error(_)
                 | ty::Str

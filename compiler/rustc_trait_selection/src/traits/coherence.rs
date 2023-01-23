@@ -773,6 +773,7 @@ where
             | ty::Char
             | ty::Int(..)
             | ty::Uint(..)
+            | ty::Field(..)
             | ty::Float(..)
             | ty::Str
             | ty::FnDef(..)
