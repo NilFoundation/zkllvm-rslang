@@ -797,6 +797,7 @@ where
                 | ty::Char
                 | ty::Int(_)
                 | ty::Uint(_)
+                | ty::Field(_)
                 | ty::Float(_)
                 | ty::FnPtr(_)
                 | ty::Never
