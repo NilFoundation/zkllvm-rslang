@@ -30,6 +30,7 @@ impl<'tcx> Ty<'tcx> {
                 | Str
                 | Int(_)
                 | Uint(_)
+                | Field(_)
                 | Float(_)
                 | Infer(
                     InferTy::IntVar(_)
@@ -49,6 +50,7 @@ impl<'tcx> Ty<'tcx> {
             | Str
             | Int(_)
             | Uint(_)
+            | Field(_)
             | Float(_)
             | Infer(
                 InferTy::IntVar(_)
