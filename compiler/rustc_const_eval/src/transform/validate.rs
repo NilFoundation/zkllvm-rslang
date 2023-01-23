@@ -485,7 +485,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             check_kinds!(
                                 x,
                                 "Cannot perform arithmetic on type {:?}",
-                                ty::Uint(..) | ty::Int(..) | ty::Float(..)
+                                ty::Uint(..) | ty::Int(..) | ty::Float(..) | ty::Field(..)
                             )
                         }
                         if a != b {
@@ -510,7 +510,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             check_kinds!(
                                 x,
                                 "Cannot perform checked arithmetic on type {:?}",
-                                ty::Uint(..) | ty::Int(..)
+                                ty::Uint(..) | ty::Int(..) | ty::Field(..)
                             )
                         }
                         if a != b {
