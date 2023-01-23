@@ -1653,17 +1653,6 @@ impl<'tcx> TyCtxt<'tcx> {
         if pred.kind() != binder { self.mk_predicate(binder) } else { pred }
     }
 
-    pub fn mk_mach_field(self, tm: FieldTy) -> Ty<'tcx> {
-        match tm {
-            FieldTy::Bls12381Base => self.types.__zkllvm_field_bls12381_base,
-            FieldTy::Bls12381Scalar => self.types.__zkllvm_field_bls12381_scalar,
-            FieldTy::Curve25519Base => self.types.__zkllvm_field_curve25519_base,
-            FieldTy::Curve25519Scalar => self.types.__zkllvm_field_curve25519_scalar,
-            FieldTy::PallasBase => self.types.__zkllvm_field_pallas_base,
-            FieldTy::PallasScalar => self.types.__zkllvm_field_pallas_scalar,
-        }
-    }
-
     #[inline(always)]
     pub(crate) fn check_and_mk_args(
         self,

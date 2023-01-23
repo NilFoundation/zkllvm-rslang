@@ -6,7 +6,7 @@ use crate::LangItem;
 
 use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
-use rustc_ast::{Attribute, FloatTy, IntTy, Label, LitKind, TraitObjectSyntax, UintTy};
+use rustc_ast::{Attribute, FieldTy, FloatTy, IntTy, Label, LitKind, TraitObjectSyntax, UintTy};
 pub use rustc_ast::{BindingAnnotation, BorrowKind, ByRef, ImplPolarity, IsAuto};
 pub use rustc_ast::{CaptureBy, Movability, Mutability};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
@@ -2570,6 +2570,7 @@ impl<'hir> Ty<'hir> {
 pub enum PrimTy {
     Int(IntTy),
     Uint(UintTy),
+    Field(FieldTy),
     Float(FloatTy),
     Str,
     Bool,
@@ -2578,7 +2579,7 @@ pub enum PrimTy {
 
 impl PrimTy {
     /// All of the primitive types
-    pub const ALL: [Self; 17] = [
+    pub const ALL: [Self; 23] = [
         // any changes here should also be reflected in `PrimTy::from_name`
         Self::Int(IntTy::I8),
         Self::Int(IntTy::I16),
@@ -2592,6 +2593,12 @@ impl PrimTy {
         Self::Uint(UintTy::U64),
         Self::Uint(UintTy::U128),
         Self::Uint(UintTy::Usize),
+        Self::Field(FieldTy::Bls12381Base),
+        Self::Field(FieldTy::Bls12381Scalar),
+        Self::Field(FieldTy::Curve25519Base),
+        Self::Field(FieldTy::Curve25519Scalar),
+        Self::Field(FieldTy::PallasBase),
+        Self::Field(FieldTy::PallasScalar),
         Self::Float(FloatTy::F32),
         Self::Float(FloatTy::F64),
         Self::Bool,
@@ -2606,6 +2613,7 @@ impl PrimTy {
         match self {
             PrimTy::Int(i) => i.name_str(),
             PrimTy::Uint(u) => u.name_str(),
+            PrimTy::Field(f) => f.name_str(),
             PrimTy::Float(f) => f.name_str(),
             PrimTy::Str => "str",
             PrimTy::Bool => "bool",
@@ -2617,6 +2625,7 @@ impl PrimTy {
         match self {
             PrimTy::Int(i) => i.name(),
             PrimTy::Uint(u) => u.name(),
+            PrimTy::Field(f) => f.name(),
             PrimTy::Float(f) => f.name(),
             PrimTy::Str => sym::str,
             PrimTy::Bool => sym::bool,
@@ -2629,6 +2638,12 @@ impl PrimTy {
     pub fn from_name(name: Symbol) -> Option<Self> {
         let ty = match name {
             // any changes here should also be reflected in `PrimTy::ALL`
+            sym::__zkllvm_field_bls12381_base => Self::Field(FieldTy::Bls12381Base),
+            sym::__zkllvm_field_bls12381_scalar => Self::Field(FieldTy::Bls12381Scalar),
+            sym::__zkllvm_field_curve25519_base => Self::Field(FieldTy::Curve25519Base),
+            sym::__zkllvm_field_curve25519_scalar => Self::Field(FieldTy::Curve25519Scalar),
+            sym::__zkllvm_field_pallas_base => Self::Field(FieldTy::PallasBase),
+            sym::__zkllvm_field_pallas_scalar => Self::Field(FieldTy::PallasScalar),
             sym::i8 => Self::Int(IntTy::I8),
             sym::i16 => Self::Int(IntTy::I16),
             sym::i32 => Self::Int(IntTy::I32),

@@ -2005,6 +2005,19 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn new_field(tcx: TyCtxt<'tcx>, f: ty::FieldTy) -> Ty<'tcx> {
+        use ty::FieldTy::*;
+        match f {
+            Bls12381Base => tcx.types.__zkllvm_field_bls12381_base,
+            Bls12381Scalar => tcx.types.__zkllvm_field_bls12381_scalar,
+            Curve25519Base => tcx.types.__zkllvm_field_curve25519_base,
+            Curve25519Scalar => tcx.types.__zkllvm_field_curve25519_scalar,
+            PallasBase => tcx.types.__zkllvm_field_pallas_base,
+            PallasScalar => tcx.types.__zkllvm_field_pallas_scalar,
+        }
+    }
+
+    #[inline]
     pub fn new_float(tcx: TyCtxt<'tcx>, f: ty::FloatTy) -> Ty<'tcx> {
         use ty::FloatTy::*;
         match f {
