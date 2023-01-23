@@ -642,7 +642,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let assign_value = match ty.kind() {
             ty::Bool => "false",
             ty::Float(_) => "0.0",
-            ty::Int(_) | ty::Uint(_) => "0",
+            ty::Int(_) | ty::Uint(_) | ty::Field(_) => "0",
             ty::Never | ty::Error(_) => "",
             ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Vec) => "vec![]",
             ty::Adt(_, _) if implements_default(ty, self.param_env) => "Default::default()",
