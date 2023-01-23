@@ -1903,6 +1903,42 @@ pub struct FnSig {
     pub span: Span,
 }
 
+/// Represents algebraic field type.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+pub enum FieldTy {
+    Bls12381Base,
+    Bls12381Scalar,
+    Curve25519Base,
+    Curve25519Scalar,
+    PallasBase,
+    PallasScalar,
+}
+
+impl FieldTy {
+    pub fn name_str(self) -> &'static str {
+        match self {
+            FieldTy::Bls12381Base => "__zkllvm_field_bls12381_base",
+            FieldTy::Bls12381Scalar => "__zkllvm_field_bls12381_scalar",
+            FieldTy::Curve25519Base => "__zkllvm_field_curve25519_base",
+            FieldTy::Curve25519Scalar => "__zkllvm_field_curve25519_scalar",
+            FieldTy::PallasBase => "__zkllvm_field_pallas_base",
+            FieldTy::PallasScalar => "__zkllvm_field_pallas_scalar",
+        }
+    }
+
+    pub fn name(self) -> Symbol {
+        match self {
+            FieldTy::Bls12381Base => sym::__zkllvm_field_bls12381_base,
+            FieldTy::Bls12381Scalar => sym::__zkllvm_field_bls12381_scalar,
+            FieldTy::Curve25519Base => sym::__zkllvm_field_curve25519_base,
+            FieldTy::Curve25519Scalar => sym::__zkllvm_field_curve25519_scalar,
+            FieldTy::PallasBase => sym::__zkllvm_field_pallas_base,
+            FieldTy::PallasScalar => sym::__zkllvm_field_pallas_scalar,
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum FloatTy {
