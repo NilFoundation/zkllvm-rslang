@@ -128,6 +128,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Char
             | ty::Int(..)
             | ty::Uint(..)
+            | ty::Field(..)
             | ty::Float(_)
             | ty::Array(..)
             | ty::GeneratorWitness(..)

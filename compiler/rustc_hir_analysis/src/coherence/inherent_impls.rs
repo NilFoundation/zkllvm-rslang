@@ -212,6 +212,7 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::Char
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
             | ty::Float(_)
             | ty::Str
             | ty::Array(..)
