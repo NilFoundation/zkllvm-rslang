@@ -3,6 +3,7 @@
 use std::cmp::Ordering;
 use std::{fmt, hash};
 
+use crate::FieldTy;
 use crate::FloatTy;
 use crate::HashStableContext;
 use crate::IntTy;
@@ -68,6 +69,9 @@ pub enum TyKind<I: Interner> {
 
     /// A primitive unsigned integer type. For example, `u32`.
     Uint(UintTy),
+
+    /// An algebraic field type. For example, `__zkllvm_field_bls12381_base`.
+    Field(FieldTy),
 
     /// A primitive floating-point type. For example, `f64`.
     Float(FloatTy),
@@ -252,7 +256,7 @@ pub enum TyKind<I: Interner> {
 impl<I: Interner> TyKind<I> {
     #[inline]
     pub fn is_primitive(&self) -> bool {
-        matches!(self, Bool | Char | Int(_) | Uint(_) | Float(_))
+        matches!(self, Bool | Char | Int(_) | Uint(_) | Field(_) | Float(_))
     }
 }
 
@@ -288,6 +292,7 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Infer(_) => 24,
         Error(_) => 25,
         GeneratorWitnessMIR(_, _) => 26,
+        Field(_) => 27,
     }
 }
 
@@ -300,6 +305,7 @@ impl<I: Interner> Clone for TyKind<I> {
             Int(i) => Int(*i),
             Uint(u) => Uint(*u),
             Float(f) => Float(*f),
+            Field(f) => Field(*f),
             Adt(d, s) => Adt(d.clone(), s.clone()),
             Foreign(d) => Foreign(d.clone()),
             Str => Str,
@@ -340,6 +346,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
             (Int(a_i), Int(b_i)) => a_i == b_i,
             (Uint(a_u), Uint(b_u)) => a_u == b_u,
             (Float(a_f), Float(b_f)) => a_f == b_f,
+            (Field(a_f), Field(b_f)) => a_f == b_f,
             (Adt(a_d, a_s), Adt(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (Foreign(a_d), Foreign(b_d)) => a_d == b_d,
             (Array(a_t, a_c), Array(b_t, b_c)) => a_t == b_t && a_c == b_c,
@@ -398,6 +405,7 @@ impl<I: Interner> Ord for TyKind<I> {
                 (Int(a_i), Int(b_i)) => a_i.cmp(b_i),
                 (Uint(a_u), Uint(b_u)) => a_u.cmp(b_u),
                 (Float(a_f), Float(b_f)) => a_f.cmp(b_f),
+                (Field(a_f), Field(b_f)) => a_f.cmp(b_f),
                 (Adt(a_d, a_s), Adt(b_d, b_s)) => a_d.cmp(b_d).then_with(|| a_s.cmp(b_s)),
                 (Foreign(a_d), Foreign(b_d)) => a_d.cmp(b_d),
                 (Array(a_t, a_c), Array(b_t, b_c)) => a_t.cmp(b_t).then_with(|| a_c.cmp(b_c)),
@@ -448,6 +456,7 @@ impl<I: Interner> hash::Hash for TyKind<I> {
             Int(i) => i.hash(state),
             Uint(u) => u.hash(state),
             Float(f) => f.hash(state),
+            Field(f) => f.hash(state),
             Adt(d, s) => {
                 d.hash(state);
                 s.hash(state)
@@ -517,6 +526,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             Int(i) => write!(f, "{i:?}"),
             Uint(u) => write!(f, "{u:?}"),
             Float(float) => write!(f, "{float:?}"),
+            Field(field) => f.debug_tuple_field1_finish("Field", field),
             Adt(d, s) => f.debug_tuple_field2_finish("Adt", d, &this.wrap(s)),
             Foreign(d) => f.debug_tuple_field1_finish("Foreign", d),
             Str => write!(f, "str"),
@@ -620,6 +630,9 @@ where
             }),
             Uint(u) => e.emit_enum_variant(disc, |e| {
                 u.encode(e);
+            }),
+            Field(f) => e.emit_enum_variant(disc, |e| {
+                f.encode(e);
             }),
             Float(f) => e.emit_enum_variant(disc, |e| {
                 f.encode(e);
@@ -758,11 +771,12 @@ where
             24 => Infer(Decodable::decode(d)),
             25 => Error(Decodable::decode(d)),
             26 => GeneratorWitnessMIR(Decodable::decode(d), Decodable::decode(d)),
+            27 => Field(Decodable::decode(d)),
             _ => panic!(
                 "{}",
                 format!(
                     "invalid enum variant tag while decoding `{}`, expected 0..{}",
-                    "TyKind", 27,
+                    "TyKind", 28,
                 )
             ),
         }
@@ -808,6 +822,9 @@ where
             }
             Uint(u) => {
                 u.hash_stable(__hcx, __hasher);
+            }
+            Field(f) => {
+                f.hash_stable(__hcx, __hasher);
             }
             Float(f) => {
                 f.hash_stable(__hcx, __hasher);

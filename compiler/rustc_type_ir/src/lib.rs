@@ -538,6 +538,41 @@ impl UintTy {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
+pub enum FieldTy {
+    Bls12381Base,
+    Bls12381Scalar,
+    Curve25519Base,
+    Curve25519Scalar,
+    PallasBase,
+    PallasScalar,
+}
+
+impl FieldTy {
+    pub fn name_str(self) -> &'static str {
+        match self {
+            FieldTy::Bls12381Base => "__zkllvm_field_bls12381_base",
+            FieldTy::Bls12381Scalar => "__zkllvm_field_bls12381_scalar",
+            FieldTy::Curve25519Base => "__zkllvm_field_curve25519_base",
+            FieldTy::Curve25519Scalar => "__zkllvm_field_curve25519_scalar",
+            FieldTy::PallasBase => "__zkllvm_field_pallas_base",
+            FieldTy::PallasScalar => "__zkllvm_field_pallas_scalar",
+        }
+    }
+
+    pub fn bit_width(self) -> u64 {
+        match self {
+            FieldTy::Bls12381Base => 381,
+            FieldTy::Bls12381Scalar => 255,
+            FieldTy::Curve25519Base => 255,
+            FieldTy::Curve25519Scalar => 253,
+            FieldTy::PallasBase => 255,
+            FieldTy::PallasScalar => 255,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum FloatTy {
     F32,
     F64,
