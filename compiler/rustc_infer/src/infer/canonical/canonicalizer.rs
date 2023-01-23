@@ -439,6 +439,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             | ty::Char
             | ty::Int(..)
             | ty::Uint(..)
+            | ty::Field(..)
             | ty::Float(..)
             | ty::Adt(..)
             | ty::Str
