@@ -750,6 +750,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Char
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
             | ty::Float(_)
             | ty::Infer(ty::IntVar(_))
             | ty::Infer(ty::FloatVar(_))
@@ -812,6 +813,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Char
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
             | ty::Float(_)
             | ty::Adt(_, _)
             | ty::Foreign(_)

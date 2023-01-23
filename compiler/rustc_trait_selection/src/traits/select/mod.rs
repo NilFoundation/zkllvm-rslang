@@ -2029,6 +2029,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
+            | ty::Field(_)
             | ty::Float(_)
             | ty::FnDef(..)
             | ty::FnPtr(_)
@@ -2094,6 +2095,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
+            | ty::Field(_)
             | ty::Float(_)
             | ty::Char
             | ty::RawPtr(..)
@@ -2204,6 +2206,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
+            | ty::Field(_)
             | ty::Float(_)
             | ty::FnDef(..)
             | ty::FnPtr(_)

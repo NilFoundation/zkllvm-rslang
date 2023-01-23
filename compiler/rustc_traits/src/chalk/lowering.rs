@@ -291,6 +291,14 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 ty::UintTy::U64 => uint(chalk_ir::UintTy::U64),
                 ty::UintTy::U128 => uint(chalk_ir::UintTy::U128),
             },
+            ty::Field(ty) => match ty {
+                ty::FieldTy::Bls12381Base => todo!(),
+                ty::FieldTy::Bls12381Scalar => todo!(),
+                ty::FieldTy::Curve25519Base => todo!(),
+                ty::FieldTy::Curve25519Scalar => todo!(),
+                ty::FieldTy::PallasBase => todo!(),
+                ty::FieldTy::PallasScalar => todo!(),
+            },
             ty::Float(ty) => match ty {
                 ty::FloatTy::F32 => float(chalk_ir::FloatTy::F32),
                 ty::FloatTy::F64 => float(chalk_ir::FloatTy::F64),
