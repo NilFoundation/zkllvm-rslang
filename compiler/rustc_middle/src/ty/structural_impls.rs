@@ -717,6 +717,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Str
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
             | ty::Float(_)
             | ty::Error(_)
             | ty::Infer(_)
@@ -766,6 +767,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Str
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
             | ty::Float(_)
             | ty::Error(_)
             | ty::Infer(_)

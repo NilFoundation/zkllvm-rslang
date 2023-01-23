@@ -2647,6 +2647,17 @@ pub fn uint_ty(uty: ast::UintTy) -> UintTy {
     }
 }
 
+pub fn field_ty(fty: ast::FieldTy) -> FieldTy {
+    match fty {
+        ast::FieldTy::Bls12381Base => FieldTy::Bls12381Base,
+        ast::FieldTy::Bls12381Scalar => FieldTy::Bls12381Scalar,
+        ast::FieldTy::Curve25519Base => FieldTy::Curve25519Base,
+        ast::FieldTy::Curve25519Scalar => FieldTy::Curve25519Scalar,
+        ast::FieldTy::PallasBase => FieldTy::PallasBase,
+        ast::FieldTy::PallasScalar => FieldTy::PallasScalar,
+    }
+}
+
 pub fn float_ty(fty: ast::FloatTy) -> FloatTy {
     match fty {
         ast::FloatTy::F32 => FloatTy::F32,

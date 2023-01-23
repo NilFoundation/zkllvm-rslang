@@ -24,6 +24,7 @@ use crate::traits::solve;
 use crate::traits::solve::{
     ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
 };
+use crate::ty::FieldTy;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Const, ConstData, GenericParamDefKind,
     ImplPolarity, InferTy, List, ParamConst, ParamTy, PolyExistentialPredicate, PolyFnSig,
@@ -266,6 +267,12 @@ const NUM_PREINTERNED_RE_LATE_BOUNDS_I: u32 = 2;
 const NUM_PREINTERNED_RE_LATE_BOUNDS_V: u32 = 20;
 
 pub struct CommonTypes<'tcx> {
+    pub __zkllvm_field_bls12381_base: Ty<'tcx>,
+    pub __zkllvm_field_bls12381_scalar: Ty<'tcx>,
+    pub __zkllvm_field_curve25519_base: Ty<'tcx>,
+    pub __zkllvm_field_curve25519_scalar: Ty<'tcx>,
+    pub __zkllvm_field_pallas_base: Ty<'tcx>,
+    pub __zkllvm_field_pallas_scalar: Ty<'tcx>,
     pub unit: Ty<'tcx>,
     pub bool: Ty<'tcx>,
     pub char: Ty<'tcx>,
@@ -346,6 +353,12 @@ impl<'tcx> CommonTypes<'tcx> {
             (0..NUM_PREINTERNED_FRESH_FLOAT_TYS).map(|n| mk(Infer(ty::FreshFloatTy(n)))).collect();
 
         CommonTypes {
+            __zkllvm_field_bls12381_base: mk(Field(ty::FieldTy::Bls12381Base)),
+            __zkllvm_field_bls12381_scalar: mk(Field(ty::FieldTy::Bls12381Scalar)),
+            __zkllvm_field_curve25519_base: mk(Field(ty::FieldTy::Curve25519Base)),
+            __zkllvm_field_curve25519_scalar: mk(Field(ty::FieldTy::Curve25519Scalar)),
+            __zkllvm_field_pallas_base: mk(Field(ty::FieldTy::PallasBase)),
+            __zkllvm_field_pallas_scalar: mk(Field(ty::FieldTy::PallasScalar)),
             unit: mk(Tuple(List::empty())),
             bool: mk(Bool),
             char: mk(Char),
@@ -1301,7 +1314,7 @@ macro_rules! sty_debug_print {
                 for &InternedInSet(t) in types {
                     let variant = match t.internee {
                         ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
-                            ty::Float(..) | ty::Str | ty::Never => continue,
+                            ty::Field(..) | ty::Float(..) | ty::Str | ty::Never => continue,
                         ty::Error(_) => /* unimportant */ continue,
                         $(ty::$variant(..) => &mut $variant,)*
                     };
@@ -1638,6 +1651,17 @@ impl<'tcx> TyCtxt<'tcx> {
         binder: Binder<'tcx, PredicateKind<'tcx>>,
     ) -> Predicate<'tcx> {
         if pred.kind() != binder { self.mk_predicate(binder) } else { pred }
+    }
+
+    pub fn mk_mach_field(self, tm: FieldTy) -> Ty<'tcx> {
+        match tm {
+            FieldTy::Bls12381Base => self.types.__zkllvm_field_bls12381_base,
+            FieldTy::Bls12381Scalar => self.types.__zkllvm_field_bls12381_scalar,
+            FieldTy::Curve25519Base => self.types.__zkllvm_field_curve25519_base,
+            FieldTy::Curve25519Scalar => self.types.__zkllvm_field_curve25519_scalar,
+            FieldTy::PallasBase => self.types.__zkllvm_field_pallas_base,
+            FieldTy::PallasScalar => self.types.__zkllvm_field_pallas_scalar,
+        }
     }
 
     #[inline(always)]

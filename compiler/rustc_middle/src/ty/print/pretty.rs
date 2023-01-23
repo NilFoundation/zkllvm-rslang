@@ -608,6 +608,7 @@ pub trait PrettyPrinter<'tcx>:
                 | ty::Str
                 | ty::Int(_)
                 | ty::Uint(_)
+                | ty::Field(_)
                 | ty::Float(_) => {
                     return self_ty.print(self);
                 }
@@ -656,6 +657,7 @@ pub trait PrettyPrinter<'tcx>:
             ty::Char => p!("char"),
             ty::Int(t) => p!(write("{}", t.name_str())),
             ty::Uint(t) => p!(write("{}", t.name_str())),
+            ty::Field(t) => p!(write("{}", t.name_str())),
             ty::Float(t) => p!(write("{}", t.name_str())),
             ty::RawPtr(ref tm) => {
                 p!(write(
@@ -1490,6 +1492,10 @@ pub trait PrettyPrinter<'tcx>:
                 let int =
                     ConstInt::new(int, matches!(ty.kind(), ty::Int(_)), ty.is_ptr_sized_integral());
                 if print_ty { p!(write("{:#?}", int)) } else { p!(write("{:?}", int)) }
+            }
+            // Field
+            ty::Field(_) => {
+                unimplemented!()
             }
             // Char
             ty::Char if char::try_from(int).is_ok() => {
