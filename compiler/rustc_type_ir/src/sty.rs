@@ -4,6 +4,7 @@ use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
 use std::{fmt, hash};
 
 use crate::DebruijnIndex;
+use crate::FieldTy;
 use crate::FloatTy;
 use crate::HashStableContext;
 use crate::IntTy;
@@ -64,6 +65,9 @@ pub enum TyKind<I: Interner> {
 
     /// A primitive unsigned integer type. For example, `u32`.
     Uint(UintTy),
+
+    /// An algebraic field type. For example, `__zkllvm_field_bls12381_base`.
+    Field(FieldTy),
 
     /// A primitive floating-point type. For example, `f64`.
     Float(FloatTy),
@@ -223,7 +227,7 @@ pub enum TyKind<I: Interner> {
 impl<I: Interner> TyKind<I> {
     #[inline]
     pub fn is_primitive(&self) -> bool {
-        matches!(self, Bool | Char | Int(_) | Uint(_) | Float(_))
+        matches!(self, Bool | Char | Int(_) | Uint(_) | Field(_) | Float(_))
     }
 }
 
@@ -259,6 +263,7 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Placeholder(_) => 24,
         Infer(_) => 25,
         Error(_) => 26,
+        Field(_) => 27,
     }
 }
 
@@ -270,6 +275,7 @@ impl<I: Interner> Clone for TyKind<I> {
             Char => Char,
             Int(i) => Int(i.clone()),
             Uint(u) => Uint(u.clone()),
+            Field(f) => Field(f.clone()),
             Float(f) => Float(f.clone()),
             Adt(d, s) => Adt(d.clone(), s.clone()),
             Foreign(d) => Foreign(d.clone()),
@@ -307,6 +313,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
             match (&*self, &*other) {
                 (&Int(ref __self_0), &Int(ref __arg_1_0)) => __self_0 == __arg_1_0,
                 (&Uint(ref __self_0), &Uint(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                (&Field(ref __self_0), &Field(ref __arg_1_0)) => __self_0 == __arg_1_0,
                 (&Float(ref __self_0), &Float(ref __arg_1_0)) => __self_0 == __arg_1_0,
                 (&Adt(ref __self_0, ref __self_1), &Adt(ref __arg_1_0, ref __arg_1_1)) => {
                     __self_0 == __arg_1_0 && __self_1 == __arg_1_1
@@ -380,6 +387,7 @@ impl<I: Interner> Ord for TyKind<I> {
             match (&*self, &*other) {
                 (&Int(ref __self_0), &Int(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
                 (&Uint(ref __self_0), &Uint(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
+                (&Field(ref __self_0), &Field(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
                 (&Float(ref __self_0), &Float(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
                 (&Adt(ref __self_0, ref __self_1), &Adt(ref __arg_1_0, ref __arg_1_1)) => {
                     match Ord::cmp(__self_0, __arg_1_0) {
@@ -481,6 +489,10 @@ impl<I: Interner> hash::Hash for TyKind<I> {
                 hash::Hash::hash(__self_0, state)
             }
             (&Uint(ref __self_0),) => {
+                hash::Hash::hash(&tykind_discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&Field(ref __self_0),) => {
                 hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
@@ -594,6 +606,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Char => Formatter::write_str(f, "Char"),
             Int(f0) => Formatter::debug_tuple_field1_finish(f, "Int", f0),
             Uint(f0) => Formatter::debug_tuple_field1_finish(f, "Uint", f0),
+            Field(f0) => Formatter::debug_tuple_field1_finish(f, "Field", f0),
             Float(f0) => Formatter::debug_tuple_field1_finish(f, "Float", f0),
             Adt(f0, f1) => Formatter::debug_tuple_field2_finish(f, "Adt", f0, f1),
             Foreign(f0) => Formatter::debug_tuple_field1_finish(f, "Foreign", f0),
@@ -658,6 +671,9 @@ where
             }),
             Uint(u) => e.emit_enum_variant(disc, |e| {
                 u.encode(e);
+            }),
+            Field(f) => e.emit_enum_variant(disc, |e| {
+                f.encode(e);
             }),
             Float(f) => e.emit_enum_variant(disc, |e| {
                 f.encode(e);
@@ -794,11 +810,12 @@ where
             24 => Placeholder(Decodable::decode(d)),
             25 => Infer(Decodable::decode(d)),
             26 => Error(Decodable::decode(d)),
+            27 => Field(Decodable::decode(d)),
             _ => panic!(
                 "{}",
                 format!(
                     "invalid enum variant tag while decoding `{}`, expected 0..{}",
-                    "TyKind", 27,
+                    "TyKind", 28,
                 )
             ),
         }
@@ -844,6 +861,9 @@ where
             }
             Uint(u) => {
                 u.hash_stable(__hcx, __hasher);
+            }
+            Field(f) => {
+                f.hash_stable(__hcx, __hasher);
             }
             Float(f) => {
                 f.hash_stable(__hcx, __hasher);
