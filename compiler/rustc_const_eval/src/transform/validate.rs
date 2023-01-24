@@ -841,6 +841,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                     | ty::Char
                                     | ty::Int(..)
                                     | ty::Uint(..)
+                                    | ty::Field(..)
                                     | ty::Float(..)
                                     | ty::RawPtr(..)
                                     | ty::FnPtr(..)
