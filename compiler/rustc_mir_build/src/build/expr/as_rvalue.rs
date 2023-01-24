@@ -629,9 +629,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block = self.assert(block, Operand::Move(inbounds), true, overflow_err, span);
                 Rvalue::BinaryOp(op, Box::new((lhs, rhs)))
             }
-            BinOp::Div | BinOp::Rem if ty.is_integral() => {
+            BinOp::Div | BinOp::Rem if (ty.is_integral() || ty.is_field()) => {
                 // Checking division and remainder is more complex, since we 1. always check
                 // and 2. there are two possible failure cases, divide-by-zero and overflow.
+                // Overflows are relevant only to integral types.
+                // Field types are checked only for divide-by-zero.
 
                 let zero_err = if op == BinOp::Div {
                     AssertKind::DivisionByZero(lhs.to_copy())
@@ -654,6 +656,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // We only need to check for the overflow in one case:
                 // MIN / -1, and only for signed values.
+                // Fields are not signed, so they aren't checked here.
                 if ty.is_signed() {
                     let neg_1 = self.neg_1_literal(span, ty);
                     let min = self.minval_literal(span, ty);
