@@ -578,6 +578,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 if is_int_bool_or_char(lhs_ty) && is_int_bool_or_char(rhs_ty) {
                     // Int, bool, and char operations are fine.
+                } else if lhs_ty.is_field() && rhs_ty.is_field() {
+                    // Field operations are fine too.
                 } else if lhs_ty.is_fn_ptr() || lhs_ty.is_unsafe_ptr() {
                     assert_eq!(lhs_ty, rhs_ty);
                     assert!(
