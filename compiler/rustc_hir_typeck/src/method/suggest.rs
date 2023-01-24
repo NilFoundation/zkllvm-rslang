@@ -1497,7 +1497,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || found_assoc(tcx.types.u64)
             || found_assoc(tcx.types.u128)
             || found_assoc(tcx.types.f32)
-            || found_assoc(tcx.types.f32);
+            || found_assoc(tcx.types.f32)
+            || found_assoc(tcx.types.__zkllvm_field_bls12381_base)
+            || found_assoc(tcx.types.__zkllvm_field_bls12381_scalar)
+            || found_assoc(tcx.types.__zkllvm_field_curve25519_base)
+            || found_assoc(tcx.types.__zkllvm_field_curve25519_scalar)
+            || found_assoc(tcx.types.__zkllvm_field_pallas_base)
+            || found_assoc(tcx.types.__zkllvm_field_pallas_scalar);
         if found_candidate
             && actual.is_numeric()
             && !actual.has_concrete_skeleton()
