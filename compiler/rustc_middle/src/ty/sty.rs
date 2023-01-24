@@ -2440,6 +2440,7 @@ impl<'tcx> Ty<'tcx> {
     /// contents are abstract to rustc.)
     #[inline]
     pub fn is_scalar(self) -> bool {
+        // FIXME: (aleasims) should we treat fields as scalar?
         matches!(
             self.kind(),
             Bool | Char
@@ -2492,8 +2493,12 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_integral(self) -> bool {
-        // FIXME: (aleasims) probably field should not be treated as integral type.
-        matches!(self.kind(), Infer(IntVar(_)) | Int(_) | Uint(_) | Field(_))
+        matches!(self.kind(), Infer(IntVar(_)) | Int(_) | Uint(_))
+    }
+
+    #[inline]
+    pub fn is_field(self) -> bool {
+        matches!(self.kind(), Infer(IntVar(_)) | Field(_))
     }
 
     #[inline]
@@ -2513,7 +2518,8 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_numeric(self) -> bool {
-        self.is_integral() || self.is_floating_point()
+        // FIXME: (aleasims) should we treat fields as numeric?
+        self.is_integral() || self.is_floating_point() || self.is_field()
     }
 
     #[inline]
