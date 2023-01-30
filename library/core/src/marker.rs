@@ -1005,6 +1005,12 @@ marker_impls! {
     ConstParamTy for
         usize, u8, u16, u32, u64, u128,
         isize, i8, i16, i32, i64, i128,
+        __zkllvm_field_bls12381_base,
+        __zkllvm_field_bls12381_scalar,
+        __zkllvm_field_curve25519_base,
+        __zkllvm_field_curve25519_scalar,
+        __zkllvm_field_pallas_base,
+        __zkllvm_field_pallas_scalar,
         bool,
         char,
         str /* Technically requires `[u8]: ConstParamTy` */,

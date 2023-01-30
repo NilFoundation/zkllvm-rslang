@@ -231,6 +231,7 @@ mod impls {
         isize i8 i16 i32 i64 i128
         f32 f64
         bool char
+        __zkllvm_field_pallas_base
     }
 
     #[unstable(feature = "never_type", issue = "35121")]

@@ -106,7 +106,7 @@ macro_rules! add_impl {
     )*)
 }
 
-add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 __zkllvm_field_pallas_base }
 
 /// The subtraction operator `-`.
 ///
@@ -214,7 +214,7 @@ macro_rules! sub_impl {
     )*)
 }
 
-sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 __zkllvm_field_pallas_base }
 
 /// The multiplication operator `*`.
 ///
@@ -343,7 +343,7 @@ macro_rules! mul_impl {
     )*)
 }
 
-mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 __zkllvm_field_pallas_base }
 
 /// The division operator `/`.
 ///
@@ -483,7 +483,8 @@ macro_rules! div_impl_integer {
 
 div_impl_integer! {
     (usize u8 u16 u32 u64 u128) => "This operation will panic if `other == 0`.",
-    (isize i8 i16 i32 i64 i128) => "This operation will panic if `other == 0` or the division results in overflow."
+    (isize i8 i16 i32 i64 i128) => "This operation will panic if `other == 0` or the division results in overflow.",
+    (__zkllvm_field_pallas_base) => "This operation will panic if `other == 0`."
 }
 
 macro_rules! div_impl_float {
@@ -584,7 +585,8 @@ macro_rules! rem_impl_integer {
 
 rem_impl_integer! {
     (usize u8 u16 u32 u64 u128) => "This operation will panic if `other == 0`.",
-    (isize i8 i16 i32 i64 i128) => "This operation will panic if `other == 0` or if `self / other` results in overflow."
+    (isize i8 i16 i32 i64 i128) => "This operation will panic if `other == 0` or if `self / other` results in overflow.",
+    (__zkllvm_field_pallas_base) => "This operation will panic if `other == 0`."
 }
 
 macro_rules! rem_impl_float {
