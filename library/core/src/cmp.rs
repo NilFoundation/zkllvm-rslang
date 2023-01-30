@@ -1387,7 +1387,7 @@ mod impls {
     }
 
     partial_eq_impl! {
-        bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64
+        bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 __zkllvm_field_pallas_base
     }
 
     macro_rules! eq_impl {
@@ -1397,7 +1397,7 @@ mod impls {
         )*)
     }
 
-    eq_impl! { () bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+    eq_impl! { () bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 __zkllvm_field_pallas_base }
 
     macro_rules! partial_ord_impl {
         ($($t:ty)*) => ($(
