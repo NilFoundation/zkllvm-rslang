@@ -6,7 +6,7 @@ use std::slice;
 pub struct FlagComputation {
     pub flags: TypeFlags,
 
-    // see `Ty::outer_exclusive_binder` for details
+    /// see `Ty::outer_exclusive_binder` for details
     pub outer_exclusive_binder: ty::DebruijnIndex,
 }
 
@@ -217,14 +217,17 @@ impl FlagComputation {
 
     fn add_predicate_atom(&mut self, atom: ty::PredicateKind<'_>) {
         match atom {
-            ty::PredicateKind::Trait(trait_pred) => {
+            ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => {
                 self.add_substs(trait_pred.trait_ref.substs);
             }
-            ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => {
+            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(ty::OutlivesPredicate(a, b))) => {
                 self.add_region(a);
                 self.add_region(b);
             }
-            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, region)) => {
+            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                ty,
+                region,
+            ))) => {
                 self.add_ty(ty);
                 self.add_region(region);
             }
@@ -236,7 +239,10 @@ impl FlagComputation {
                 self.add_ty(a);
                 self.add_ty(b);
             }
-            ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => {
+            ty::PredicateKind::Clause(ty::Clause::Projection(ty::ProjectionPredicate {
+                projection_ty,
+                term,
+            })) => {
                 self.add_projection_ty(projection_ty);
                 match term.unpack() {
                     ty::TermKind::Ty(ty) => self.add_ty(ty),
@@ -260,6 +266,7 @@ impl FlagComputation {
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 self.add_ty(ty);
             }
+            ty::PredicateKind::Ambiguous => {}
         }
     }
 
@@ -307,6 +314,26 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
             ty::ConstKind::Value(_) => {}
+            ty::ConstKind::Expr(e) => {
+                use ty::Expr;
+                match e {
+                    Expr::Binop(_, l, r) => {
+                        self.add_const(l);
+                        self.add_const(r);
+                    }
+                    Expr::UnOp(_, v) => self.add_const(v),
+                    Expr::FunctionCall(f, args) => {
+                        self.add_const(f);
+                        for arg in args {
+                            self.add_const(arg);
+                        }
+                    }
+                    Expr::Cast(_, c, t) => {
+                        self.add_ty(t);
+                        self.add_const(c);
+                    }
+                }
+            }
             ty::ConstKind::Error(_) => self.add_flags(TypeFlags::HAS_ERROR),
         }
     }

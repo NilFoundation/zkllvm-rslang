@@ -1,7 +1,7 @@
 use crate::coercion::CoerceMany;
 use crate::gather_locals::GatherLocalsVisitor;
-use crate::{FnCtxt, Inherited};
-use crate::{GeneratorTypes, UnsafetyState};
+use crate::FnCtxt;
+use crate::GeneratorTypes;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::Visitor;
@@ -20,20 +20,16 @@ use std::cell::RefCell;
 ///
 /// * ...
 /// * inherited: other fields inherited from the enclosing fn (if any)
-#[instrument(skip(inherited, body), level = "debug")]
+#[instrument(skip(fcx, body), level = "debug")]
 pub(super) fn check_fn<'a, 'tcx>(
-    inherited: &'a Inherited<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    fcx: &mut FnCtxt<'a, 'tcx>,
     fn_sig: ty::FnSig<'tcx>,
     decl: &'tcx hir::FnDecl<'tcx>,
-    fn_id: hir::HirId,
+    fn_def_id: LocalDefId,
     body: &'tcx hir::Body<'tcx>,
     can_be_generator: Option<hir::Movability>,
-) -> (FnCtxt<'a, 'tcx>, Option<GeneratorTypes<'tcx>>) {
-    // Create the function context. This is either derived from scratch or,
-    // in the case of closures, based on the outer context.
-    let mut fcx = FnCtxt::new(inherited, param_env, body.value.hir_id);
-    fcx.ps.set(UnsafetyState::function(fn_sig.unsafety, fn_id));
+) -> Option<GeneratorTypes<'tcx>> {
+    let fn_id = fcx.tcx.hir().local_def_id_to_hir_id(fn_def_id);
 
     let tcx = fcx.tcx;
     let hir = tcx.hir();
@@ -45,7 +41,7 @@ pub(super) fn check_fn<'a, 'tcx>(
             declared_ret_ty,
             body.value.hir_id,
             decl.output.span(),
-            param_env,
+            fcx.param_env,
         ));
 
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
@@ -54,10 +50,15 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     fn_maybe_err(tcx, span, fn_sig.abi);
 
-    if body.generator_kind.is_some() && can_be_generator.is_some() {
-        let yield_ty = fcx
-            .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span });
-        fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
+    if let Some(kind) = body.generator_kind && can_be_generator.is_some() {
+        let yield_ty = if kind == hir::GeneratorKind::Gen {
+            let yield_ty = fcx
+                .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span });
+            fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
+            yield_ty
+        } else {
+            tcx.mk_unit()
+        };
 
         // Resume type defaults to `()` if the generator has no argument.
         let resume_ty = fn_sig.inputs().get(0).copied().unwrap_or_else(|| tcx.mk_unit());
@@ -98,9 +99,9 @@ pub(super) fn check_fn<'a, 'tcx>(
         fcx.write_ty(param.hir_id, param_ty);
     }
 
-    inherited.typeck_results.borrow_mut().liberated_fn_sigs_mut().insert(fn_id, fn_sig);
+    fcx.typeck_results.borrow_mut().liberated_fn_sigs_mut().insert(fn_id, fn_sig);
 
-    if let ty::Dynamic(..) = declared_ret_ty.kind() {
+    if let ty::Dynamic(_, _, ty::Dyn) = declared_ret_ty.kind() {
         // FIXME: We need to verify that the return type is `Sized` after the return expression has
         // been evaluated so that we have types available for all the nodes being returned, but that
         // requires the coerced evaluated type to be stored. Moving `check_return_expr` before this
@@ -167,7 +168,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         check_panic_info_fn(tcx, panic_impl_did.expect_local(), fn_sig, decl, declared_ret_ty);
     }
 
-    (fcx, gen_ty)
+    gen_ty
 }
 
 fn check_panic_info_fn(
@@ -195,7 +196,7 @@ fn check_panic_info_fn(
     let arg_is_panic_info = match *inputs[0].kind() {
         ty::Ref(region, ty, mutbl) => match *ty.kind() {
             ty::Adt(ref adt, _) => {
-                adt.did() == panic_info_did && mutbl == hir::Mutability::Not && !region.is_static()
+                adt.did() == panic_info_did && mutbl.is_not() && !region.is_static()
             }
             _ => false,
         },

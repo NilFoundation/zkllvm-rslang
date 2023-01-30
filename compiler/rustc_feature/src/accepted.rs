@@ -54,9 +54,9 @@ declare_features! (
     /// Allows using ADX intrinsics from `core::arch::{x86, x86_64}`.
     (accepted, adx_target_feature, "1.61.0", Some(44839), None),
     /// Allows explicit discriminants on non-unit enum variants.
-    (accepted, arbitrary_enum_discriminant, "CURRENT_RUSTC_VERSION", Some(60553), None),
+    (accepted, arbitrary_enum_discriminant, "1.66.0", Some(60553), None),
     /// Allows using `sym` operands in inline assembly.
-    (accepted, asm_sym, "CURRENT_RUSTC_VERSION", Some(93333), None),
+    (accepted, asm_sym, "1.66.0", Some(93333), None),
     /// Allows the definition of associated constants in `trait` or `impl` blocks.
     (accepted, associated_consts, "1.20.0", Some(29646), None),
     /// Allows using associated `type`s in `trait`s.
@@ -174,7 +174,7 @@ declare_features! (
     // FIXME: explain `globs`.
     (accepted, globs, "1.0.0", None, None),
     /// Allows using `..=X` as a pattern.
-    (accepted, half_open_range_patterns, "CURRENT_RUSTC_VERSION", Some(67264), None),
+    (accepted, half_open_range_patterns, "1.66.0", Some(67264), None),
     /// Allows using the `u128` and `i128` types.
     (accepted, i128_type, "1.26.0", Some(35118), None),
     /// Allows the use of `if let` expressions.
@@ -192,7 +192,7 @@ declare_features! (
     /// Allows irrefutable patterns in `if let` and `while let` statements (RFC 2086).
     (accepted, irrefutable_let_patterns, "1.33.0", Some(44495), None),
     /// Allows `#[instruction_set(_)]` attribute.
-    (accepted, isa_attribute, "CURRENT_RUSTC_VERSION", Some(74727), None),
+    (accepted, isa_attribute, "1.67.0", Some(74727), None),
     /// Allows some increased flexibility in the name resolution rules,
     /// especially around globs and shadowing (RFC 1560).
     (accepted, item_like_imports, "1.15.0", Some(35120), None),
@@ -237,6 +237,8 @@ declare_features! (
     (accepted, native_link_modifiers, "1.61.0", Some(81490), None),
     /// Allows specifying the bundle link modifier
     (accepted, native_link_modifiers_bundle, "1.63.0", Some(81490), None),
+    /// Allows specifying the verbatim link modifier
+    (accepted, native_link_modifiers_verbatim, "1.67.0", Some(81490), None),
     /// Allows specifying the whole-archive link modifier
     (accepted, native_link_modifiers_whole_archive, "1.61.0", Some(81490), None),
     /// Allows using non lexical lifetimes (RFC 2094).

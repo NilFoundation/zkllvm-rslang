@@ -5,6 +5,7 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(is_terminal)]
 #![feature(once_cell)]
 #![feature(decl_macro)]
 #![recursion_limit = "256"]
@@ -24,10 +25,10 @@ use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{ErrorGuaranteed, PResult};
 use rustc_feature::find_gated_cfg;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
-use rustc_log::stdout_isatty;
 use rustc_metadata::locator;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
@@ -48,7 +49,7 @@ use std::default::Default;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
-use std::io::{self, Read, Write};
+use std::io::{self, IsTerminal, Read, Write};
 use std::panic::{self, catch_unwind};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
@@ -245,10 +246,8 @@ fn run_compiler(
                 interface::run_compiler(config, |compiler| {
                     let sopts = &compiler.session().opts;
                     if sopts.describe_lints {
-                        let mut lint_store = rustc_lint::new_lint_store(
-                            sopts.unstable_opts.no_interleave_lints,
-                            compiler.session().enable_internal_lints(),
-                        );
+                        let mut lint_store =
+                            rustc_lint::new_lint_store(compiler.session().enable_internal_lints());
                         let registered_lints =
                             if let Some(register_lints) = compiler.register_lints() {
                                 register_lints(compiler.session(), &mut lint_store);
@@ -318,7 +317,7 @@ fn run_compiler(
                             compiler.input(),
                             &*expanded_crate,
                             *ppm,
-                            compiler.output_file().as_ref().map(|p| &**p),
+                            compiler.output_file().as_deref(),
                         );
                         Ok(())
                     })?;
@@ -329,7 +328,7 @@ fn run_compiler(
                         compiler.input(),
                         &krate,
                         *ppm,
-                        compiler.output_file().as_ref().map(|p| &**p),
+                        compiler.output_file().as_deref(),
                     );
                 }
                 trace!("finished pretty-printing");
@@ -376,17 +375,14 @@ fn run_compiler(
             queries.global_ctxt()?.peek_mut().enter(|tcx| {
                 let result = tcx.analysis(());
                 if sess.opts.unstable_opts.save_analysis {
-                    let crate_name = queries.crate_name()?.peek().clone();
+                    let crate_name = tcx.crate_name(LOCAL_CRATE);
                     sess.time("save_analysis", || {
                         save::process_crate(
                             tcx,
-                            &crate_name,
+                            crate_name,
                             compiler.input(),
                             None,
-                            DumpHandler::new(
-                                compiler.output_dir().as_ref().map(|p| &**p),
-                                &crate_name,
-                            ),
+                            DumpHandler::new(compiler.output_dir().as_deref(), crate_name),
                         )
                     });
                 }
@@ -515,7 +511,7 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
                 }
                 text.push('\n');
             }
-            if stdout_isatty() {
+            if io::stdout().is_terminal() {
                 show_content_with_pager(&text);
             } else {
                 print!("{}", text);
@@ -683,7 +679,7 @@ fn print_crate_info(
                 let crate_types = collect_crate_types(sess, attrs);
                 for &style in &crate_types {
                     let fname =
-                        rustc_session::output::filename_for_input(sess, style, &id, &t_outputs);
+                        rustc_session::output::filename_for_input(sess, style, id, &t_outputs);
                     println!("{}", fname.file_name().unwrap().to_string_lossy());
                 }
             }
@@ -1339,8 +1335,8 @@ mod signal_handler {
         }
     }
 
-    // When an error signal (such as SIGABRT or SIGSEGV) is delivered to the
-    // process, print a stack trace and then exit.
+    /// When an error signal (such as SIGABRT or SIGSEGV) is delivered to the
+    /// process, print a stack trace and then exit.
     pub(super) fn install() {
         unsafe {
             const ALT_STACK_SIZE: usize = libc::MINSIGSTKSZ + 64 * 1024;

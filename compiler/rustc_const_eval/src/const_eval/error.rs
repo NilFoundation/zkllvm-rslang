@@ -55,7 +55,7 @@ impl Error for ConstEvalErrKind {}
 /// When const-evaluation errors, this type is constructed with the resulting information,
 /// and then used to emit the error as a lint or hard error.
 #[derive(Debug)]
-pub struct ConstEvalErr<'tcx> {
+pub(super) struct ConstEvalErr<'tcx> {
     pub span: Span,
     pub error: InterpError<'tcx>,
     pub stacktrace: Vec<FrameInfo<'tcx>>,
@@ -82,8 +82,8 @@ impl<'tcx> ConstEvalErr<'tcx> {
         ConstEvalErr { error: error.into_kind(), stacktrace, span }
     }
 
-    pub fn report_as_error(&self, tcx: TyCtxtAt<'tcx>, message: &str) -> ErrorHandled {
-        self.struct_error(tcx, message, |_| {})
+    pub(super) fn report(&self, tcx: TyCtxtAt<'tcx>, message: &str) -> ErrorHandled {
+        self.report_decorated(tcx, message, |_| {})
     }
 
     /// Create a diagnostic for this const eval error.
@@ -95,7 +95,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
     /// If `lint_root.is_some()` report it as a lint, else report it as a hard error.
     /// (Except that for some errors, we ignore all that -- see `must_error` below.)
     #[instrument(skip(self, tcx, decorate), level = "debug")]
-    pub fn struct_error(
+    pub(super) fn report_decorated(
         &self,
         tcx: TyCtxtAt<'tcx>,
         message: &str,
@@ -123,14 +123,14 @@ impl<'tcx> ConstEvalErr<'tcx> {
                 // Helper closure to print duplicated lines.
                 let mut flush_last_line = |last_frame, times| {
                     if let Some((line, span)) = last_frame {
-                        err.span_label(span, &line);
+                        err.span_note(span, &line);
                         // Don't print [... additional calls ...] if the number of lines is small
                         if times < 3 {
                             for _ in 0..times {
-                                err.span_label(span, &line);
+                                err.span_note(span, &line);
                             }
                         } else {
-                            err.span_label(
+                            err.span_note(
                                 span,
                                 format!("[... {} additional calls {} ...]", times, &line),
                             );

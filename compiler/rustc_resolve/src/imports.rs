@@ -4,7 +4,10 @@ use crate::diagnostics::{import_candidates, Suggestion};
 use crate::Determinacy::{self, *};
 use crate::Namespace::*;
 use crate::{module_to_string, names_to_string, ImportSuggestion};
-use crate::{AmbiguityKind, BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
+use crate::{
+    AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingKey, ModuleKind, ResolutionError,
+    Resolver, Segment,
+};
 use crate::{Finalize, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet};
 use crate::{NameBinding, NameBindingKind, PathResult};
 
@@ -56,9 +59,6 @@ pub enum ImportKind<'a> {
         /// If this is the import for `foo::bar::a`, we would have the ID of the `UseTree`
         /// for `a` in this field.
         id: NodeId,
-        /// Additional `NodeId`s allocated to a `ast::UseTree` for automatically generated `use` statement
-        /// (eg. implicit struct constructors)
-        additional_ids: (NodeId, NodeId),
     },
     Glob {
         is_prelude: bool,
@@ -88,7 +88,6 @@ impl<'a> std::fmt::Debug for ImportKind<'a> {
                 ref type_ns_only,
                 ref nested,
                 ref id,
-                ref additional_ids,
                 // Ignore the following to avoid an infinite loop while printing.
                 source_bindings: _,
                 target_bindings: _,
@@ -99,7 +98,6 @@ impl<'a> std::fmt::Debug for ImportKind<'a> {
                 .field("type_ns_only", type_ns_only)
                 .field("nested", nested)
                 .field("id", id)
-                .field("additional_ids", additional_ids)
                 .finish_non_exhaustive(),
             Glob { ref is_prelude, ref max_vis, ref id } => f
                 .debug_struct("Glob")
@@ -196,7 +194,7 @@ pub(crate) struct NameResolution<'a> {
 }
 
 impl<'a> NameResolution<'a> {
-    // Returns the binding for the name if it is known or None if it not known.
+    /// Returns the binding for the name if it is known or None if it not known.
     pub(crate) fn binding(&self) -> Option<&'a NameBinding<'a>> {
         self.binding.and_then(|binding| {
             if !binding.is_glob_import() || self.single_imports.is_empty() {
@@ -228,8 +226,8 @@ fn pub_use_of_private_extern_crate_hack(import: &Import<'_>, binding: &NameBindi
 }
 
 impl<'a> Resolver<'a> {
-    // Given a binding and an import that resolves to it,
-    // return the corresponding binding defined by the import.
+    /// Given a binding and an import that resolves to it,
+    /// return the corresponding binding defined by the import.
     pub(crate) fn import(
         &self,
         binding: &'a NameBinding<'a>,
@@ -261,7 +259,7 @@ impl<'a> Resolver<'a> {
         })
     }
 
-    // Define the name or return the existing binding if there is a collision.
+    /// Define the name or return the existing binding if there is a collision.
     pub(crate) fn try_define(
         &mut self,
         module: Module<'a>,
@@ -796,7 +794,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 match binding {
                     Ok(binding) => {
                         // Consistency checks, analogous to `finalize_macro_resolutions`.
-                        let initial_res = source_bindings[ns].get().map(|initial_binding| {
+                        let initial_binding = source_bindings[ns].get().map(|initial_binding| {
                             all_ns_err = false;
                             if let Some(target_binding) = target_bindings[ns].get() {
                                 if target.name == kw::Underscore
@@ -810,12 +808,20 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                                     );
                                 }
                             }
-                            initial_binding.res()
+                            initial_binding
                         });
                         let res = binding.res();
-                        if let Ok(initial_res) = initial_res {
+                        if let Ok(initial_binding) = initial_binding {
+                            let initial_res = initial_binding.res();
                             if res != initial_res && this.ambiguity_errors.is_empty() {
-                                span_bug!(import.span, "inconsistent resolution for an import");
+                                this.ambiguity_errors.push(AmbiguityError {
+                                    kind: AmbiguityKind::Import,
+                                    ident,
+                                    b1: initial_binding,
+                                    b2: binding,
+                                    misc1: AmbiguityErrorMisc::None,
+                                    misc2: AmbiguityErrorMisc::None,
+                                });
                             }
                         } else if res != Res::Err
                             && this.ambiguity_errors.is_empty()

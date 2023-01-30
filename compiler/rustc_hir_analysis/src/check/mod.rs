@@ -159,7 +159,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
     // the consumer's responsibility to ensure all bytes that have been read
     // have defined values.
     if let Ok(alloc) = tcx.eval_static_initializer(id.to_def_id())
-        && alloc.inner().provenance().len() != 0
+        && alloc.inner().provenance().ptrs().len() != 0
     {
         let msg = "statics with a custom `#[link_section]` must be a \
                         simple list of bytes on the wasm target with no \
@@ -309,7 +309,7 @@ fn bounds_from_generic_predicates<'tcx>(
         debug!("predicate {:?}", predicate);
         let bound_predicate = predicate.kind();
         match bound_predicate.skip_binder() {
-            ty::PredicateKind::Trait(trait_predicate) => {
+            ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
                 let def_id = trait_predicate.def_id();
                 if Some(def_id) != tcx.lang_items().sized_trait() {
@@ -318,7 +318,7 @@ fn bounds_from_generic_predicates<'tcx>(
                     entry.push(trait_predicate.def_id());
                 }
             }
-            ty::PredicateKind::Projection(projection_pred) => {
+            ty::PredicateKind::Clause(ty::Clause::Projection(projection_pred)) => {
                 projections.push(bound_predicate.rebind(projection_pred));
             }
             _ => {}

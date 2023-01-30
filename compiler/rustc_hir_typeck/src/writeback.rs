@@ -83,10 +83,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.typeck_results.treat_byte_string_as_slice =
             mem::take(&mut self.typeck_results.borrow_mut().treat_byte_string_as_slice);
 
-        if self.is_tainted_by_errors() {
-            // FIXME(eddyb) keep track of `ErrorGuaranteed` from where the error was emitted.
-            wbcx.typeck_results.tainted_by_errors =
-                Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
+        if let Some(e) = self.tainted_by_errors() {
+            wbcx.typeck_results.tainted_by_errors = Some(e);
         }
 
         debug!("writeback: typeck results for {:?} are {:#?}", item_def_id, wbcx.typeck_results);
@@ -363,9 +361,12 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
     fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) {
         intravisit::walk_ty(self, hir_ty);
-        let ty = self.fcx.node_ty(hir_ty.hir_id);
-        let ty = self.resolve(ty, &hir_ty.span);
-        self.write_ty_to_typeck_results(hir_ty.hir_id, ty);
+        // If there are type checking errors, Type privacy pass will stop,
+        // so we may not get the type from hid_id, see #104513
+        if let Some(ty) = self.fcx.node_ty_opt(hir_ty.hir_id) {
+            let ty = self.resolve(ty, &hir_ty.span);
+            self.write_ty_to_typeck_results(hir_ty.hir_id, ty);
+        }
     }
 
     fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
@@ -514,7 +515,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         for (&def_id, c_sig) in fcx_typeck_results.user_provided_sigs.iter() {
             if cfg!(debug_assertions) && c_sig.needs_infer() {
                 span_bug!(
-                    self.fcx.tcx.hir().span_if_local(def_id).unwrap(),
+                    self.fcx.tcx.def_span(def_id),
                     "writeback: `{:?}` has inference variables",
                     c_sig
                 );
@@ -564,7 +565,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 opaque_type_key,
                 self.fcx.infcx.tcx,
                 true,
-                decl.origin,
             );
 
             self.typeck_results.concrete_opaque_types.insert(opaque_type_key.def_id, hidden_type);
@@ -674,10 +674,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         // We may have introduced e.g. `ty::Error`, if inference failed, make sure
         // to mark the `TypeckResults` as tainted in that case, so that downstream
         // users of the typeck results don't produce extra errors, or worse, ICEs.
-        if resolver.replaced_with_error {
-            // FIXME(eddyb) keep track of `ErrorGuaranteed` from where the error was emitted.
-            self.typeck_results.tainted_by_errors =
-                Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
+        if let Some(e) = resolver.replaced_with_error {
+            self.typeck_results.tainted_by_errors = Some(e);
         }
 
         x
@@ -708,8 +706,8 @@ struct Resolver<'cx, 'tcx> {
     span: &'cx dyn Locatable,
     body: &'tcx hir::Body<'tcx>,
 
-    /// Set to `true` if any `Ty` or `ty::Const` had to be replaced with an `Error`.
-    replaced_with_error: bool,
+    /// Set to `Some` if any `Ty` or `ty::Const` had to be replaced with an `Error`.
+    replaced_with_error: Option<ErrorGuaranteed>,
 }
 
 impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
@@ -718,12 +716,14 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         span: &'cx dyn Locatable,
         body: &'tcx hir::Body<'tcx>,
     ) -> Resolver<'cx, 'tcx> {
-        Resolver { tcx: fcx.tcx, infcx: fcx, span, body, replaced_with_error: false }
+        Resolver { tcx: fcx.tcx, infcx: fcx, span, body, replaced_with_error: None }
     }
 
-    fn report_error(&self, p: impl Into<ty::GenericArg<'tcx>>) {
-        if !self.tcx.sess.has_errors().is_some() {
-            self.infcx
+    fn report_error(&self, p: impl Into<ty::GenericArg<'tcx>>) -> ErrorGuaranteed {
+        match self.tcx.sess.has_errors() {
+            Some(e) => e,
+            None => self
+                .infcx
                 .err_ctxt()
                 .emit_inference_failure_err(
                     Some(self.body.id()),
@@ -732,7 +732,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     E0282,
                     false,
                 )
-                .emit();
+                .emit(),
         }
     }
 }
@@ -773,9 +773,9 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
             }
             Err(_) => {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
-                self.report_error(t);
-                self.replaced_with_error = true;
-                self.tcx().ty_error()
+                let e = self.report_error(t);
+                self.replaced_with_error = Some(e);
+                self.tcx().ty_error_with_guaranteed(e)
             }
         }
     }
@@ -790,9 +790,9 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
             Ok(ct) => self.tcx.erase_regions(ct),
             Err(_) => {
                 debug!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
-                self.report_error(ct);
-                self.replaced_with_error = true;
-                self.tcx().const_error(ct.ty())
+                let e = self.report_error(ct);
+                self.replaced_with_error = Some(e);
+                self.tcx().const_error_with_guaranteed(ct.ty(), e)
             }
         }
     }

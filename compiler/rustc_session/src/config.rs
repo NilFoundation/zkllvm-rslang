@@ -10,8 +10,8 @@ use crate::{lint, HashStableContext};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
-use rustc_data_structures::stable_hasher::ToStableHashKey;
-use rustc_target::abi::{Align, TargetDataLayout};
+use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
+use rustc_target::abi::Align;
 use rustc_target::spec::{PanicStrategy, SanitizerSet, SplitDebuginfo};
 use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
 
@@ -287,6 +287,9 @@ pub enum OutputType {
     Exe,
     DepInfo,
 }
+
+// Safety: Trivial C-Style enums have a stable sort order across compilation sessions.
+unsafe impl StableOrd for OutputType {}
 
 impl<HCX: HashStableContext> ToStableHashKey<HCX> for OutputType {
     type KeyType = Self;
@@ -622,7 +625,7 @@ impl OutputFilenames {
     /// should be placed on disk.
     pub fn output_path(&self, flavor: OutputType) -> PathBuf {
         let extension = flavor.extension();
-        self.with_directory_and_extension(&self.out_directory, &extension)
+        self.with_directory_and_extension(&self.out_directory, extension)
     }
 
     /// Gets the path where a compilation artifact of the given type for the
@@ -659,7 +662,7 @@ impl OutputFilenames {
 
         let temps_directory = self.temps_directory.as_ref().unwrap_or(&self.out_directory);
 
-        self.with_directory_and_extension(&temps_directory, &extension)
+        self.with_directory_and_extension(temps_directory, &extension)
     }
 
     pub fn with_extension(&self, extension: &str) -> PathBuf {
@@ -900,7 +903,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     let min_atomic_width = sess.target.min_atomic_width();
     let max_atomic_width = sess.target.max_atomic_width();
     let atomic_cas = sess.target.atomic_cas;
-    let layout = TargetDataLayout::parse(&sess.target).unwrap_or_else(|err| {
+    let layout = sess.target.parse_data_layout().unwrap_or_else(|err| {
         sess.emit_fatal(err);
     });
 
@@ -1159,7 +1162,7 @@ impl CrateCheckConfig {
                 values_target_family
                     .extend(target.options.families.iter().map(|family| Symbol::intern(family)));
                 values_target_arch.insert(Symbol::intern(&target.arch));
-                values_target_endian.insert(Symbol::intern(&target.options.endian.as_str()));
+                values_target_endian.insert(Symbol::intern(target.options.endian.as_str()));
                 values_target_env.insert(Symbol::intern(&target.options.env));
                 values_target_abi.insert(Symbol::intern(&target.options.abi));
                 values_target_vendor.insert(Symbol::intern(&target.options.vendor));
@@ -1480,7 +1483,7 @@ pub fn get_cmd_lint_options(
 
 /// Parses the `--color` flag.
 pub fn parse_color(matches: &getopts::Matches) -> ColorConfig {
-    match matches.opt_str("color").as_ref().map(|s| &s[..]) {
+    match matches.opt_str("color").as_deref() {
         Some("auto") => ColorConfig::Auto,
         Some("always") => ColorConfig::Always,
         Some("never") => ColorConfig::Never,
@@ -1589,7 +1592,7 @@ pub fn parse_error_format(
     // is unstable, it will not be present. We have to use `opts_present` not
     // `opt_present` because the latter will panic.
     let error_format = if matches.opts_present(&["error-format".to_owned()]) {
-        match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
+        match matches.opt_str("error-format").as_deref() {
             None | Some("human") => {
                 ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color))
             }
@@ -1846,7 +1849,7 @@ pub fn parse_target_triple(
     match matches.opt_str("target") {
         Some(target) if target.ends_with(".json") => {
             let path = Path::new(&target);
-            TargetTriple::from_path(&path).unwrap_or_else(|_| {
+            TargetTriple::from_path(path).unwrap_or_else(|_| {
                 early_error(error_format, &format!("target file {path:?} does not exist"))
             })
         }
@@ -1992,7 +1995,7 @@ fn parse_native_lib_modifiers(
 ) -> (NativeLibKind, Option<bool>) {
     let mut verbatim = None;
     for modifier in modifiers.split(',') {
-        let (modifier, value) = match modifier.strip_prefix(&['+', '-']) {
+        let (modifier, value) = match modifier.strip_prefix(['+', '-']) {
             Some(m) => (m, modifier.starts_with('+')),
             None => early_error(
                 error_format,
@@ -2029,10 +2032,7 @@ fn parse_native_lib_modifiers(
                 "linking modifier `bundle` is only compatible with `static` linking kind",
             ),
 
-            ("verbatim", _) => {
-                report_unstable_modifier();
-                assign_modifier(&mut verbatim)
-            }
+            ("verbatim", _) => assign_modifier(&mut verbatim),
 
             ("whole-archive", NativeLibKind::Static { whole_archive, .. }) => {
                 assign_modifier(whole_archive)
@@ -2424,7 +2424,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
-        search_paths.push(SearchPath::from_cli_opt(&s, error_format));
+        search_paths.push(SearchPath::from_cli_opt(s, error_format));
     }
 
     let libs = parse_libs(matches, error_format);

@@ -380,6 +380,8 @@ bootstrap_tool!(
     HtmlChecker, "src/tools/html-checker", "html-checker";
     BumpStage0, "src/tools/bump-stage0", "bump-stage0";
     ReplaceVersionPlaceholder, "src/tools/replace-version-placeholder", "replace-version-placeholder";
+    CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
+    GenerateCopyright, "src/tools/generate-copyright", "generate-copyright";
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
@@ -522,7 +524,7 @@ impl Step for Rustdoc {
         builder.ensure(compile::Rustc::new(build_compiler, target_compiler.host));
         // NOTE: this implies that `download-rustc` is pretty useless when compiling with the stage0
         // compiler, since you do just as much work.
-        if !builder.config.dry_run && builder.download_rustc() && build_compiler.stage == 0 {
+        if !builder.config.dry_run() && builder.download_rustc() && build_compiler.stage == 0 {
             println!(
                 "warning: `download-rustc` does nothing when building stage1 tools; consider using `--stage 2` instead"
             );

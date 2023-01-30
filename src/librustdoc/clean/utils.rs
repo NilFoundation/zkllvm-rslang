@@ -73,7 +73,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
         }));
     }
 
-    Crate { module, primitives, external_traits: cx.external_traits.clone() }
+    Crate { module, external_traits: cx.external_traits.clone() }
 }
 
 pub(crate) fn substs_to_args<'tcx>(
@@ -106,7 +106,7 @@ fn external_generic_args<'tcx>(
 ) -> GenericArgs {
     let args = substs_to_args(cx, substs, has_self);
 
-    if cx.tcx.fn_trait_kind_from_lang_item(did).is_some() {
+    if cx.tcx.fn_trait_kind_from_def_id(did).is_some() {
         let inputs =
             // The trait's first substitution is the one after self, if there is one.
             match substs.iter().nth(if has_self { 1 } else { 0 }).unwrap().expect_ty().kind() {
@@ -580,7 +580,7 @@ pub(super) fn display_macro_source(
     def_id: DefId,
     vis: ty::Visibility<DefId>,
 ) -> String {
-    let tts: Vec<_> = def.body.inner_tokens().into_trees().collect();
+    let tts: Vec<_> = def.body.tokens.clone().into_trees().collect();
     // Extract the spans of all matchers. They represent the "interface" of the macro.
     let matchers = tts.chunks(4).map(|arm| &arm[0]);
 

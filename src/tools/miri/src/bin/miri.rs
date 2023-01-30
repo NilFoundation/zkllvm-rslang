@@ -192,10 +192,7 @@ fn init_late_loggers(tcx: TyCtxt<'_>) {
             if log::Level::from_str(&var).is_ok() {
                 env::set_var(
                     "RUSTC_LOG",
-                    format!(
-                        "rustc_middle::mir::interpret={0},rustc_const_eval::interpret={0}",
-                        var
-                    ),
+                    format!("rustc_middle::mir::interpret={var},rustc_const_eval::interpret={var}"),
                 );
             } else {
                 env::set_var("RUSTC_LOG", &var);
@@ -317,7 +314,7 @@ fn main() {
         } else if arg == "-Zmiri-disable-validation" {
             miri_config.validate = false;
         } else if arg == "-Zmiri-disable-stacked-borrows" {
-            miri_config.stacked_borrows = false;
+            miri_config.borrow_tracker = None;
         } else if arg == "-Zmiri-disable-data-race-detector" {
             miri_config.data_race_detector = false;
             miri_config.weak_memory_emulation = false;
@@ -394,10 +391,9 @@ fn main() {
             if miri_config.seed.is_some() {
                 show_error!("Cannot specify -Zmiri-seed multiple times!");
             }
-            let seed = u64::from_str_radix(param, 16)
-                        .unwrap_or_else(|_| show_error!(
-                            "-Zmiri-seed should only contain valid hex digits [0-9a-fA-F] and must fit into a u64 (max 16 characters)"
-                        ));
+            let seed = param.parse::<u64>().unwrap_or_else(|_| {
+                show_error!("-Zmiri-seed must be an integer that fits into u64")
+            });
             miri_config.seed = Some(seed);
         } else if let Some(_param) = arg.strip_prefix("-Zmiri-env-exclude=") {
             show_error!(
@@ -414,7 +410,7 @@ fn main() {
                         err
                     ),
             };
-            for id in ids.into_iter().map(miri::SbTag::new) {
+            for id in ids.into_iter().map(miri::BorTag::new) {
                 if let Some(id) = id {
                     miri_config.tracked_pointer_tags.insert(id);
                 } else {

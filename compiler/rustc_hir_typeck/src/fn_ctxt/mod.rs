@@ -4,10 +4,11 @@ mod checks;
 mod suggestions;
 
 pub use _impl::*;
+use rustc_errors::ErrorGuaranteed;
 pub use suggestions::*;
 
 use crate::coercion::DynamicCoerceMany;
-use crate::{Diverges, EnclosingBreakables, Inherited, UnsafetyState};
+use crate::{Diverges, EnclosingBreakables, Inherited};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir_analysis::astconv::AstConv;
@@ -21,7 +22,7 @@ use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::{self, Span};
-use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
+use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
 
 use std::cell::{Cell, RefCell};
 use std::ops::Deref;
@@ -72,8 +73,6 @@ pub struct FnCtxt<'a, 'tcx> {
     pub(super) ret_coercion_span: Cell<Option<Span>>,
 
     pub(super) resume_yield_tys: Option<(Ty<'tcx>, Ty<'tcx>)>,
-
-    pub(super) ps: Cell<UnsafetyState>,
 
     /// Whether the last checked node generates a divergence (e.g.,
     /// `return` will set this to `Always`). In general, when entering
@@ -128,7 +127,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ret_coercion: None,
             ret_coercion_span: Cell::new(None),
             resume_yield_tys: None,
-            ps: Cell::new(UnsafetyState::function(hir::Unsafety::Normal, hir::CRATE_HIR_ID)),
             diverges: Cell::new(Diverges::Maybe),
             enclosing_breakables: RefCell::new(EnclosingBreakables {
                 stack: Vec::new(),
@@ -161,6 +159,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             infcx: &self.infcx,
             typeck_results: Some(self.typeck_results.borrow()),
             fallback_has_occurred: self.fallback_has_occurred.get(),
+            normalize_fn_sig: Box::new(|fn_sig| {
+                if fn_sig.has_escaping_bound_vars() {
+                    return fn_sig;
+                }
+                self.probe(|_| {
+                    let ocx = ObligationCtxt::new_in_snapshot(self);
+                    let normalized_fn_sig =
+                        ocx.normalize(&ObligationCause::dummy(), self.param_env, fn_sig);
+                    if ocx.select_all_or_error().is_empty() {
+                        let normalized_fn_sig = self.resolve_vars_if_possible(normalized_fn_sig);
+                        if !normalized_fn_sig.needs_infer() {
+                            return normalized_fn_sig;
+                        }
+                    }
+                    fn_sig
+                })
+            }),
         }
     }
 
@@ -200,7 +215,9 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             predicates: tcx.arena.alloc_from_iter(
                 self.param_env.caller_bounds().iter().filter_map(|predicate| {
                     match predicate.kind().skip_binder() {
-                        ty::PredicateKind::Trait(data) if data.self_ty().is_param(index) => {
+                        ty::PredicateKind::Clause(ty::Clause::Trait(data))
+                            if data.self_ty().is_param(index) =>
+                        {
                             // HACK(eddyb) should get the original `Span`.
                             let span = tcx.def_span(def_id);
                             Some((predicate, span))
@@ -285,12 +302,12 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         if ty.has_escaping_bound_vars() {
             ty // FIXME: normalization and escaping regions
         } else {
-            self.normalize_associated_types_in(span, ty)
+            self.normalize(span, ty)
         }
     }
 
-    fn set_tainted_by_errors(&self) {
-        self.infcx.set_tainted_by_errors()
+    fn set_tainted_by_errors(&self, e: ErrorGuaranteed) {
+        self.infcx.set_tainted_by_errors(e)
     }
 
     fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, _span: Span) {

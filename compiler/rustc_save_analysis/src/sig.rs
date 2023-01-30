@@ -167,9 +167,9 @@ impl<'hir> Sig for hir::Ty<'hir> {
             }
             hir::TyKind::Rptr(ref lifetime, ref mt) => {
                 let mut prefix = "&".to_owned();
-                prefix.push_str(&lifetime.name.ident().to_string());
+                prefix.push_str(&lifetime.ident.to_string());
                 prefix.push(' ');
-                if let hir::Mutability::Mut = mt.mutbl {
+                if mt.mutbl.is_mut() {
                     prefix.push_str("mut ");
                 };
 
@@ -332,7 +332,7 @@ impl<'hir> Sig for hir::Item<'hir> {
         match self.kind {
             hir::ItemKind::Static(ref ty, m, ref body) => {
                 let mut text = "static ".to_owned();
-                if m == hir::Mutability::Mut {
+                if m.is_mut() {
                     text.push_str("mut ");
                 }
                 let name = self.ident.to_string();
@@ -693,7 +693,7 @@ impl<'hir> Sig for hir::Variant<'hir> {
                 text.push('}');
                 Ok(Signature { text, defs, refs })
             }
-            hir::VariantData::Tuple(fields, id) => {
+            hir::VariantData::Tuple(fields, id, _) => {
                 let name_def = SigElement {
                     id: id_from_hir_id(id, scx),
                     start: offset,
@@ -712,7 +712,7 @@ impl<'hir> Sig for hir::Variant<'hir> {
                 text.push(')');
                 Ok(Signature { text, defs, refs })
             }
-            hir::VariantData::Unit(id) => {
+            hir::VariantData::Unit(id, _) => {
                 let name_def = SigElement {
                     id: id_from_hir_id(id, scx),
                     start: offset,

@@ -492,7 +492,7 @@ fn construct_fn<'tcx>(
             arguments,
             return_ty,
             return_ty_span,
-            span,
+            span_with_body,
             custom_mir_attr,
         );
     }
@@ -924,7 +924,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         scope,
                         expr.span,
                         &pat,
-                        matches::ArmHasGuard(false),
+                        None,
                         Some((Some(&place), span)),
                     );
                     let place_builder = PlaceBuilder::from(local);
@@ -948,20 +948,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         original_source_scope: SourceScope,
         pattern_span: Span,
     ) {
-        let tcx = self.tcx;
-        let current_root = tcx.maybe_lint_level_root_bounded(arg_hir_id, self.hir_id);
-        let parent_root = tcx.maybe_lint_level_root_bounded(
-            self.source_scopes[original_source_scope]
-                .local_data
-                .as_ref()
-                .assert_crate_local()
-                .lint_root,
-            self.hir_id,
-        );
-        if current_root != parent_root {
-            self.source_scope =
-                self.new_source_scope(pattern_span, LintLevel::Explicit(current_root), None);
-        }
+        let parent_id = self.source_scopes[original_source_scope]
+            .local_data
+            .as_ref()
+            .assert_crate_local()
+            .lint_root;
+        self.maybe_new_source_scope(pattern_span, None, arg_hir_id, parent_id);
     }
 
     fn get_unit_temp(&mut self) -> Place<'tcx> {

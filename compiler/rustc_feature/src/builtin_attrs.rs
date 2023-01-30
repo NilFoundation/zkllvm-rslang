@@ -147,7 +147,7 @@ pub enum AttributeDuplicates {
     FutureWarnPreceding,
 }
 
-/// A conveniece macro to deal with `$($expr)?`.
+/// A convenience macro to deal with `$($expr)?`.
 macro_rules! or_default {
     ($default:expr,) => {
         $default
@@ -691,6 +691,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_allow_incoherent_impl, AttributeType::Normal, template!(Word), ErrorFollowing, @only_local: true,
         "#[rustc_allow_incoherent_impl] has to be added to all impl items of an incoherent inherent impl."
+    ),
+    rustc_attr!(
+        rustc_deny_explicit_impl, AttributeType::Normal, template!(Word), ErrorFollowing, @only_local: false,
+        "#[rustc_deny_explicit_impl] enforces that a trait can have no user-provided impls"
     ),
     rustc_attr!(
         rustc_has_incoherent_inherent_impls, AttributeType::Normal, template!(Word), ErrorFollowing,

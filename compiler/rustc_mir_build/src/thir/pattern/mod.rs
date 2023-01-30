@@ -216,7 +216,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let lo = lo_expr.map(|e| self.lower_range_expr(e));
                 let hi = hi_expr.map(|e| self.lower_range_expr(e));
 
-                let (lp, hp) = (lo.as_ref().map(|x| &x.0), hi.as_ref().map(|x| &x.0));
+                let (lp, hp) = (lo.as_ref().map(|(x, _)| x), hi.as_ref().map(|(x, _)| x));
                 let mut kind = match self.normalize_range_pattern_ends(ty, lp, hp) {
                     Some((lc, hc)) => self.lower_pattern_range(ty, lc, hc, end, lo_span),
                     None => {
@@ -321,7 +321,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let subpatterns = fields
                     .iter()
                     .map(|field| FieldPat {
-                        field: Field::new(self.tcx.field_index(field.hir_id, self.typeck_results)),
+                        field: Field::new(self.typeck_results.field_index(field.hir_id)),
                         pattern: self.lower_pattern(&field.pat),
                     })
                     .collect();
@@ -358,7 +358,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         &mut self,
         pat: &'tcx Option<&'tcx hir::Pat<'tcx>>,
     ) -> Option<Box<Pat<'tcx>>> {
-        pat.as_ref().map(|p| self.lower_pattern(p))
+        pat.map(|p| self.lower_pattern(p))
     }
 
     fn slice_or_array_pattern(
@@ -565,8 +565,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         id: hir::HirId,
         span: Span,
     ) -> PatKind<'tcx> {
-        let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
-        let value = mir::ConstantKind::from_inline_const(self.tcx, anon_const_def_id);
+        let value = mir::ConstantKind::from_inline_const(self.tcx, anon_const.def_id);
 
         // Evaluate early like we do in `lower_path`.
         let value = value.eval(self.tcx, self.param_env);
@@ -575,6 +574,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             mir::ConstantKind::Ty(c) => match c.kind() {
                 ConstKind::Param(_) => {
                     self.errors.push(PatternError::ConstParamInPattern(span));
+                    return PatKind::Wild;
+                }
+                ConstKind::Error(_) => {
                     return PatKind::Wild;
                 }
                 _ => bug!("Expected ConstKind::Param"),

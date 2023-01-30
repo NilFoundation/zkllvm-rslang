@@ -254,7 +254,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             .or_else(|| self.give_name_if_anonymous_region_appears_in_impl_signature(fr))
             .or_else(|| self.give_name_if_anonymous_region_appears_in_arg_position_impl_trait(fr));
 
-        if let Some(ref value) = value {
+        if let Some(value) = &value {
             self.region_names.try_borrow_mut().unwrap().insert(fr, value.clone());
         }
 
@@ -576,30 +576,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let args = last_segment.args.as_ref()?;
         let lifetime =
             self.try_match_adt_and_generic_args(substs, needle_fr, args, search_stack)?;
-        match lifetime.name {
-            hir::LifetimeName::Param(_, hir::ParamName::Plain(_) | hir::ParamName::Error)
-            | hir::LifetimeName::Error
-            | hir::LifetimeName::Static => {
-                let lifetime_span = lifetime.span;
-                Some(RegionNameHighlight::MatchedAdtAndSegment(lifetime_span))
-            }
-
-            hir::LifetimeName::Param(_, hir::ParamName::Fresh)
-            | hir::LifetimeName::ImplicitObjectLifetimeDefault
-            | hir::LifetimeName::Infer => {
-                // In this case, the user left off the lifetime; so
-                // they wrote something like:
-                //
-                // ```
-                // x: Foo<T>
-                // ```
-                //
-                // where the fully elaborated form is `Foo<'_, '1,
-                // T>`. We don't consider this a match; instead we let
-                // the "fully elaborated" type fallback above handle
-                // it.
-                None
-            }
+        if lifetime.is_anonymous() {
+            None
+        } else {
+            Some(RegionNameHighlight::MatchedAdtAndSegment(lifetime.ident.span))
         }
     }
 
@@ -959,8 +939,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             {
                 predicates.iter().any(|pred| {
                     match pred.kind().skip_binder() {
-                        ty::PredicateKind::Trait(data) if data.self_ty() == ty => {}
-                        ty::PredicateKind::Projection(data) if data.projection_ty.self_ty() == ty => {}
+                        ty::PredicateKind::Clause(ty::Clause::Trait(data)) if data.self_ty() == ty => {}
+                        ty::PredicateKind::Clause(ty::Clause::Projection(data)) if data.projection_ty.self_ty() == ty => {}
                         _ => return false,
                     }
                     tcx.any_free_region_meets(pred, |r| {

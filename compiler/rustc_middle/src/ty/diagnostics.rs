@@ -153,7 +153,6 @@ enum SuggestChangingConstraintsMessage<'a> {
 }
 
 fn suggest_removing_unsized_bound(
-    tcx: TyCtxt<'_>,
     generics: &hir::Generics<'_>,
     suggestions: &mut Vec<(Span, String, SuggestChangingConstraintsMessage<'_>)>,
     param: &hir::GenericParam<'_>,
@@ -162,17 +161,16 @@ fn suggest_removing_unsized_bound(
     // See if there's a `?Sized` bound that can be removed to suggest that.
     // First look at the `where` clause because we can have `where T: ?Sized`,
     // then look at params.
-    let param_def_id = tcx.hir().local_def_id(param.hir_id);
     for (where_pos, predicate) in generics.predicates.iter().enumerate() {
         let WherePredicate::BoundPredicate(predicate) = predicate else {
             continue;
         };
-        if !predicate.is_param_bound(param_def_id.to_def_id()) {
+        if !predicate.is_param_bound(param.def_id.to_def_id()) {
             continue;
         };
 
         for (pos, bound) in predicate.bounds.iter().enumerate() {
-            let    hir::GenericBound::Trait(poly, hir::TraitBoundModifier::Maybe) = bound else {
+            let hir::GenericBound::Trait(poly, hir::TraitBoundModifier::Maybe) = bound else {
                 continue;
             };
             if poly.trait_ref.trait_def_id() != def_id {
@@ -234,7 +232,7 @@ pub fn suggest_constraining_type_params<'a>(
                     param.span,
                     &format!("this type parameter needs to be `{}`", constraint),
                 );
-                suggest_removing_unsized_bound(tcx, generics, &mut suggestions, param, def_id);
+                suggest_removing_unsized_bound(generics, &mut suggestions, param, def_id);
             }
         }
 
@@ -285,8 +283,7 @@ pub fn suggest_constraining_type_params<'a>(
         //          --
         //          |
         //          replace with: `T: Bar +`
-        let param_def_id = tcx.hir().local_def_id(param.hir_id);
-        if let Some(span) = generics.bounds_span_for_suggestions(param_def_id) {
+        if let Some(span) = generics.bounds_span_for_suggestions(param.def_id) {
             suggest_restrict(span, true);
             continue;
         }
@@ -360,6 +357,12 @@ pub fn suggest_constraining_type_params<'a>(
         ));
     }
 
+    // FIXME: remove the suggestions that are from derive, as the span is not correct
+    suggestions = suggestions
+        .into_iter()
+        .filter(|(span, _, _)| !span.in_derive_expansion())
+        .collect::<Vec<_>>();
+
     if suggestions.len() == 1 {
         let (span, suggestion, msg) = suggestions.pop().unwrap();
 
@@ -402,7 +405,7 @@ impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
             hir::TyKind::TraitObject(
                 _,
                 hir::Lifetime {
-                    name:
+                    res:
                         hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Static,
                     ..
                 },
@@ -426,10 +429,9 @@ pub struct StaticLifetimeVisitor<'tcx>(pub Vec<Span>, pub crate::hir::map::Map<'
 
 impl<'v> hir::intravisit::Visitor<'v> for StaticLifetimeVisitor<'v> {
     fn visit_lifetime(&mut self, lt: &'v hir::Lifetime) {
-        if let hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Static =
-            lt.name
+        if let hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Static = lt.res
         {
-            self.0.push(lt.span);
+            self.0.push(lt.ident.span);
         }
     }
 }
@@ -512,12 +514,4 @@ impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
 
         c.super_visit_with(self)
     }
-}
-
-#[derive(Diagnostic)]
-#[diag(borrowck_const_not_used_in_type_alias)]
-pub(super) struct ConstNotUsedTraitAlias {
-    pub ct: String,
-    #[primary_span]
-    pub span: Span,
 }

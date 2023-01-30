@@ -81,6 +81,10 @@ pub use crate::macros::builtin::alloc_error_handler;
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 pub use crate::macros::builtin::{bench, derive, global_allocator, test, test_case};
 
+#[unstable(feature = "derive_const", issue = "none")]
+#[cfg(not(bootstrap))]
+pub use crate::macros::builtin::derive_const;
+
 #[unstable(
     feature = "cfg_accessible",
     issue = "64797",
@@ -94,3 +98,11 @@ pub use crate::macros::builtin::cfg_accessible;
     reason = "`cfg_eval` is a recently implemented feature"
 )]
 pub use crate::macros::builtin::cfg_eval;
+
+#[unstable(
+    feature = "type_ascription",
+    issue = "23416",
+    reason = "placeholder syntax for type ascription"
+)]
+#[cfg(not(bootstrap))]
+pub use crate::macros::builtin::type_ascribe;

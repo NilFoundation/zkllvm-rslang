@@ -57,7 +57,7 @@ pub(super) fn build_custom_mir<'tcx>(
         is_polymorphic: false,
         tainted_by_errors: None,
         injection_phase: None,
-        pass_count: 1,
+        pass_count: 0,
     };
 
     body.local_decls.push(LocalDecl::new(return_ty, return_ty_span));
@@ -74,7 +74,7 @@ pub(super) fn build_custom_mir<'tcx>(
     let mut pctxt = ParseCtxt {
         tcx,
         thir,
-        source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
+        source_scope: OUTERMOST_SOURCE_SCOPE,
         body: &mut body,
         local_map: FxHashMap::default(),
         block_map: FxHashMap::default(),
@@ -128,7 +128,7 @@ fn parse_attribute(attr: &Attribute) -> MirPhase {
 struct ParseCtxt<'tcx, 'body> {
     tcx: TyCtxt<'tcx>,
     thir: &'body Thir<'tcx>,
-    source_info: SourceInfo,
+    source_scope: SourceScope,
 
     body: &'body mut Body<'tcx>,
     local_map: FxHashMap<LocalVarId, Local>,

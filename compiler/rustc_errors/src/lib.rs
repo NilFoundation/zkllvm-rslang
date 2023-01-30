@@ -5,6 +5,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(drain_filter)]
 #![feature(if_let_guard)]
+#![feature(is_terminal)]
 #![feature(adt_const_params)]
 #![feature(let_chains)]
 #![feature(never_type)]
@@ -466,6 +467,10 @@ pub enum StashKey {
     /// When an invalid lifetime e.g. `'2` should be reinterpreted
     /// as a char literal in the parser
     LifetimeIsChar,
+    /// Maybe there was a typo where a comma was forgotten before
+    /// FRU syntax
+    MaybeFruTypo,
+    CallAssocMethod,
 }
 
 fn default_track_diagnostic(_: &Diagnostic) {}
@@ -644,13 +649,14 @@ impl Handler {
         inner.stashed_diagnostics = Default::default();
     }
 
-    /// Stash a given diagnostic with the given `Span` and `StashKey` as the key for later stealing.
+    /// Stash a given diagnostic with the given `Span` and [`StashKey`] as the key.
+    /// Retrieve a stashed diagnostic with `steal_diagnostic`.
     pub fn stash_diagnostic(&self, span: Span, key: StashKey, diag: Diagnostic) {
         let mut inner = self.inner.borrow_mut();
         inner.stash((span, key), diag);
     }
 
-    /// Steal a previously stashed diagnostic with the given `Span` and `StashKey` as the key.
+    /// Steal a previously stashed diagnostic with the given `Span` and [`StashKey`] as the key.
     pub fn steal_diagnostic(&self, span: Span, key: StashKey) -> Option<DiagnosticBuilder<'_, ()>> {
         let mut inner = self.inner.borrow_mut();
         inner.steal((span, key)).map(|diag| DiagnosticBuilder::new_diagnostic(self, diag))
@@ -1039,13 +1045,24 @@ impl Handler {
     }
     pub fn has_errors_or_lint_errors(&self) -> Option<ErrorGuaranteed> {
         if self.inner.borrow().has_errors_or_lint_errors() {
-            Some(ErrorGuaranteed(()))
+            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
         } else {
             None
         }
     }
-    pub fn has_errors_or_delayed_span_bugs(&self) -> bool {
-        self.inner.borrow().has_errors_or_delayed_span_bugs()
+    pub fn has_errors_or_delayed_span_bugs(&self) -> Option<ErrorGuaranteed> {
+        if self.inner.borrow().has_errors_or_delayed_span_bugs() {
+            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+        } else {
+            None
+        }
+    }
+    pub fn is_compilation_going_to_fail(&self) -> Option<ErrorGuaranteed> {
+        if self.inner.borrow().is_compilation_going_to_fail() {
+            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+        } else {
+            None
+        }
     }
 
     pub fn print_error_count(&self, registry: &Registry) {
@@ -1254,6 +1271,10 @@ impl HandlerInner {
         }
 
         if diagnostic.has_future_breakage() {
+            // Future breakages aren't emitted if they're Level::Allowed,
+            // but they still need to be constructed and stashed below,
+            // so they'll trigger the good-path bug check.
+            self.suppressed_expected_diag = true;
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
@@ -1308,7 +1329,7 @@ impl HandlerInner {
 
             diagnostic.children.drain_filter(already_emitted_sub).for_each(|_| {});
 
-            self.emitter.emit_diagnostic(&diagnostic);
+            self.emitter.emit_diagnostic(diagnostic);
             if diagnostic.is_error() {
                 self.deduplicated_err_count += 1;
             } else if let Warning(_) = diagnostic.level {
@@ -1473,6 +1494,10 @@ impl HandlerInner {
     }
     fn has_any_message(&self) -> bool {
         self.err_count() > 0 || self.lint_err_count > 0 || self.warn_count > 0
+    }
+
+    fn is_compilation_going_to_fail(&self) -> bool {
+        self.has_errors() || self.lint_err_count > 0 || !self.delayed_span_bugs.is_empty()
     }
 
     fn abort_if_errors(&mut self) {

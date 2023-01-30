@@ -35,7 +35,7 @@ pub enum LLVMRustResult {
 pub struct LLVMRustCOFFShortExport {
     pub name: *const c_char,
     pub ordinal_present: bool,
-    // value of `ordinal` only important when `ordinal_present` is true
+    /// value of `ordinal` only important when `ordinal_present` is true
     pub ordinal: u16,
 }
 
@@ -987,6 +987,9 @@ extern "C" {
 pub type SelfProfileBeforePassCallback =
     unsafe extern "C" fn(*mut c_void, *const c_char, *const c_char);
 pub type SelfProfileAfterPassCallback = unsafe extern "C" fn(*mut c_void);
+
+pub type GetSymbolsCallback = unsafe extern "C" fn(*mut c_void, *const c_char) -> *mut c_void;
+pub type GetSymbolsErrorCallback = unsafe extern "C" fn(*const c_char) -> *mut c_void;
 
 extern "C" {
     pub fn LLVMRustInstallFatalErrorHandler();
@@ -2142,7 +2145,8 @@ extern "C" {
         Builder: &DIBuilder<'a>,
         Name: *const c_char,
         NameLen: size_t,
-        Value: i64,
+        Value: *const u64,
+        SizeInBits: c_uint,
         IsUnsigned: bool,
     ) -> &'a DIEnumerator;
 
@@ -2225,6 +2229,7 @@ extern "C" {
     ) -> &'a DILocation;
     pub fn LLVMRustDIBuilderCreateOpDeref() -> u64;
     pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> u64;
+    pub fn LLVMRustDIBuilderCreateOpLLVMFragment() -> u64;
 
     #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);
@@ -2487,4 +2492,14 @@ extern "C" {
     pub fn LLVMRustGetMangledName(V: &Value, out: &RustString);
 
     pub fn LLVMRustGetElementTypeArgIndex(CallSite: &Value) -> i32;
+
+    pub fn LLVMRustIsBitcode(ptr: *const u8, len: usize) -> bool;
+
+    pub fn LLVMRustGetSymbols(
+        buf_ptr: *const u8,
+        buf_len: usize,
+        state: *mut c_void,
+        callback: GetSymbolsCallback,
+        error_callback: GetSymbolsErrorCallback,
+    ) -> *mut c_void;
 }

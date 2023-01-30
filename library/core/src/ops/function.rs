@@ -57,7 +57,6 @@ use crate::marker::Tuple;
 #[cfg(bootstrap)]
 #[lang = "fn"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "Fn"]
 #[rustc_paren_sugar]
 #[rustc_on_unimplemented(
     on(
@@ -75,6 +74,7 @@ use crate::marker::Tuple;
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
+#[const_trait]
 pub trait Fn<Args>: FnMut<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
@@ -137,7 +137,6 @@ pub trait Fn<Args>: FnMut<Args> {
 #[cfg(not(bootstrap))]
 #[lang = "fn"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "Fn"]
 #[rustc_paren_sugar]
 #[rustc_on_unimplemented(
     on(
@@ -226,7 +225,6 @@ pub trait Fn<Args: Tuple>: FnMut<Args> {
 #[cfg(bootstrap)]
 #[lang = "fn_mut"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "FnMut"]
 #[rustc_paren_sugar]
 #[rustc_on_unimplemented(
     on(
@@ -244,6 +242,7 @@ pub trait Fn<Args: Tuple>: FnMut<Args> {
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
+#[const_trait]
 pub trait FnMut<Args>: FnOnce<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
@@ -314,7 +313,6 @@ pub trait FnMut<Args>: FnOnce<Args> {
 #[cfg(not(bootstrap))]
 #[lang = "fn_mut"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "FnMut"]
 #[rustc_paren_sugar]
 #[rustc_on_unimplemented(
     on(
@@ -395,7 +393,6 @@ pub trait FnMut<Args: Tuple>: FnOnce<Args> {
 #[cfg(bootstrap)]
 #[lang = "fn_once"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "FnOnce"]
 #[rustc_paren_sugar]
 #[rustc_on_unimplemented(
     on(
@@ -413,6 +410,7 @@ pub trait FnMut<Args: Tuple>: FnOnce<Args> {
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
+#[const_trait]
 pub trait FnOnce<Args> {
     /// The returned type after the call operator is used.
     #[lang = "fn_once_output"]
@@ -480,7 +478,6 @@ pub trait FnOnce<Args> {
 #[cfg(not(bootstrap))]
 #[lang = "fn_once"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "FnOnce"]
 #[rustc_paren_sugar]
 #[rustc_on_unimplemented(
     on(

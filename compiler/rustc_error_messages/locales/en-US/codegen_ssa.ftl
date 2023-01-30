@@ -182,3 +182,13 @@ codegen_ssa_extract_bundled_libs_write_file = failed to write file '{$rlib}': {$
 codegen_ssa_unsupported_arch = unsupported arch `{$arch}` for os `{$os}`
 
 codegen_ssa_apple_sdk_error_sdk_path = failed to get {$sdk_name} SDK path: {error}
+
+codegen_ssa_read_file = failed to read file: {message}
+
+codegen_ssa_unsupported_link_self_contained = option `-C link-self-contained` is not supported on this target
+
+codegen_ssa_archive_build_failure =
+    failed to build archive: {$error}
+
+codegen_ssa_unknown_archive_kind =
+    Don't know how to build archive of type: {$kind}

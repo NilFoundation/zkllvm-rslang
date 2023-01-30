@@ -130,14 +130,14 @@ impl FileLoader for RealFileLoader {
 /// different has no real downsides.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, Debug)]
 pub struct StableSourceFileId {
-    // A hash of the source file's FileName. This is hash so that it's size
-    // is more predictable than if we included the actual FileName value.
+    /// A hash of the source file's [`FileName`]. This is hash so that it's size
+    /// is more predictable than if we included the actual [`FileName`] value.
     pub file_name_hash: u64,
 
-    // The CrateNum of the crate this source file was originally parsed for.
-    // We cannot include this information in the hash because at the time
-    // of hashing we don't have the context to map from the CrateNum's numeric
-    // value to a StableCrateId.
+    /// The [`CrateNum`] of the crate this source file was originally parsed for.
+    /// We cannot include this information in the hash because at the time
+    /// of hashing we don't have the context to map from the [`CrateNum`]'s numeric
+    /// value to a `StableCrateId`.
     pub cnum: CrateNum,
 }
 
@@ -402,7 +402,7 @@ impl SourceMap {
         source_file
     }
 
-    // If there is a doctest offset, applies it to the line.
+    /// If there is a doctest offset, applies it to the line.
     pub fn doctest_offset_line(&self, file: &FileName, orig: usize) -> usize {
         match file {
             FileName::DocTest(_, offset) => {
@@ -429,7 +429,7 @@ impl SourceMap {
         Loc { file: sf, line, col, col_display }
     }
 
-    // If the corresponding `SourceFile` is empty, does not return a line number.
+    /// If the corresponding `SourceFile` is empty, does not return a line number.
     pub fn lookup_line(&self, pos: BytePos) -> Result<SourceFileAndLine, Lrc<SourceFile>> {
         let f = self.lookup_source_file(pos);
 
@@ -753,10 +753,11 @@ impl SourceMap {
         }
     }
 
-    /// Given a 'Span', tries to tell if the next character is '>'
-    /// and the previous charactoer is '<' after skipping white space
-    /// return true if wrapped by '<>'
-    pub fn span_wrapped_by_angle_bracket(&self, span: Span) -> bool {
+    /// Given a 'Span', tries to tell if it's wrapped by "<>" or "()"
+    /// the algorithm searches if the next character is '>' or ')' after skipping white space
+    /// then searches the previous charactoer to match '<' or '(' after skipping white space
+    /// return true if wrapped by '<>' or '()'
+    pub fn span_wrapped_by_angle_or_parentheses(&self, span: Span) -> bool {
         self.span_to_source(span, |src, start_index, end_index| {
             if src.get(start_index..end_index).is_none() {
                 return Ok(false);
@@ -764,11 +765,17 @@ impl SourceMap {
             // test the right side to match '>' after skipping white space
             let end_src = &src[end_index..];
             let mut i = 0;
+            let mut found_right_parentheses = false;
+            let mut found_right_angle = false;
             while let Some(cc) = end_src.chars().nth(i) {
                 if cc == ' ' {
                     i = i + 1;
                 } else if cc == '>' {
                     // found > in the right;
+                    found_right_angle = true;
+                    break;
+                } else if cc == ')' {
+                    found_right_parentheses = true;
                     break;
                 } else {
                     // failed to find '>' return false immediately
@@ -786,6 +793,16 @@ impl SourceMap {
                     i = i - 1;
                 } else if cc == '<' {
                     // found < in the left
+                    if !found_right_angle {
+                        // skip something like "(< )>"
+                        return Ok(false);
+                    }
+                    break;
+                } else if cc == '(' {
+                    if !found_right_parentheses {
+                        // skip something like "<(>)"
+                        return Ok(false);
+                    }
                     break;
                 } else {
                     // failed to find '<' return false immediately
@@ -1036,9 +1053,9 @@ impl SourceMap {
         SourceFileAndBytePos { sf, pos: offset }
     }
 
-    // Returns the index of the `SourceFile` (in `self.files`) that contains `pos`.
-    // This index is guaranteed to be valid for the lifetime of this `SourceMap`,
-    // since `source_files` is a `MonotonicVec`
+    /// Returns the index of the [`SourceFile`] (in `self.files`) that contains `pos`.
+    /// This index is guaranteed to be valid for the lifetime of this `SourceMap`,
+    /// since `source_files` is a `MonotonicVec`
     pub fn lookup_source_file_idx(&self, pos: BytePos) -> usize {
         self.files
             .borrow()

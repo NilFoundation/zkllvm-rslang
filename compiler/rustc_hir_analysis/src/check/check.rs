@@ -1,4 +1,5 @@
 use crate::check::intrinsicck::InlineAsmCtxt;
+use crate::errors::LinkageType;
 
 use super::compare_method::check_type_bounds;
 use super::compare_method::{compare_impl_method, compare_ty_impl};
@@ -10,6 +11,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ItemKind, Node, PathSegment};
+use rustc_infer::infer::opaque_types::ConstrainOpaqueTypeRegionVisitor;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{DefiningAnchor, RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
@@ -19,9 +21,7 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{
-    self, ParamEnv, ToPredicate, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-};
+use rustc_middle::ty::{self, AdtDef, ParamEnv, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
@@ -231,7 +231,9 @@ fn check_opaque<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
     let substs = InternalSubsts::identity_for_item(tcx, item.owner_id.to_def_id());
     let span = tcx.def_span(item.owner_id.def_id);
 
-    check_opaque_for_inheriting_lifetimes(tcx, item.owner_id.def_id, span);
+    if !tcx.features().impl_trait_projections {
+        check_opaque_for_inheriting_lifetimes(tcx, item.owner_id.def_id, span);
+    }
     if tcx.type_of(item.owner_id.def_id).references_error() {
         return;
     }
@@ -240,6 +242,7 @@ fn check_opaque<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
     }
     check_opaque_meets_bounds(tcx, item.owner_id.def_id, substs, span, &origin);
 }
+
 /// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
 /// in "inheriting lifetimes".
 #[instrument(level = "debug", skip(tcx, span))]
@@ -251,39 +254,11 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
     let item = tcx.hir().expect_item(def_id);
     debug!(?item, ?span);
 
-    struct FoundParentLifetime;
-    struct FindParentLifetimeVisitor<'tcx>(&'tcx ty::Generics);
-    impl<'tcx> ty::visit::TypeVisitor<'tcx> for FindParentLifetimeVisitor<'tcx> {
-        type BreakTy = FoundParentLifetime;
-
-        fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-            debug!("FindParentLifetimeVisitor: r={:?}", r);
-            if let ty::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = *r {
-                if index < self.0.parent_count as u32 {
-                    return ControlFlow::Break(FoundParentLifetime);
-                } else {
-                    return ControlFlow::CONTINUE;
-                }
-            }
-
-            r.super_visit_with(self)
-        }
-
-        fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let ty::ConstKind::Unevaluated(..) = c.kind() {
-                // FIXME(#72219) We currently don't detect lifetimes within substs
-                // which would violate this check. Even though the particular substitution is not used
-                // within the const, this should still be fixed.
-                return ControlFlow::CONTINUE;
-            }
-            c.super_visit_with(self)
-        }
-    }
-
     struct ProhibitOpaqueVisitor<'tcx> {
         tcx: TyCtxt<'tcx>,
         opaque_identity_ty: Ty<'tcx>,
-        generics: &'tcx ty::Generics,
+        parent_count: u32,
+        references_parent_regions: bool,
         selftys: Vec<(Span, Option<String>)>,
     }
 
@@ -291,12 +266,25 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
         type BreakTy = Ty<'tcx>;
 
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-            debug!("check_opaque_for_inheriting_lifetimes: (visit_ty) t={:?}", t);
+            debug!(?t, "root_visit_ty");
             if t == self.opaque_identity_ty {
                 ControlFlow::CONTINUE
             } else {
-                t.super_visit_with(&mut FindParentLifetimeVisitor(self.generics))
-                    .map_break(|FoundParentLifetime| t)
+                t.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
+                    tcx: self.tcx,
+                    op: |region| {
+                        if let ty::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = *region
+                            && index < self.parent_count
+                        {
+                            self.references_parent_regions= true;
+                        }
+                    },
+                });
+                if self.references_parent_regions {
+                    ControlFlow::Break(t)
+                } else {
+                    ControlFlow::CONTINUE
+                }
             }
         }
     }
@@ -329,15 +317,20 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
 
     if let ItemKind::OpaqueTy(hir::OpaqueTy {
         origin: hir::OpaqueTyOrigin::AsyncFn(..) | hir::OpaqueTyOrigin::FnReturn(..),
+        in_trait,
         ..
     }) = item.kind
     {
+        let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+        let opaque_identity_ty = if in_trait {
+            tcx.mk_projection(def_id.to_def_id(), substs)
+        } else {
+            tcx.mk_opaque(def_id.to_def_id(), substs)
+        };
         let mut visitor = ProhibitOpaqueVisitor {
-            opaque_identity_ty: tcx.mk_opaque(
-                def_id.to_def_id(),
-                InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
-            ),
-            generics: tcx.generics_of(def_id),
+            opaque_identity_ty,
+            parent_count: tcx.generics_of(def_id).parent_count as u32,
+            references_parent_regions: false,
             tcx,
             selftys: vec![],
         };
@@ -345,10 +338,6 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
             .explicit_item_bounds(def_id)
             .iter()
             .try_for_each(|(predicate, _)| predicate.visit_with(&mut visitor));
-        debug!(
-            "check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}, visitor.opaque_identity_ty={:?}, visitor.generics={:?}",
-            prohibit_opaque, visitor.opaque_identity_ty, visitor.generics
-        );
 
         if let Some(ty) = prohibit_opaque.break_value() {
             visitor.visit_item(&item);
@@ -359,15 +348,16 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
                 _ => unreachable!(),
             };
 
-            let mut err = struct_span_err!(
-                tcx.sess,
+            let mut err = feature_err(
+                &tcx.sess.parse_sess,
+                sym::impl_trait_projections,
                 span,
-                E0760,
-                "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
-                 a parent scope",
-                if is_async { "async fn" } else { "impl Trait" },
+                &format!(
+                    "`{}` return type cannot contain a projection or `Self` that references \
+                    lifetimes from a parent scope",
+                    if is_async { "async fn" } else { "impl Trait" },
+                ),
             );
-
             for (span, name) in visitor.selftys {
                 err.span_suggestion(
                     span,
@@ -451,8 +441,8 @@ fn check_opaque_meets_bounds<'tcx>(
 
     let misc_cause = traits::ObligationCause::misc(span, hir_id);
 
-    match infcx.at(&misc_cause, param_env).eq(opaque_ty, hidden_ty) {
-        Ok(infer_ok) => ocx.register_infer_ok_obligations(infer_ok),
+    match ocx.eq(&misc_cause, param_env, opaque_ty, hidden_ty) {
+        Ok(()) => {}
         Err(ty_err) => {
             tcx.sess.delay_span_bug(
                 span,
@@ -464,9 +454,8 @@ fn check_opaque_meets_bounds<'tcx>(
     // Additionally require the hidden type to be well-formed with only the generics of the opaque type.
     // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
     // hidden type is well formed even without those bounds.
-    let predicate =
-        ty::Binder::dummy(ty::PredicateKind::WellFormed(hidden_ty.into())).to_predicate(tcx);
-    ocx.register_obligation(Obligation::new(misc_cause, param_env, predicate));
+    let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(hidden_ty.into()));
+    ocx.register_obligation(Obligation::new(tcx, misc_cause, param_env, predicate));
 
     // Check that all obligations are satisfied by the implementation's
     // version.
@@ -490,6 +479,36 @@ fn check_opaque_meets_bounds<'tcx>(
     let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
 }
 
+fn is_enum_of_nonnullable_ptr<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    adt_def: AdtDef<'tcx>,
+    substs: SubstsRef<'tcx>,
+) -> bool {
+    if adt_def.repr().inhibit_enum_layout_opt() {
+        return false;
+    }
+
+    let [var_one, var_two] = &adt_def.variants().raw[..] else {
+        return false;
+    };
+    let (([], [field]) | ([field], [])) = (&var_one.fields[..], &var_two.fields[..]) else {
+        return false;
+    };
+    matches!(field.ty(tcx, substs).kind(), ty::FnPtr(..) | ty::Ref(..))
+}
+
+fn check_static_linkage<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
+    if tcx.codegen_fn_attrs(def_id).import_linkage.is_some() {
+        if match tcx.type_of(def_id).kind() {
+            ty::RawPtr(_) => false,
+            ty::Adt(adt_def, substs) => !is_enum_of_nonnullable_ptr(tcx, *adt_def, *substs),
+            _ => true,
+        } {
+            tcx.sess.emit_err(LinkageType { span: tcx.def_span(def_id) });
+        }
+    }
+}
+
 fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
     debug!(
         "check_item_type(it.def_id={:?}, it.name={})",
@@ -502,6 +521,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             tcx.ensure().typeck(id.owner_id.def_id);
             maybe_check_static_with_link_section(tcx, id.owner_id.def_id);
             check_static_inhabited(tcx, id.owner_id.def_id);
+            check_static_linkage(tcx, id.owner_id.def_id);
         }
         DefKind::Const => {
             tcx.ensure().typeck(id.owner_id.def_id);
@@ -639,6 +659,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                         }
                         hir::ForeignItemKind::Static(..) => {
                             check_static_inhabited(tcx, def_id);
+                            check_static_linkage(tcx, def_id);
                         }
                         _ => {}
                     }
@@ -1177,7 +1198,7 @@ fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
     }
 
     if def.repr().int.is_none() {
-        let is_unit = |var: &ty::VariantDef| matches!(var.ctor_kind, CtorKind::Const);
+        let is_unit = |var: &ty::VariantDef| matches!(var.ctor_kind(), Some(CtorKind::Const));
         let has_disr = |var: &ty::VariantDef| matches!(var.discr, ty::VariantDiscr::Explicit(_));
 
         let has_non_units = def.variants().iter().any(|var| !is_unit(var));

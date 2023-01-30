@@ -1,6 +1,9 @@
 use std::num::NonZeroU32;
 
 use crate::cgu_reuse_tracker::CguReuse;
+use crate::parse::ParseSess;
+use rustc_ast::token;
+use rustc_ast::util::literal::LitError;
 use rustc_errors::MultiSpan;
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
@@ -126,10 +129,10 @@ pub struct FileIsNotWriteable<'a> {
 
 #[derive(Diagnostic)]
 #[diag(session_crate_name_does_not_match)]
-pub struct CrateNameDoesNotMatch<'a> {
+pub struct CrateNameDoesNotMatch {
     #[primary_span]
     pub span: Span,
-    pub s: &'a str,
+    pub s: Symbol,
     pub name: Symbol,
 }
 
@@ -148,11 +151,11 @@ pub struct CrateNameEmpty {
 
 #[derive(Diagnostic)]
 #[diag(session_invalid_character_in_create_name)]
-pub struct InvalidCharacterInCrateName<'a> {
+pub struct InvalidCharacterInCrateName {
     #[primary_span]
     pub span: Option<Span>,
     pub character: char,
-    pub crate_name: &'a str,
+    pub crate_name: Symbol,
 }
 
 #[derive(Subdiagnostic)]
@@ -190,4 +193,159 @@ pub enum UnleashedFeatureHelp {
         #[primary_span]
         span: Span,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag(session_invalid_literal_suffix)]
+pub(crate) struct InvalidLiteralSuffix<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    // FIXME(#100717)
+    pub kind: &'a str,
+    pub suffix: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_invalid_int_literal_width)]
+#[help]
+pub(crate) struct InvalidIntLiteralWidth {
+    #[primary_span]
+    pub span: Span,
+    pub width: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_invalid_num_literal_base_prefix)]
+#[note]
+pub(crate) struct InvalidNumLiteralBasePrefix {
+    #[primary_span]
+    #[suggestion(applicability = "maybe-incorrect", code = "{fixed}")]
+    pub span: Span,
+    pub fixed: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_invalid_num_literal_suffix)]
+#[help]
+pub(crate) struct InvalidNumLiteralSuffix {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub suffix: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_invalid_float_literal_width)]
+#[help]
+pub(crate) struct InvalidFloatLiteralWidth {
+    #[primary_span]
+    pub span: Span,
+    pub width: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_invalid_float_literal_suffix)]
+#[help]
+pub(crate) struct InvalidFloatLiteralSuffix {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub suffix: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_int_literal_too_large)]
+pub(crate) struct IntLiteralTooLarge {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_hexadecimal_float_literal_not_supported)]
+pub(crate) struct HexadecimalFloatLiteralNotSupported {
+    #[primary_span]
+    #[label(session_not_supported)]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_octal_float_literal_not_supported)]
+pub(crate) struct OctalFloatLiteralNotSupported {
+    #[primary_span]
+    #[label(session_not_supported)]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_binary_float_literal_not_supported)]
+pub(crate) struct BinaryFloatLiteralNotSupported {
+    #[primary_span]
+    #[label(session_not_supported)]
+    pub span: Span,
+}
+
+pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: Span) {
+    // Checks if `s` looks like i32 or u1234 etc.
+    fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
+        s.len() > 1 && s.starts_with(first_chars) && s[1..].chars().all(|c| c.is_ascii_digit())
+    }
+
+    // Try to lowercase the prefix if it's a valid base prefix.
+    fn fix_base_capitalisation(s: &str) -> Option<String> {
+        if let Some(stripped) = s.strip_prefix('B') {
+            Some(format!("0b{stripped}"))
+        } else if let Some(stripped) = s.strip_prefix('O') {
+            Some(format!("0o{stripped}"))
+        } else if let Some(stripped) = s.strip_prefix('X') {
+            Some(format!("0x{stripped}"))
+        } else {
+            None
+        }
+    }
+
+    let token::Lit { kind, suffix, .. } = lit;
+    match err {
+        // `LexerError` is an error, but it was already reported
+        // by lexer, so here we don't report it the second time.
+        LitError::LexerError => {}
+        LitError::InvalidSuffix => {
+            if let Some(suffix) = suffix {
+                sess.emit_err(InvalidLiteralSuffix { span, kind: kind.descr(), suffix });
+            }
+        }
+        LitError::InvalidIntSuffix => {
+            let suf = suffix.expect("suffix error with no suffix");
+            let suf = suf.as_str();
+            if looks_like_width_suffix(&['i', 'u'], suf) {
+                // If it looks like a width, try to be helpful.
+                sess.emit_err(InvalidIntLiteralWidth { span, width: suf[1..].into() });
+            } else if let Some(fixed) = fix_base_capitalisation(suf) {
+                sess.emit_err(InvalidNumLiteralBasePrefix { span, fixed });
+            } else {
+                sess.emit_err(InvalidNumLiteralSuffix { span, suffix: suf.to_string() });
+            }
+        }
+        LitError::InvalidFloatSuffix => {
+            let suf = suffix.expect("suffix error with no suffix");
+            let suf = suf.as_str();
+            if looks_like_width_suffix(&['f'], suf) {
+                // If it looks like a width, try to be helpful.
+                sess.emit_err(InvalidFloatLiteralWidth { span, width: suf[1..].to_string() });
+            } else {
+                sess.emit_err(InvalidFloatLiteralSuffix { span, suffix: suf.to_string() });
+            }
+        }
+        LitError::NonDecimalFloat(base) => {
+            match base {
+                16 => sess.emit_err(HexadecimalFloatLiteralNotSupported { span }),
+                8 => sess.emit_err(OctalFloatLiteralNotSupported { span }),
+                2 => sess.emit_err(BinaryFloatLiteralNotSupported { span }),
+                _ => unreachable!(),
+            };
+        }
+        LitError::IntTooLarge => {
+            sess.emit_err(IntLiteralTooLarge { span });
+        }
+    }
 }

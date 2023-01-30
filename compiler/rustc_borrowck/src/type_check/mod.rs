@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 //! This pass type-checks the MIR to ensure it is not broken.
 
 use std::rc::Rc;
@@ -31,8 +33,7 @@ use rustc_middle::ty::subst::{SubstsRef, UserSubsts};
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{
     self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, Dynamic,
-    OpaqueHiddenType, OpaqueTypeKey, RegionVid, ToPredicate, Ty, TyCtxt, UserType,
-    UserTypeAnnotationIndex,
+    OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
 };
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{Span, DUMMY_SP};
@@ -546,10 +547,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
             let tcx = self.tcx();
-            let trait_ref = ty::TraitRef {
-                def_id: tcx.require_lang_item(LangItem::Copy, Some(self.last_span)),
-                substs: tcx.mk_substs_trait(place_ty.ty, &[]),
-            };
+            let trait_ref = tcx.at(self.last_span).mk_trait_ref(LangItem::Copy, [place_ty.ty]);
 
             // To have a `Copy` operand, the type `T` of the
             // value must be `Copy`. Note that we prove that `T: Copy`,
@@ -1067,8 +1065,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     self.prove_predicate(
-                        ty::Binder::dummy(ty::PredicateKind::WellFormed(inferred_ty.into()))
-                            .to_predicate(self.tcx()),
+                        ty::Binder::dummy(ty::PredicateKind::WellFormed(inferred_ty.into())),
                         Locations::All(span),
                         ConstraintCategory::TypeAnnotation,
                     );
@@ -1192,8 +1189,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn check_stmt(&mut self, body: &Body<'tcx>, stmt: &Statement<'tcx>, location: Location) {
         let tcx = self.tcx();
         debug!("stmt kind: {:?}", stmt.kind);
-        match stmt.kind {
-            StatementKind::Assign(box (ref place, ref rv)) => {
+        match &stmt.kind {
+            StatementKind::Assign(box (place, rv)) => {
                 // Assignments to temporaries are not "interesting";
                 // they are not caused by the user, but rather artifacts
                 // of lowering. Assignments to other sorts of places *are* interesting
@@ -1273,10 +1270,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                 self.check_rvalue(body, rv, location);
                 if !self.unsized_feature_enabled() {
-                    let trait_ref = ty::TraitRef {
-                        def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
-                        substs: tcx.mk_substs_trait(place_ty, &[]),
-                    };
+                    let trait_ref =
+                        tcx.at(self.last_span).mk_trait_ref(LangItem::Sized, [place_ty]);
                     self.prove_trait_ref(
                         trait_ref,
                         location.to_locations(),
@@ -1284,11 +1279,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::AscribeUserType(box (ref place, ref projection), variance) => {
+            StatementKind::AscribeUserType(box (place, projection), variance) => {
                 let place_ty = place.ty(body, tcx).ty;
                 if let Err(terr) = self.relate_type_and_user_type(
                     place_ty,
-                    variance,
+                    *variance,
                     projection,
                     Locations::All(stmt.source_info.span),
                     ConstraintCategory::TypeAnnotation,
@@ -1305,7 +1300,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::Intrinsic(box ref kind) => match kind {
+            StatementKind::Intrinsic(box kind) => match kind {
                 NonDivergingIntrinsic::Assume(op) => self.check_operand(op, location),
                 NonDivergingIntrinsic::CopyNonOverlapping(..) => span_bug!(
                     stmt.source_info.span,
@@ -1333,7 +1328,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ) {
         let tcx = self.tcx();
         debug!("terminator kind: {:?}", term.kind);
-        match term.kind {
+        match &term.kind {
             TerminatorKind::Goto { .. }
             | TerminatorKind::Resume
             | TerminatorKind::Abort
@@ -1347,7 +1342,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // no checks needed for these
             }
 
-            TerminatorKind::DropAndReplace { ref place, ref value, target: _, unwind: _ } => {
+            TerminatorKind::DropAndReplace { place, value, target: _, unwind: _ } => {
                 let place_ty = place.ty(body, tcx).ty;
                 let rv_ty = value.ty(body, tcx);
 
@@ -1365,13 +1360,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            TerminatorKind::SwitchInt { ref discr, switch_ty, .. } => {
+            TerminatorKind::SwitchInt { discr, switch_ty, .. } => {
                 self.check_operand(discr, term_location);
 
                 let discr_ty = discr.ty(body, tcx);
                 if let Err(terr) = self.sub_types(
                     discr_ty,
-                    switch_ty,
+                    *switch_ty,
                     term_location.to_locations(),
                     ConstraintCategory::Assignment,
                 ) {
@@ -1389,14 +1384,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
                 // FIXME: check the values
             }
-            TerminatorKind::Call {
-                ref func,
-                ref args,
-                ref destination,
-                from_hir_call,
-                target,
-                ..
-            } => {
+            TerminatorKind::Call { func, args, destination, from_hir_call, target, .. } => {
                 self.check_operand(func, term_location);
                 for arg in args {
                     self.check_operand(arg, term_location);
@@ -1436,7 +1424,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     ConstraintCategory::Boring,
                 );
                 let sig = self.normalize(sig, term_location);
-                self.check_call_dest(body, term, &sig, *destination, target, term_location);
+                self.check_call_dest(body, term, &sig, *destination, *target, term_location);
 
                 // The ordinary liveness rules will ensure that all
                 // regions in the type of the callee are live here. We
@@ -1454,9 +1442,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         .add_element(region_vid, term_location);
                 }
 
-                self.check_call_inputs(body, term, &sig, args, term_location, from_hir_call);
+                self.check_call_inputs(body, term, &sig, args, term_location, *from_hir_call);
             }
-            TerminatorKind::Assert { ref cond, ref msg, .. } => {
+            TerminatorKind::Assert { cond, msg, .. } => {
                 self.check_operand(cond, term_location);
 
                 let cond_ty = cond.ty(body, tcx);
@@ -1464,7 +1452,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     span_mirbug!(self, term, "bad Assert ({:?}, not bool", cond_ty);
                 }
 
-                if let AssertKind::BoundsCheck { ref len, ref index } = *msg {
+                if let AssertKind::BoundsCheck { len, index } = msg {
                     if len.ty(body, tcx) != tcx.types.usize {
                         span_mirbug!(self, len, "bounds-check length non-usize {:?}", len)
                     }
@@ -1473,7 +1461,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::Yield { ref value, .. } => {
+            TerminatorKind::Yield { value, .. } => {
                 self.check_operand(value, term_location);
 
                 let value_ty = value.ty(body, tcx);
@@ -1564,10 +1552,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             None => {
-                if !self
-                    .tcx()
-                    .conservative_is_privately_uninhabited(self.param_env.and(sig.output()))
-                {
+                if !sig.output().is_privately_uninhabited(self.tcx(), self.param_env) {
                     span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
                 }
             }
@@ -1843,6 +1828,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self, body), level = "debug")]
     fn check_rvalue(&mut self, body: &Body<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
         let tcx = self.tcx();
+        let span = body.source_info(location).span;
 
         match rvalue {
             Rvalue::Aggregate(ak, ops) => {
@@ -1866,12 +1852,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                         Operand::Move(place) => {
                             // Make sure that repeated elements implement `Copy`.
-                            let span = body.source_info(location).span;
                             let ty = place.ty(body, tcx).ty;
-                            let trait_ref = ty::TraitRef::new(
-                                tcx.require_lang_item(LangItem::Copy, Some(span)),
-                                tcx.mk_substs_trait(ty, &[]),
-                            );
+                            let trait_ref = tcx.at(span).mk_trait_ref(LangItem::Copy, [ty]);
 
                             self.prove_trait_ref(
                                 trait_ref,
@@ -1884,10 +1866,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             &Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, ty) => {
-                let trait_ref = ty::TraitRef {
-                    def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
-                    substs: tcx.mk_substs_trait(ty, &[]),
-                };
+                let trait_ref = tcx.at(span).mk_trait_ref(LangItem::Sized, [ty]);
 
                 self.prove_trait_ref(
                     trait_ref,
@@ -1899,10 +1878,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Rvalue::ShallowInitBox(operand, ty) => {
                 self.check_operand(operand, location);
 
-                let trait_ref = ty::TraitRef {
-                    def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
-                    substs: tcx.mk_substs_trait(*ty, &[]),
-                };
+                let trait_ref = tcx.at(span).mk_trait_ref(LangItem::Sized, [*ty]);
 
                 self.prove_trait_ref(
                     trait_ref,
@@ -1999,11 +1975,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                     CastKind::Pointer(PointerCast::Unsize) => {
                         let &ty = ty;
-                        let trait_ref = ty::TraitRef {
-                            def_id: tcx
-                                .require_lang_item(LangItem::CoerceUnsized, Some(self.last_span)),
-                            substs: tcx.mk_substs_trait(op.ty(body, tcx), &[ty.into()]),
-                        };
+                        let trait_ref = tcx
+                            .at(span)
+                            .mk_trait_ref(LangItem::CoerceUnsized, [op.ty(body, tcx), ty]);
 
                         self.prove_trait_ref(
                             trait_ref,
@@ -2032,8 +2006,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         );
 
                         let outlives_predicate =
-                            tcx.mk_predicate(Binder::dummy(ty::PredicateKind::TypeOutlives(
-                                ty::OutlivesPredicate(self_ty, *region),
+                            tcx.mk_predicate(Binder::dummy(ty::PredicateKind::Clause(
+                                ty::Clause::TypeOutlives(ty::OutlivesPredicate(self_ty, *region)),
                             )));
                         self.prove_predicate(
                             outlives_predicate,
@@ -2607,7 +2581,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             // For closures, we have some **extra requirements** we
-            //
             // have to check. In particular, in their upvars and
             // signatures, closures often reference various regions
             // from the surrounding function -- we call those the
@@ -2650,7 +2623,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         substs: SubstsRef<'tcx>,
         location: Location,
     ) -> ty::InstantiatedPredicates<'tcx> {
-        if let Some(ref closure_requirements) = tcx.mir_borrowck(def_id).closure_requirements {
+        if let Some(closure_requirements) = &tcx.mir_borrowck(def_id).closure_requirements {
             constraint_conversion::ConstraintConversion::new(
                 self.infcx,
                 self.borrowck_context.universal_regions,

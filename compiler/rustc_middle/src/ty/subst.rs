@@ -6,11 +6,11 @@ use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
 use crate::ty::visit::{TypeVisitable, TypeVisitor};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
-use rustc_data_structures::captures::Captures;
-use rustc_data_structures::intern::{Interned, WithStableHash};
+use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Decodable, Encodable};
+use rustc_type_ir::WithCachedTypeInfo;
 use smallvec::SmallVec;
 
 use core::intrinsics;
@@ -19,7 +19,7 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZeroUsize;
-use std::ops::ControlFlow;
+use std::ops::{ControlFlow, Deref};
 use std::slice;
 
 /// An entity in the Rust type system, which can be one of
@@ -85,7 +85,7 @@ impl<'tcx> GenericArgKind<'tcx> {
             GenericArgKind::Type(ty) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
-                (TYPE_TAG, ty.0.0 as *const WithStableHash<ty::TyS<'tcx>> as usize)
+                (TYPE_TAG, ty.0.0 as *const WithCachedTypeInfo<ty::TyKind<'tcx>> as usize)
             }
             GenericArgKind::Const(ct) => {
                 // Ensure we can use the tag bits.
@@ -141,6 +141,15 @@ impl<'tcx> From<ty::Const<'tcx>> for GenericArg<'tcx> {
     }
 }
 
+impl<'tcx> From<ty::Term<'tcx>> for GenericArg<'tcx> {
+    fn from(value: ty::Term<'tcx>) -> Self {
+        match value.unpack() {
+            ty::TermKind::Ty(t) => t.into(),
+            ty::TermKind::Const(c) => c.into(),
+        }
+    }
+}
+
 impl<'tcx> GenericArg<'tcx> {
     #[inline]
     pub fn unpack(self) -> GenericArgKind<'tcx> {
@@ -154,7 +163,7 @@ impl<'tcx> GenericArg<'tcx> {
                     &*((ptr & !TAG_MASK) as *const ty::RegionKind<'tcx>),
                 ))),
                 TYPE_TAG => GenericArgKind::Type(Ty(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const WithStableHash<ty::TyS<'tcx>>),
+                    &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::TyKind<'tcx>>),
                 ))),
                 CONST_TAG => GenericArgKind::Const(ty::Const(Interned::new_unchecked(
                     &*((ptr & !TAG_MASK) as *const ty::ConstS<'tcx>),
@@ -342,6 +351,22 @@ impl<'tcx> InternalSubsts<'tcx> {
             assert_eq!(param.index as usize, substs.len());
             substs.push(kind);
         }
+    }
+
+    // Extend an `original_substs` list to the full number of substs expected by `def_id`,
+    // filling in the missing parameters with error ty/ct or 'static regions.
+    pub fn extend_with_error(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        original_substs: &[GenericArg<'tcx>],
+    ) -> SubstsRef<'tcx> {
+        ty::InternalSubsts::for_item(tcx, def_id, |def, substs| {
+            if let Some(subst) = original_substs.get(def.index as usize) {
+                *subst
+            } else {
+                def.to_error(tcx, substs)
+            }
+        })
     }
 
     #[inline]
@@ -562,25 +587,94 @@ impl<T, U> EarlyBinder<(T, U)> {
     }
 }
 
-impl<'tcx, 's, T: IntoIterator<Item = I>, I: TypeFoldable<'tcx>> EarlyBinder<T> {
+impl<'tcx, 's, I: IntoIterator> EarlyBinder<I>
+where
+    I::Item: TypeFoldable<'tcx>,
+{
     pub fn subst_iter(
         self,
         tcx: TyCtxt<'tcx>,
         substs: &'s [GenericArg<'tcx>],
-    ) -> impl Iterator<Item = I> + Captures<'s> + Captures<'tcx> {
-        self.0.into_iter().map(move |t| EarlyBinder(t).subst(tcx, substs))
+    ) -> SubstIter<'s, 'tcx, I> {
+        SubstIter { it: self.0.into_iter(), tcx, substs }
     }
 }
 
-impl<'tcx, 's, 'a, T: IntoIterator<Item = &'a I>, I: Copy + TypeFoldable<'tcx> + 'a>
-    EarlyBinder<T>
+pub struct SubstIter<'s, 'tcx, I: IntoIterator> {
+    it: I::IntoIter,
+    tcx: TyCtxt<'tcx>,
+    substs: &'s [GenericArg<'tcx>],
+}
+
+impl<'tcx, I: IntoIterator> Iterator for SubstIter<'_, 'tcx, I>
+where
+    I::Item: TypeFoldable<'tcx>,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(EarlyBinder(self.it.next()?).subst(self.tcx, self.substs))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
+    }
+}
+
+impl<'tcx, I: IntoIterator> DoubleEndedIterator for SubstIter<'_, 'tcx, I>
+where
+    I::IntoIter: DoubleEndedIterator,
+    I::Item: TypeFoldable<'tcx>,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        Some(EarlyBinder(self.it.next_back()?).subst(self.tcx, self.substs))
+    }
+}
+
+impl<'tcx, 's, I: IntoIterator> EarlyBinder<I>
+where
+    I::Item: Deref,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
 {
     pub fn subst_iter_copied(
         self,
         tcx: TyCtxt<'tcx>,
         substs: &'s [GenericArg<'tcx>],
-    ) -> impl Iterator<Item = I> + Captures<'s> + Captures<'tcx> + Captures<'a> {
-        self.0.into_iter().map(move |t| EarlyBinder(*t).subst(tcx, substs))
+    ) -> SubstIterCopied<'s, 'tcx, I> {
+        SubstIterCopied { it: self.0.into_iter(), tcx, substs }
+    }
+}
+
+pub struct SubstIterCopied<'a, 'tcx, I: IntoIterator> {
+    it: I::IntoIter,
+    tcx: TyCtxt<'tcx>,
+    substs: &'a [GenericArg<'tcx>],
+}
+
+impl<'tcx, I: IntoIterator> Iterator for SubstIterCopied<'_, 'tcx, I>
+where
+    I::Item: Deref,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+{
+    type Item = <I::Item as Deref>::Target;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(EarlyBinder(*self.it.next()?).subst(self.tcx, self.substs))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
+    }
+}
+
+impl<'tcx, I: IntoIterator> DoubleEndedIterator for SubstIterCopied<'_, 'tcx, I>
+where
+    I::IntoIter: DoubleEndedIterator,
+    I::Item: Deref,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        Some(EarlyBinder(*self.it.next_back()?).subst(self.tcx, self.substs))
     }
 }
 
@@ -599,6 +693,10 @@ impl<T: Iterator> Iterator for EarlyBinderIter<T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.t.next().map(|i| EarlyBinder(i))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.t.size_hint()
     }
 }
 

@@ -94,7 +94,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     let target = target.as_ref().unwrap_or(host);
 
     // We always setup.
-    setup(&subcommand, target, &rustc_version);
+    setup(&subcommand, target, &rustc_version, verbose);
 
     // Invoke actual cargo for the job, but with different flags.
     // We re-use `cargo test` and `cargo run`, which makes target and binary handling very easy but
@@ -281,9 +281,10 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
             eprintln!("[cargo-miri rustc] writing run info to `{}`", filename.display());
         }
         info.store(&filename);
-        // For Windows, do the same thing again with `.exe` appended to the filename.
+        // For Windows and WASM, do the same thing again with `.exe`/`.wasm` appended to the filename.
         // (Need to do this here as cargo moves that "binary" to a different place before running it.)
         info.store(&out_filename("", ".exe"));
+        info.store(&out_filename("", ".wasm"));
     };
 
     let runnable_crate = !info_query && is_runnable_crate();
@@ -485,8 +486,7 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
                 continue;
             } else if verbose > 0 {
                 eprintln!(
-                    "[cargo-miri runner] Overwriting run-time env var {:?}={:?} with build-time value {:?}",
-                    name, old_val, val
+                    "[cargo-miri runner] Overwriting run-time env var {name:?}={old_val:?} with build-time value {val:?}"
                 );
             }
         }
@@ -528,7 +528,7 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
     cmd.args(binary_args);
 
     // Make sure we use the build-time working directory for interpreting Miri/rustc arguments.
-    // But then we need to switch to the run-time one, which we instruct Miri do do by setting `MIRI_CWD`.
+    // But then we need to switch to the run-time one, which we instruct Miri to do by setting `MIRI_CWD`.
     cmd.current_dir(info.current_dir);
     cmd.env("MIRI_CWD", env::current_dir().unwrap());
 

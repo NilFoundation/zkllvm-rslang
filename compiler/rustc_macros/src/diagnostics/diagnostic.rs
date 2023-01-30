@@ -5,6 +5,7 @@ use crate::diagnostics::error::{span_err, DiagnosticDeriveError};
 use crate::diagnostics::utils::SetOnce;
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::spanned::Spanned;
 use synstructure::Structure;
 
 /// The central struct for constructing the `into_diagnostic` method from an annotated struct.
@@ -28,8 +29,8 @@ impl<'a> DiagnosticDerive<'a> {
         let DiagnosticDerive { mut structure, mut builder } = self;
 
         let implementation = builder.each_variant(&mut structure, |mut builder, variant| {
-            let preamble = builder.preamble(&variant);
-            let body = builder.body(&variant);
+            let preamble = builder.preamble(variant);
+            let body = builder.body(variant);
 
             let diag = &builder.parent.diag;
             let DiagnosticDeriveKind::Diagnostic { handler } = &builder.parent.kind else {
@@ -38,9 +39,20 @@ impl<'a> DiagnosticDerive<'a> {
             let init = match builder.slug.value_ref() {
                 None => {
                     span_err(builder.span, "diagnostic slug not specified")
-                        .help(&format!(
+                        .help(format!(
                             "specify the slug as the first argument to the `#[diag(...)]` \
                             attribute, such as `#[diag(hir_analysis_example_error)]`",
+                        ))
+                        .emit();
+                    return DiagnosticDeriveError::ErrorHandled.to_compile_error();
+                }
+                Some(slug) if let Some( Mismatch { slug_name, crate_name, slug_prefix }) = Mismatch::check(slug) => {
+                    span_err(slug.span().unwrap(), "diagnostic slug and crate name do not match")
+                        .note(format!(
+                            "slug is `{slug_name}` but the crate name is `{crate_name}`"
+                        ))
+                        .help(format!(
+                            "expected a slug starting with `{slug_prefix}_...`"
                         ))
                         .emit();
                     return DiagnosticDeriveError::ErrorHandled.to_compile_error();
@@ -101,8 +113,8 @@ impl<'a> LintDiagnosticDerive<'a> {
         let LintDiagnosticDerive { mut structure, mut builder } = self;
 
         let implementation = builder.each_variant(&mut structure, |mut builder, variant| {
-            let preamble = builder.preamble(&variant);
-            let body = builder.body(&variant);
+            let preamble = builder.preamble(variant);
+            let body = builder.body(variant);
 
             let diag = &builder.parent.diag;
             let formatting_init = &builder.formatting_init;
@@ -116,19 +128,34 @@ impl<'a> LintDiagnosticDerive<'a> {
 
         let msg = builder.each_variant(&mut structure, |mut builder, variant| {
             // Collect the slug by generating the preamble.
-            let _ = builder.preamble(&variant);
+            let _ = builder.preamble(variant);
 
             match builder.slug.value_ref() {
                 None => {
                     span_err(builder.span, "diagnostic slug not specified")
-                        .help(&format!(
+                        .help(format!(
                             "specify the slug as the first argument to the attribute, such as \
                             `#[diag(compiletest_example)]`",
                         ))
                         .emit();
-                    return DiagnosticDeriveError::ErrorHandled.to_compile_error();
+                    DiagnosticDeriveError::ErrorHandled.to_compile_error()
                 }
-                Some(slug) => quote! { rustc_errors::fluent::#slug.into() },
+                Some(slug) if let Some( Mismatch { slug_name, crate_name, slug_prefix }) = Mismatch::check(slug) => {
+                    span_err(slug.span().unwrap(), "diagnostic slug and crate name do not match")
+                        .note(format!(
+                            "slug is `{slug_name}` but the crate name is `{crate_name}`"
+                        ))
+                        .help(format!(
+                            "expected a slug starting with `{slug_prefix}_...`"
+                        ))
+                        .emit();
+                    DiagnosticDeriveError::ErrorHandled.to_compile_error()
+                }
+                Some(slug) => {
+                    quote! {
+                        rustc_errors::fluent::#slug.into()
+                    }
+                }
             }
         });
 
@@ -149,5 +176,29 @@ impl<'a> LintDiagnosticDerive<'a> {
                 }
             }
         })
+    }
+}
+
+struct Mismatch {
+    slug_name: String,
+    crate_name: String,
+    slug_prefix: String,
+}
+
+impl Mismatch {
+    /// Checks whether the slug starts with the crate name it's in.
+    fn check(slug: &syn::Path) -> Option<Mismatch> {
+        // If this is missing we're probably in a test, so bail.
+        let crate_name = std::env::var("CARGO_CRATE_NAME").ok()?;
+
+        // If we're not in a "rustc_" crate, bail.
+        let Some(("rustc", slug_prefix)) = crate_name.split_once("_") else { return None };
+
+        let slug_name = slug.segments.first()?.ident.to_string();
+        if !slug_name.starts_with(slug_prefix) {
+            Some(Mismatch { slug_name, slug_prefix: slug_prefix.to_string(), crate_name })
+        } else {
+            None
+        }
     }
 }

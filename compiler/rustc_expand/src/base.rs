@@ -16,6 +16,7 @@ use rustc_errors::{
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics};
 use rustc_parse::{self, parser, MACRO_ARGUMENTS};
+use rustc_session::errors::report_lit_error;
 use rustc_session::{parse::ParseSess, Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
@@ -242,14 +243,15 @@ pub enum ExpandResult<T, U> {
     Retry(U),
 }
 
-// `meta_item` is the attribute, and `item` is the item being modified.
 pub trait MultiItemModifier {
+    /// `meta_item` is the attribute, and `item` is the item being modified.
     fn expand(
         &self,
         ecx: &mut ExtCtxt<'_>,
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
+        is_derive_const: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable>;
 }
 
@@ -263,6 +265,7 @@ where
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
+        _is_derive_const: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         ExpandResult::Ready(self(ecx, span, meta_item, item))
     }
@@ -505,7 +508,7 @@ impl MacResult for MacEager {
             return Some(p);
         }
         if let Some(e) = self.expr {
-            if let ast::ExprKind::Lit(_) = e.kind {
+            if matches!(e.kind, ast::ExprKind::Lit(_) | ast::ExprKind::IncludedBytes(_)) {
                 return Some(P(ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
@@ -674,8 +677,13 @@ pub enum SyntaxExtensionKind {
 
     /// A token-based derive macro.
     Derive(
-        /// An expander with signature TokenStream -> TokenStream (not yet).
+        /// An expander with signature TokenStream -> TokenStream.
         /// The produced TokenSteam is appended to the input TokenSteam.
+        ///
+        /// FIXME: The text above describes how this should work. Currently it
+        /// is handled identically to `LegacyDerive`. It should be migrated to
+        /// a token-based representation like `Bang` and `Attr`, instead of
+        /// using `MultiItemModifier`.
         Box<dyn MultiItemModifier + sync::Sync + sync::Send>,
     ),
 
@@ -873,7 +881,7 @@ impl SyntaxExtension {
 /// Error type that denotes indeterminacy.
 pub struct Indeterminate;
 
-pub type DeriveResolutions = Vec<(ast::Path, Annotatable, Option<Lrc<SyntaxExtension>>)>;
+pub type DeriveResolutions = Vec<(ast::Path, Annotatable, Option<Lrc<SyntaxExtension>>, bool)>;
 
 pub trait ResolverExpand {
     fn next_node_id(&mut self) -> NodeId;
@@ -952,7 +960,7 @@ pub trait LintStoreExpand {
         node_id: NodeId,
         attrs: &[Attribute],
         items: &[P<Item>],
-        name: &str,
+        name: Symbol,
     );
 }
 
@@ -1224,10 +1232,10 @@ pub fn expr_to_spanned_string<'a>(
     let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
 
     Err(match expr.kind {
-        ast::ExprKind::Lit(ref l) => match l.kind {
-            ast::LitKind::Str(s, style) => return Ok((s, style, expr.span)),
-            ast::LitKind::ByteStr(_) => {
-                let mut err = cx.struct_span_err(l.span, err_msg);
+        ast::ExprKind::Lit(token_lit) => match ast::LitKind::from_token_lit(token_lit) {
+            Ok(ast::LitKind::Str(s, style)) => return Ok((s, style, expr.span)),
+            Ok(ast::LitKind::ByteStr(_)) => {
+                let mut err = cx.struct_span_err(expr.span, err_msg);
                 let span = expr.span.shrink_to_lo();
                 err.span_suggestion(
                     span.with_hi(span.lo() + BytePos(1)),
@@ -1237,8 +1245,12 @@ pub fn expr_to_spanned_string<'a>(
                 );
                 Some((err, true))
             }
-            ast::LitKind::Err => None,
-            _ => Some((cx.struct_span_err(l.span, err_msg), false)),
+            Ok(ast::LitKind::Err) => None,
+            Err(err) => {
+                report_lit_error(&cx.sess.parse_sess, err, token_lit, expr.span);
+                None
+            }
+            _ => Some((cx.struct_span_err(expr.span, err_msg), false)),
         },
         ast::ExprKind::Err => None,
         _ => Some((cx.struct_span_err(expr.span, err_msg), false)),
@@ -1433,7 +1445,7 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
                             let crate_matches = if c.starts_with("allsorts-rental") {
                                 true
                             } else {
-                                let mut version = c.trim_start_matches("rental-").split(".");
+                                let mut version = c.trim_start_matches("rental-").split('.');
                                 version.next() == Some("0")
                                     && version.next() == Some("5")
                                     && version

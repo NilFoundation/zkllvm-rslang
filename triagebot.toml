@@ -15,7 +15,7 @@ allow-unauthenticated = [
     "llvm-main",
     "needs-fcp",
     "relnotes",
-    "requires-nightly",
+    "requires-*",
     "regression-*",
     "perf-*",
     "AsyncAwait-OnDeck",
@@ -182,6 +182,7 @@ trigger_files = [
     "x.ps1",
     "src/bootstrap",
     "src/tools/rust-installer",
+    "src/tools/x",
     "configure",
     "Cargo.toml",
     "Cargo.lock",
@@ -330,7 +331,22 @@ message = "Some changes occurred to MIR optimizations"
 cc = ["@rust-lang/wg-mir-opt"]
 
 [mentions."compiler/rustc_trait_selection/src/traits/const_evaluatable.rs"]
-message = "Some changes occurred in const_evaluatable.rs"
+message = "Some changes occurred in `const_evaluatable.rs`"
+cc = ["@BoxyUwU"]
+
+[mentions."compiler/rustc_middle/src/ty/abstract_const.rs"]
+message = "Some changes occured in `abstract_const.rs`"
+cc = ["@BoxyUwU"]
+
+[mentions."compiler/rustc_ty_utils/src/consts.rs"]
+message = "Some changes occured in `rustc_ty_utils::consts.rs`"
+cc = ["@BoxyUwU"]
+
+[mentions."compiler/rustc_trait_selection/src/traits/engine.rs"]
+message = """
+Some changes occurred in engine.rs, potentially modifying the public API \
+of `ObligationCtxt`.
+"""
 cc = ["@lcnr"]
 
 [mentions."compiler/rustc_error_codes/src/error_codes.rs"]
@@ -403,6 +419,9 @@ cc = ["@rust-lang/clippy"]
 [mentions."src/tools/miri"]
 message = "The Miri subtree was changed"
 cc = ["@rust-lang/miri"]
+
+[mentions."src/tools/rust-analyzer"]
+cc = ["@rust-lang/wg-rls-2"]
 
 [mentions."src/tools/rustfmt"]
 cc = ["@rust-lang/rustfmt"]
@@ -567,12 +586,20 @@ fallback = [
 "/src/bootstrap" =                           ["bootstrap"]
 "/src/ci" =                                  ["infra-ci"]
 "/src/doc" =                                 ["docs"]
+"/src/doc/book" =                            ["@ehuss"]
+"/src/doc/edition-guide" =                   ["@ehuss"]
+"/src/doc/embedded-book" =                   ["@ehuss"]
+"/src/doc/nomicon" =                         ["@ehuss"]
+"/src/doc/reference" =                       ["@ehuss"]
+"/src/doc/rust-by-example" =                 ["@ehuss"]
+"/src/doc/rustc-dev-guide" =                 ["@ehuss"]
 "/src/doc/rustdoc" =                         ["rustdoc"]
 "/src/etc" =                                 ["@Mark-Simulacrum"]
 "/src/librustdoc" =                          ["rustdoc"]
 "/src/llvm-project" =                        ["@cuviper"]
 "/src/rustdoc-json-types" =                  ["rustdoc"]
 "/src/stage0.json" =                         ["bootstrap"]
+"/src/test/ui" =                             ["compiler"]
 "/src/tools/cargo" =                         ["@ehuss", "@joshtriplett"]
 "/src/tools/compiletest" =                   ["bootstrap"]
 "/src/tools/linkchecker" =                   ["@ehuss"]
@@ -582,3 +609,4 @@ fallback = [
 "/src/tools/rustdoc-js" =                    ["rustdoc"]
 "/src/tools/rustdoc-themes" =                ["rustdoc"]
 "/src/tools/tidy" =                          ["bootstrap"]
+"/src/tools/x" =                             ["bootstrap"]

@@ -5,6 +5,7 @@
 use crate::cast;
 use crate::coercion::CoerceMany;
 use crate::coercion::DynamicCoerceMany;
+use crate::errors::TypeMismatchFruTypo;
 use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
 use crate::errors::{
     FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
@@ -30,7 +31,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{Closure, ExprKind, HirId, QPath};
+use rustc_hir::{ExprKind, HirId, QPath};
 use rustc_hir_analysis::astconv::AstConv as _;
 use rustc_hir_analysis::check::ty_kind_suggestion;
 use rustc_infer::infer;
@@ -324,9 +325,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Match(discrim, arms, match_src) => {
                 self.check_match(expr, &discrim, arms, expected, match_src)
             }
-            ExprKind::Closure(&Closure { capture_clause, fn_decl, body, movability, .. }) => {
-                self.check_expr_closure(expr, capture_clause, &fn_decl, body, movability, expected)
-            }
+            ExprKind::Closure(closure) => self.check_expr_closure(closure, expr.span, expected),
             ExprKind::Block(body, _) => self.check_block_with_expected(&body, expected),
             ExprKind::Call(callee, args) => self.check_call(expr, &callee, args, expected),
             ExprKind::MethodCall(segment, receiver, args, _) => {
@@ -529,12 +528,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.resolve_ty_and_res_fully_qualified_call(qpath, expr.hir_id, expr.span);
         let ty = match res {
             Res::Err => {
-                self.set_tainted_by_errors();
-                tcx.ty_error()
+                self.suggest_assoc_method_call(segs);
+                let e =
+                    self.tcx.sess.delay_span_bug(qpath.span(), "`Res::Err` but no error emitted");
+                self.set_tainted_by_errors(e);
+                tcx.ty_error_with_guaranteed(e)
             }
-            Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _) => {
-                report_unexpected_variant_res(tcx, res, qpath, expr.span);
-                tcx.ty_error()
+            Res::Def(DefKind::Variant, _) => {
+                let e = report_unexpected_variant_res(tcx, res, qpath, expr.span, "E0533", "value");
+                tcx.ty_error_with_guaranteed(e)
             }
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
         };
@@ -913,8 +915,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     // Check if an expression `original_expr_id` comes from the condition of a while loop,
-    // as opposed from the body of a while loop, which we can naively check by iterating
-    // parents until we find a loop...
+    /// as opposed from the body of a while loop, which we can naively check by iterating
+    /// parents until we find a loop...
     pub(super) fn comes_from_while_condition(
         &self,
         original_expr_id: HirId,
@@ -1117,9 +1119,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let lhs_deref_ty_is_sized = self
                     .infcx
                     .type_implements_trait(
-                        self.tcx.lang_items().sized_trait().unwrap(),
-                        lhs_deref_ty,
-                        ty::List::empty(),
+                        self.tcx.require_lang_item(LangItem::Sized, None),
+                        [lhs_deref_ty],
                         self.param_env,
                     )
                     .may_apply();
@@ -1616,10 +1617,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.demand_coerce_diag(&field.expr, ty, field_type, None, AllowTwoPhase::No);
 
             if let Some(mut diag) = diag {
-                if idx == ast_fields.len() - 1 && remaining_fields.is_empty() {
-                    self.suggest_fru_from_range(field, variant, substs, &mut diag);
+                if idx == ast_fields.len() - 1 {
+                    if remaining_fields.is_empty() {
+                        self.suggest_fru_from_range(field, variant, substs, &mut diag);
+                        diag.emit();
+                    } else {
+                        diag.stash(field.span, StashKey::MaybeFruTypo);
+                    }
+                } else {
+                    diag.emit();
                 }
-                diag.emit();
             }
         }
 
@@ -1640,6 +1647,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // the fields with the base_expr. This could cause us to hit errors later
         // when certain fields are assumed to exist that in fact do not.
         if error_happened {
+            if let Some(base_expr) = base_expr {
+                self.check_expr(base_expr);
+            }
             return;
         }
 
@@ -1658,7 +1668,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .fields
                         .iter()
                         .map(|f| {
-                            let fru_ty = self.normalize_associated_types_in(
+                            let fru_ty = self.normalize(
                                 expr_span,
                                 self.field_ty(base_expr.span, f, fresh_substs),
                             );
@@ -1742,9 +1752,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Adt(adt, substs) if adt.is_struct() => variant
                         .fields
                         .iter()
-                        .map(|f| {
-                            self.normalize_associated_types_in(expr_span, f.ty(self.tcx, substs))
-                        })
+                        .map(|f| self.normalize(expr_span, f.ty(self.tcx, substs)))
                         .collect(),
                     _ => {
                         self.tcx
@@ -1877,19 +1885,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .map(|adt| adt.did())
                 != range_def_id
         {
-            let instead = self
+            // Suppress any range expr type mismatches
+            if let Some(mut diag) = self
+                .tcx
+                .sess
+                .diagnostic()
+                .steal_diagnostic(last_expr_field.span, StashKey::MaybeFruTypo)
+            {
+                diag.delay_as_bug();
+            }
+
+            // Use a (somewhat arbitrary) filtering heuristic to avoid printing
+            // expressions that are either too long, or have control character
+            //such as newlines in them.
+            let expr = self
                 .tcx
                 .sess
                 .source_map()
                 .span_to_snippet(range_end.expr.span)
-                .map(|s| format!(" from `{s}`"))
-                .unwrap_or_default();
-            err.span_suggestion(
-                range_start.span.shrink_to_hi(),
-                &format!("to set the remaining fields{instead}, separate the last named field with a comma"),
-                ",",
-                Applicability::MaybeIncorrect,
-            );
+                .ok()
+                .filter(|s| s.len() < 25 && !s.contains(|c: char| c.is_control()));
+
+            let fru_span = self
+                .tcx
+                .sess
+                .source_map()
+                .span_extend_while(range_start.span, |c| c.is_whitespace())
+                .unwrap_or(range_start.span).shrink_to_hi().to(range_end.span);
+
+            err.subdiagnostic(TypeMismatchFruTypo {
+                expr_span: range_start.span,
+                fru_span,
+                expr,
+            });
         }
     }
 
@@ -1964,7 +1992,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_span: Span,
     ) {
         if variant.is_recovered() {
-            self.set_tainted_by_errors();
+            self.set_tainted_by_errors(
+                self.tcx
+                    .sess
+                    .delay_span_bug(expr_span, "parser recovered but no error was emitted"),
+            );
             return;
         }
         let mut err = self.err_ctxt().type_error_struct_with_diag(
@@ -1994,8 +2026,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let variant_ident_span = self.tcx.def_ident_span(variant.def_id).unwrap();
-        match variant.ctor_kind {
-            CtorKind::Fn => match ty.kind() {
+        match variant.ctor_kind() {
+            Some(CtorKind::Fn) => match ty.kind() {
                 ty::Adt(adt, ..) if adt.is_enum() => {
                     err.span_label(
                         variant_ident_span,
@@ -2303,12 +2335,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base: &'tcx hir::Expr<'tcx>,
         ty: Ty<'tcx>,
     ) {
-        let output_ty = match self.get_impl_future_output_ty(ty) {
-            Some(output_ty) => self.resolve_vars_if_possible(output_ty),
-            _ => return,
-        };
+        let Some(output_ty) = self.get_impl_future_output_ty(ty) else { return; };
         let mut add_label = true;
-        if let ty::Adt(def, _) = output_ty.skip_binder().kind() {
+        if let ty::Adt(def, _) = output_ty.kind() {
             // no field access on enum type
             if !def.is_enum() {
                 if def
@@ -2794,7 +2823,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         for error in errors {
             match error.obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Trait(predicate)
+                ty::PredicateKind::Clause(ty::Clause::Trait(predicate))
                     if self.tcx.is_diagnostic_item(sym::SliceIndex, predicate.trait_ref.def_id) => {
                 }
                 _ => continue,

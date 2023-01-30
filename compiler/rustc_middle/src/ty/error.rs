@@ -12,7 +12,12 @@ use rustc_span::{BytePos, Span};
 use rustc_target::spec::abi;
 
 use std::borrow::Cow;
+use std::collections::hash_map::DefaultHasher;
 use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::path::PathBuf;
+
+use super::print::PrettyPrinter;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable, TypeVisitable, Lift)]
 pub struct ExpectedFound<T> {
@@ -64,10 +69,7 @@ pub enum TypeError<'tcx> {
     CyclicTy(Ty<'tcx>),
     CyclicConst(ty::Const<'tcx>),
     ProjectionMismatched(ExpectedFound<DefId>),
-    ExistentialMismatch(
-        ExpectedFound<&'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>>,
-    ),
-    ObjectUnsafeCoercion(DefId),
+    ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>>),
     ConstMismatch(ExpectedFound<ty::Const<'tcx>>),
 
     IntrinsicCast,
@@ -219,7 +221,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 f,
                 "cannot coerce functions with `#[target_feature]` to safe function pointers"
             ),
-            ObjectUnsafeCoercion(_) => write!(f, "coercion to object-unsafe trait object"),
         }
     }
 }
@@ -246,8 +247,7 @@ impl<'tcx> TypeError<'tcx> {
             | ProjectionMismatched(_)
             | ExistentialMismatch(_)
             | ConstMismatch(_)
-            | IntrinsicCast
-            | ObjectUnsafeCoercion(_) => true,
+            | IntrinsicCast => true,
         }
     }
 }
@@ -984,6 +984,47 @@ fn foo(&self) -> Self::T { String::new() }
             return true;
         }
         false
+    }
+
+    pub fn short_ty_string(self, ty: Ty<'tcx>) -> (String, Option<PathBuf>) {
+        let width = self.sess.diagnostic_width();
+        let length_limit = width.saturating_sub(30);
+        let mut type_limit = 50;
+        let regular = FmtPrinter::new(self, hir::def::Namespace::TypeNS)
+            .pretty_print_type(ty)
+            .expect("could not write to `String`")
+            .into_buffer();
+        if regular.len() <= width {
+            return (regular, None);
+        }
+        let mut short;
+        loop {
+            // Look for the longest properly trimmed path that still fits in lenght_limit.
+            short = FmtPrinter::new_with_limit(
+                self,
+                hir::def::Namespace::TypeNS,
+                rustc_session::Limit(type_limit),
+            )
+            .pretty_print_type(ty)
+            .expect("could not write to `String`")
+            .into_buffer();
+            if short.len() <= length_limit || type_limit == 0 {
+                break;
+            }
+            type_limit -= 1;
+        }
+        if regular == short {
+            return (regular, None);
+        }
+        // Multiple types might be shortened in a single error, ensure we create a file for each.
+        let mut s = DefaultHasher::new();
+        ty.hash(&mut s);
+        let hash = s.finish();
+        let path = self.output_filenames(()).temp_path_ext(&format!("long-type-{hash}.txt"), None);
+        match std::fs::write(&path, &regular) {
+            Ok(_) => (short, Some(path)),
+            Err(_) => (regular, None),
+        }
     }
 
     fn format_generic_args(self, args: &[ty::GenericArg<'tcx>]) -> String {

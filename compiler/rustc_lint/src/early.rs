@@ -20,23 +20,23 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{self as ast_visit, Visitor};
 use rustc_ast::{self as ast, walk_list, HasAttrs};
 use rustc_middle::ty::RegisteredTools;
-use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
+use rustc_session::lint::{BufferedEarlyLint, LintBuffer};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-use std::slice;
-
-macro_rules! run_early_pass { ($cx:expr, $f:ident, $($args:expr),*) => ({
-    $cx.pass.$f(&$cx.context, $($args),*);
+macro_rules! run_early_passes { ($cx:expr, $f:ident, $($args:expr),*) => ({
+    for pass in $cx.passes.iter_mut() {
+        pass.$f(&$cx.context, $($args),*);
+    }
 }) }
 
-pub struct EarlyContextAndPass<'a, T: EarlyLintPass> {
+pub struct EarlyContextAndPasses<'a> {
     context: EarlyContext<'a>,
-    pass: T,
+    passes: Vec<EarlyLintPassObject>,
 }
 
-impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
+impl<'a> EarlyContextAndPasses<'a> {
     fn check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
             let BufferedEarlyLint { span, msg, node_id: _, lint_id, diagnostic } = early_lint;
@@ -63,27 +63,27 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
 
         self.check_id(id);
         debug!("early context: enter_attrs({:?})", attrs);
-        run_early_pass!(self, enter_lint_attrs, attrs);
+        run_early_passes!(self, enter_lint_attrs, attrs);
         f(self);
         debug!("early context: exit_attrs({:?})", attrs);
-        run_early_pass!(self, exit_lint_attrs, attrs);
+        run_early_passes!(self, exit_lint_attrs, attrs);
         self.context.builder.pop(push);
     }
 }
 
-impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T> {
+impl<'a> ast_visit::Visitor<'a> for EarlyContextAndPasses<'a> {
     fn visit_param(&mut self, param: &'a ast::Param) {
         self.with_lint_attrs(param.id, &param.attrs, |cx| {
-            run_early_pass!(cx, check_param, param);
+            run_early_passes!(cx, check_param, param);
             ast_visit::walk_param(cx, param);
         });
     }
 
     fn visit_item(&mut self, it: &'a ast::Item) {
         self.with_lint_attrs(it.id, &it.attrs, |cx| {
-            run_early_pass!(cx, check_item, it);
+            run_early_passes!(cx, check_item, it);
             ast_visit::walk_item(cx, it);
-            run_early_pass!(cx, check_item_post, it);
+            run_early_passes!(cx, check_item_post, it);
         })
     }
 
@@ -94,10 +94,10 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     }
 
     fn visit_pat(&mut self, p: &'a ast::Pat) {
-        run_early_pass!(self, check_pat, p);
+        run_early_passes!(self, check_pat, p);
         self.check_id(p.id);
         ast_visit::walk_pat(self, p);
-        run_early_pass!(self, check_pat_post, p);
+        run_early_passes!(self, check_pat_post, p);
     }
 
     fn visit_pat_field(&mut self, field: &'a ast::PatField) {
@@ -113,7 +113,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         self.with_lint_attrs(e.id, &e.attrs, |cx| {
-            run_early_pass!(cx, check_expr, e);
+            run_early_passes!(cx, check_expr, e);
             ast_visit::walk_expr(cx, e);
         })
     }
@@ -134,7 +134,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         // Note that statements get their attributes from
         // the AST struct that they wrap (e.g. an item)
         self.with_lint_attrs(s.id, s.attrs(), |cx| {
-            run_early_pass!(cx, check_stmt, s);
+            run_early_passes!(cx, check_stmt, s);
             cx.check_id(s.id);
         });
         // The visitor for the AST struct wrapped
@@ -145,7 +145,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     }
 
     fn visit_fn(&mut self, fk: ast_visit::FnKind<'a>, span: Span, id: ast::NodeId) {
-        run_early_pass!(self, check_fn, fk, span, id);
+        run_early_passes!(self, check_fn, fk, span, id);
         self.check_id(id);
         ast_visit::walk_fn(self, fk);
 
@@ -159,8 +159,8 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     }
 
     fn visit_variant_data(&mut self, s: &'a ast::VariantData) {
-        if let Some(ctor_hir_id) = s.ctor_id() {
-            self.check_id(ctor_hir_id);
+        if let Some(ctor_node_id) = s.ctor_node_id() {
+            self.check_id(ctor_node_id);
         }
         ast_visit::walk_struct_def(self, s);
     }
@@ -173,37 +173,37 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 
     fn visit_variant(&mut self, v: &'a ast::Variant) {
         self.with_lint_attrs(v.id, &v.attrs, |cx| {
-            run_early_pass!(cx, check_variant, v);
+            run_early_passes!(cx, check_variant, v);
             ast_visit::walk_variant(cx, v);
         })
     }
 
     fn visit_ty(&mut self, t: &'a ast::Ty) {
-        run_early_pass!(self, check_ty, t);
+        run_early_passes!(self, check_ty, t);
         self.check_id(t.id);
         ast_visit::walk_ty(self, t);
     }
 
     fn visit_ident(&mut self, ident: Ident) {
-        run_early_pass!(self, check_ident, ident);
+        run_early_passes!(self, check_ident, ident);
     }
 
     fn visit_local(&mut self, l: &'a ast::Local) {
         self.with_lint_attrs(l.id, &l.attrs, |cx| {
-            run_early_pass!(cx, check_local, l);
+            run_early_passes!(cx, check_local, l);
             ast_visit::walk_local(cx, l);
         })
     }
 
     fn visit_block(&mut self, b: &'a ast::Block) {
-        run_early_pass!(self, check_block, b);
+        run_early_passes!(self, check_block, b);
         self.check_id(b.id);
         ast_visit::walk_block(self, b);
     }
 
     fn visit_arm(&mut self, a: &'a ast::Arm) {
         self.with_lint_attrs(a.id, &a.attrs, |cx| {
-            run_early_pass!(cx, check_arm, a);
+            run_early_passes!(cx, check_arm, a);
             ast_visit::walk_arm(cx, a);
         })
     }
@@ -212,26 +212,29 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         // Explicitly check for lints associated with 'closure_id', since
         // it does not have a corresponding AST node
         match e.kind {
-            ast::ExprKind::Closure(_, _, ast::Async::Yes { closure_id, .. }, ..)
+            ast::ExprKind::Closure(box ast::Closure {
+                asyncness: ast::Async::Yes { closure_id, .. },
+                ..
+            })
             | ast::ExprKind::Async(_, closure_id, ..) => self.check_id(closure_id),
             _ => {}
         }
     }
 
     fn visit_generic_arg(&mut self, arg: &'a ast::GenericArg) {
-        run_early_pass!(self, check_generic_arg, arg);
+        run_early_passes!(self, check_generic_arg, arg);
         ast_visit::walk_generic_arg(self, arg);
     }
 
     fn visit_generic_param(&mut self, param: &'a ast::GenericParam) {
         self.with_lint_attrs(param.id, &param.attrs, |cx| {
-            run_early_pass!(cx, check_generic_param, param);
+            run_early_passes!(cx, check_generic_param, param);
             ast_visit::walk_generic_param(cx, param);
         });
     }
 
     fn visit_generics(&mut self, g: &'a ast::Generics) {
-        run_early_pass!(self, check_generics, g);
+        run_early_passes!(self, check_generics, g);
         ast_visit::walk_generics(self, g);
     }
 
@@ -240,18 +243,18 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     }
 
     fn visit_poly_trait_ref(&mut self, t: &'a ast::PolyTraitRef) {
-        run_early_pass!(self, check_poly_trait_ref, t);
+        run_early_passes!(self, check_poly_trait_ref, t);
         ast_visit::walk_poly_trait_ref(self, t);
     }
 
     fn visit_assoc_item(&mut self, item: &'a ast::AssocItem, ctxt: ast_visit::AssocCtxt) {
         self.with_lint_attrs(item.id, &item.attrs, |cx| match ctxt {
             ast_visit::AssocCtxt::Trait => {
-                run_early_pass!(cx, check_trait_item, item);
+                run_early_passes!(cx, check_trait_item, item);
                 ast_visit::walk_assoc_item(cx, item, ctxt);
             }
             ast_visit::AssocCtxt::Impl => {
-                run_early_pass!(cx, check_impl_item, item);
+                run_early_passes!(cx, check_impl_item, item);
                 ast_visit::walk_assoc_item(cx, item, ctxt);
             }
         });
@@ -272,50 +275,19 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     }
 
     fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
-        run_early_pass!(self, check_attribute, attr);
+        run_early_passes!(self, check_attribute, attr);
     }
 
     fn visit_mac_def(&mut self, mac: &'a ast::MacroDef, id: ast::NodeId) {
-        run_early_pass!(self, check_mac_def, mac);
+        run_early_passes!(self, check_mac_def, mac);
         self.check_id(id);
     }
 
     fn visit_mac_call(&mut self, mac: &'a ast::MacCall) {
-        run_early_pass!(self, check_mac, mac);
+        run_early_passes!(self, check_mac, mac);
         ast_visit::walk_mac(self, mac);
     }
 }
-
-struct EarlyLintPassObjects<'a> {
-    lints: &'a mut [EarlyLintPassObject],
-}
-
-#[allow(rustc::lint_pass_impl_without_macro)]
-impl LintPass for EarlyLintPassObjects<'_> {
-    fn name(&self) -> &'static str {
-        panic!()
-    }
-}
-
-macro_rules! expand_early_lint_pass_impl_methods {
-    ([$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
-        $(fn $name(&mut self, context: &EarlyContext<'_>, $($param: $arg),*) {
-            for obj in self.lints.iter_mut() {
-                obj.$name(context, $($param),*);
-            }
-        })*
-    )
-}
-
-macro_rules! early_lint_pass_impl {
-    ([], [$($methods:tt)*]) => (
-        impl EarlyLintPass for EarlyLintPassObjects<'_> {
-            expand_early_lint_pass_impl_methods!([$($methods)*]);
-        }
-    )
-}
-
-crate::early_lint_methods!(early_lint_pass_impl, []);
 
 /// Early lints work on different nodes - either on the crate root, or on freshly loaded modules.
 /// This trait generalizes over those nodes.
@@ -324,7 +296,7 @@ pub trait EarlyCheckNode<'a>: Copy {
     fn attrs<'b>(self) -> &'b [ast::Attribute]
     where
         'a: 'b;
-    fn check<'b>(self, cx: &mut EarlyContextAndPass<'b, impl EarlyLintPass>)
+    fn check<'b>(self, cx: &mut EarlyContextAndPasses<'b>)
     where
         'a: 'b;
 }
@@ -339,13 +311,13 @@ impl<'a> EarlyCheckNode<'a> for &'a ast::Crate {
     {
         &self.attrs
     }
-    fn check<'b>(self, cx: &mut EarlyContextAndPass<'b, impl EarlyLintPass>)
+    fn check<'b>(self, cx: &mut EarlyContextAndPasses<'b>)
     where
         'a: 'b,
     {
-        run_early_pass!(cx, check_crate, self);
+        run_early_passes!(cx, check_crate, self);
         ast_visit::walk_crate(cx, self);
-        run_early_pass!(cx, check_crate_post, self);
+        run_early_passes!(cx, check_crate_post, self);
     }
 }
 
@@ -359,7 +331,7 @@ impl<'a> EarlyCheckNode<'a> for (ast::NodeId, &'a [ast::Attribute], &'a [P<ast::
     {
         self.1
     }
-    fn check<'b>(self, cx: &mut EarlyContextAndPass<'b, impl EarlyLintPass>)
+    fn check<'b>(self, cx: &mut EarlyContextAndPasses<'b>)
     where
         'a: 'b,
     {
@@ -368,87 +340,36 @@ impl<'a> EarlyCheckNode<'a> for (ast::NodeId, &'a [ast::Attribute], &'a [P<ast::
     }
 }
 
-fn early_lint_node<'a>(
-    sess: &Session,
-    warn_about_weird_lints: bool,
-    lint_store: &LintStore,
-    registered_tools: &RegisteredTools,
-    buffered: LintBuffer,
-    pass: impl EarlyLintPass,
-    check_node: impl EarlyCheckNode<'a>,
-) -> LintBuffer {
-    let mut cx = EarlyContextAndPass {
-        context: EarlyContext::new(
-            sess,
-            warn_about_weird_lints,
-            lint_store,
-            registered_tools,
-            buffered,
-        ),
-        pass,
-    };
-
-    cx.with_lint_attrs(check_node.id(), check_node.attrs(), |cx| check_node.check(cx));
-    cx.context.buffered
-}
-
 pub fn check_ast_node<'a>(
     sess: &Session,
     pre_expansion: bool,
     lint_store: &LintStore,
     registered_tools: &RegisteredTools,
     lint_buffer: Option<LintBuffer>,
-    builtin_lints: impl EarlyLintPass,
+    builtin_lints: impl EarlyLintPass + 'static,
     check_node: impl EarlyCheckNode<'a>,
 ) {
     let passes =
         if pre_expansion { &lint_store.pre_expansion_passes } else { &lint_store.early_passes };
-    let mut passes: Vec<_> = passes.iter().map(|p| (p)()).collect();
-    let mut buffered = lint_buffer.unwrap_or_default();
+    let mut passes: Vec<EarlyLintPassObject> = passes.iter().map(|p| (p)()).collect();
+    passes.push(Box::new(builtin_lints));
 
-    if sess.opts.unstable_opts.no_interleave_lints {
-        for (i, pass) in passes.iter_mut().enumerate() {
-            buffered =
-                sess.prof.verbose_generic_activity_with_arg("run_lint", pass.name()).run(|| {
-                    early_lint_node(
-                        sess,
-                        !pre_expansion && i == 0,
-                        lint_store,
-                        registered_tools,
-                        buffered,
-                        EarlyLintPassObjects { lints: slice::from_mut(pass) },
-                        check_node,
-                    )
-                });
-        }
-    } else {
-        buffered = early_lint_node(
+    let mut cx = EarlyContextAndPasses {
+        context: EarlyContext::new(
             sess,
             !pre_expansion,
             lint_store,
             registered_tools,
-            buffered,
-            builtin_lints,
-            check_node,
-        );
-
-        if !passes.is_empty() {
-            buffered = early_lint_node(
-                sess,
-                false,
-                lint_store,
-                registered_tools,
-                buffered,
-                EarlyLintPassObjects { lints: &mut passes[..] },
-                check_node,
-            );
-        }
-    }
+            lint_buffer.unwrap_or_default(),
+        ),
+        passes,
+    };
+    cx.with_lint_attrs(check_node.id(), check_node.attrs(), |cx| check_node.check(cx));
 
     // All of the buffered lints should have been emitted at this point.
     // If not, that means that we somehow buffered a lint for a node id
     // that was not lint-checked (perhaps it doesn't exist?). This is a bug.
-    for (id, lints) in buffered.map {
+    for (id, lints) in cx.context.buffered.map {
         for early_lint in lints {
             sess.delay_span_bug(
                 early_lint.span,

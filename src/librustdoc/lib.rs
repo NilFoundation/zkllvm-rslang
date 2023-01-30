@@ -8,6 +8,7 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
+#![feature(is_terminal)]
 #![feature(let_chains)]
 #![feature(test)]
 #![feature(never_type)]
@@ -69,7 +70,7 @@ extern crate jemalloc_sys;
 
 use std::default::Default;
 use std::env::{self, VarError};
-use std::io;
+use std::io::{self, IsTerminal};
 use std::process;
 
 use rustc_driver::abort_on_err;
@@ -179,7 +180,7 @@ fn init_logging() {
     let color_logs = match std::env::var("RUSTDOC_LOG_COLOR").as_deref() {
         Ok("always") => true,
         Ok("never") => false,
-        Ok("auto") | Err(VarError::NotPresent) => atty::is(atty::Stream::Stdout),
+        Ok("auto") | Err(VarError::NotPresent) => io::stdout().is_terminal(),
         Ok(value) => early_error(
             ErrorOutputType::default(),
             &format!("invalid log color value '{}': expected one of always, never, or auto", value),
@@ -673,7 +674,7 @@ type MainResult = Result<(), ErrorGuaranteed>;
 
 fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainResult {
     match res {
-        Ok(()) => Ok(()),
+        Ok(()) => diag.has_errors().map_or(Ok(()), Err),
         Err(err) => {
             let reported = diag.struct_err(&err).emit();
             Err(reported)
@@ -688,7 +689,7 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     tcx: TyCtxt<'tcx>,
 ) -> MainResult {
     match formats::run_format::<T>(krate, renderopts, cache, tcx) {
-        Ok(_) => Ok(()),
+        Ok(_) => tcx.sess.has_errors().map_or(Ok(()), Err),
         Err(e) => {
             let mut msg =
                 tcx.sess.struct_err(&format!("couldn't generate documentation: {}", e.error));
@@ -773,6 +774,7 @@ fn main_args(at_args: &[String]) -> MainResult {
     let output_format = options.output_format;
     let externs = options.externs.clone();
     let scrape_examples_options = options.scrape_examples_options.clone();
+    let bin_crate = options.bin_crate;
 
     let config = core::create_config(options);
 
@@ -780,10 +782,7 @@ fn main_args(at_args: &[String]) -> MainResult {
         let sess = compiler.session();
 
         if sess.opts.describe_lints {
-            let mut lint_store = rustc_lint::new_lint_store(
-                sess.opts.unstable_opts.no_interleave_lints,
-                sess.enable_internal_lints(),
-            );
+            let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
             let registered_lints = if let Some(register_lints) = compiler.register_lints() {
                 register_lints(sess, &mut lint_store);
                 true
@@ -834,7 +833,14 @@ fn main_args(at_args: &[String]) -> MainResult {
                 info!("finished with rustc");
 
                 if let Some(options) = scrape_examples_options {
-                    return scrape_examples::run(krate, render_opts, cache, tcx, options);
+                    return scrape_examples::run(
+                        krate,
+                        render_opts,
+                        cache,
+                        tcx,
+                        options,
+                        bin_crate,
+                    );
                 }
 
                 cache.crate_version = crate_version;

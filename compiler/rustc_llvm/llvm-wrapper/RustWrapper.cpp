@@ -9,7 +9,7 @@
 #include "llvm/IR/IntrinsicsARM.h"
 #include "llvm/IR/Mangler.h"
 #if LLVM_VERSION_GE(16, 0)
-#include "llvm/IR/ModRef.h"
+#include "llvm/Support/ModRef.h"
 #endif
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/COFFImportFile.h"
@@ -17,7 +17,9 @@
 #include "llvm/Pass.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Support/Signals.h"
+#if LLVM_VERSION_LT(16, 0)
 #include "llvm/ADT/Optional.h"
+#endif
 
 #include <iostream>
 
@@ -710,7 +712,11 @@ enum class LLVMRustChecksumKind {
   SHA256,
 };
 
+#if LLVM_VERSION_LT(16, 0)
 static Optional<DIFile::ChecksumKind> fromRust(LLVMRustChecksumKind Kind) {
+#else
+static std::optional<DIFile::ChecksumKind> fromRust(LLVMRustChecksumKind Kind) {
+#endif
   switch (Kind) {
   case LLVMRustChecksumKind::None:
     return None;
@@ -789,8 +795,18 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFile(
     const char *Filename, size_t FilenameLen,
     const char *Directory, size_t DirectoryLen, LLVMRustChecksumKind CSKind,
     const char *Checksum, size_t ChecksumLen) {
+
+#if LLVM_VERSION_LT(16, 0)
   Optional<DIFile::ChecksumKind> llvmCSKind = fromRust(CSKind);
+#else
+  std::optional<DIFile::ChecksumKind> llvmCSKind = fromRust(CSKind);
+#endif
+
+#if LLVM_VERSION_LT(16, 0)
   Optional<DIFile::ChecksumInfo<StringRef>> CSInfo{};
+#else
+  std::optional<DIFile::ChecksumInfo<StringRef>> CSInfo{};
+#endif
   if (llvmCSKind)
     CSInfo.emplace(*llvmCSKind, StringRef{Checksum, ChecksumLen});
   return wrap(Builder->createFile(StringRef(Filename, FilenameLen),
@@ -1038,8 +1054,9 @@ extern "C" LLVMValueRef LLVMRustDIBuilderInsertDeclareAtEnd(
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerator(
     LLVMRustDIBuilderRef Builder, const char *Name, size_t NameLen,
-    int64_t Value, bool IsUnsigned) {
-  return wrap(Builder->createEnumerator(StringRef(Name, NameLen), Value, IsUnsigned));
+    const uint64_t Value[2], unsigned SizeInBits, bool IsUnsigned) {
+  return wrap(Builder->createEnumerator(StringRef(Name, NameLen),
+      APSInt(APInt(SizeInBits, makeArrayRef(Value, 2)), IsUnsigned)));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerationType(
@@ -1111,6 +1128,10 @@ extern "C" uint64_t LLVMRustDIBuilderCreateOpDeref() {
 
 extern "C" uint64_t LLVMRustDIBuilderCreateOpPlusUconst() {
   return dwarf::DW_OP_plus_uconst;
+}
+
+extern "C" int64_t LLVMRustDIBuilderCreateOpLLVMFragment() {
+  return dwarf::DW_OP_LLVM_fragment;
 }
 
 extern "C" void LLVMRustWriteTypeToString(LLVMTypeRef Ty, RustStringRef Str) {
@@ -1963,4 +1984,8 @@ extern "C" int32_t LLVMRustGetElementTypeArgIndex(LLVMValueRef CallSite) {
     }
 #endif
     return -1;
+}
+
+extern "C" bool LLVMRustIsBitcode(char *ptr, size_t len) {
+  return identify_magic(StringRef(ptr, len)) == file_magic::bitcode;
 }

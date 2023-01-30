@@ -29,7 +29,7 @@ pub struct PlaceRef<'tcx, V> {
 
 impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     pub fn new_sized(llval: V, layout: TyAndLayout<'tcx>) -> PlaceRef<'tcx, V> {
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
         PlaceRef { llval, llextra: None, layout, align: layout.align.abi }
     }
 
@@ -38,7 +38,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         layout: TyAndLayout<'tcx>,
         align: Align,
     ) -> PlaceRef<'tcx, V> {
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
         PlaceRef { llval, llextra: None, layout, align }
     }
 
@@ -48,7 +48,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        assert!(!layout.is_unsized(), "tried to statically allocate unsized place");
+        assert!(layout.is_sized(), "tried to statically allocate unsized place");
         let tmp = bx.alloca(bx.cx().backend_type(layout), layout.align.abi);
         Self::new_sized(tmp, layout)
     }
@@ -145,7 +145,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 );
                 return simple();
             }
-            _ if !field.is_unsized() => return simple(),
+            _ if field.is_sized() => return simple(),
             ty::Slice(..) | ty::Str | ty::Foreign(..) => return simple(),
             ty::Adt(def, _) => {
                 if def.repr().packed() {
@@ -309,14 +309,14 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 // In the algorithm above, we can change
                 // cast(relative_tag) + niche_variants.start()
                 // into
-                // cast(tag) + (niche_variants.start() - niche_start)
+                // cast(tag + (niche_variants.start() - niche_start))
                 // if either the casted type is no larger than the original
                 // type, or if the niche values are contiguous (in either the
                 // signed or unsigned sense).
-                let can_incr_after_cast = cast_smaller || niches_ule || niches_sle;
+                let can_incr = cast_smaller || niches_ule || niches_sle;
 
                 let data_for_boundary_niche = || -> Option<(IntPredicate, u128)> {
-                    if !can_incr_after_cast {
+                    if !can_incr {
                         None
                     } else if niche_start == low_unsigned {
                         Some((IntPredicate::IntULE, niche_end))
@@ -353,24 +353,33 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     // The algorithm is now this:
                     // is_niche = tag <= niche_end
                     // discr = if is_niche {
-                    //     cast(tag) + (niche_variants.start() - niche_start)
+                    //     cast(tag + (niche_variants.start() - niche_start))
                     // } else {
                     //     untagged_variant
                     // }
                     // (the first line may instead be tag >= niche_start,
                     // and may be a signed or unsigned comparison)
+                    // The arithmetic must be done before the cast, so we can
+                    // have the correct wrapping behavior. See issue #104519 for
+                    // the consequences of getting this wrong.
                     let is_niche =
                         bx.icmp(predicate, tag, bx.cx().const_uint_big(tag_llty, constant));
-                    let cast_tag = if cast_smaller {
-                        bx.intcast(tag, cast_to, false)
-                    } else if niches_ule {
-                        bx.zext(tag, cast_to)
+                    let delta = (niche_variants.start().as_u32() as u128).wrapping_sub(niche_start);
+                    let incr_tag = if delta == 0 {
+                        tag
                     } else {
-                        bx.sext(tag, cast_to)
+                        bx.add(tag, bx.cx().const_uint_big(tag_llty, delta))
                     };
 
-                    let delta = (niche_variants.start().as_u32() as u128).wrapping_sub(niche_start);
-                    (is_niche, cast_tag, delta)
+                    let cast_tag = if cast_smaller {
+                        bx.intcast(incr_tag, cast_to, false)
+                    } else if niches_ule {
+                        bx.zext(incr_tag, cast_to)
+                    } else {
+                        bx.sext(incr_tag, cast_to)
+                    };
+
+                    (is_niche, cast_tag, 0)
                 } else {
                     // The special cases don't apply, so we'll have to go with
                     // the general algorithm.

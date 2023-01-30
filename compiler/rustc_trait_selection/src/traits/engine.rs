@@ -3,7 +3,7 @@ use std::fmt::Debug;
 
 use super::TraitEngine;
 use super::{ChalkFulfillmentContext, FulfillmentContext};
-use crate::infer::InferCtxtExt;
+use crate::traits::NormalizeExt;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::at::ToTrace;
@@ -93,7 +93,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         def_id: DefId,
     ) {
         let tcx = self.infcx.tcx;
-        let trait_ref = ty::TraitRef { def_id, substs: tcx.mk_substs_trait(ty, &[]) };
+        let trait_ref = tcx.mk_trait_ref(def_id, [ty]);
         self.register_obligation(Obligation {
             cause,
             recursion_depth: 0,
@@ -104,12 +104,30 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
 
     pub fn normalize<T: TypeFoldable<'tcx>>(
         &self,
-        cause: ObligationCause<'tcx>,
+        cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         value: T,
     ) -> T {
-        let infer_ok = self.infcx.partially_normalize_associated_types_in(cause, param_env, value);
+        let infer_ok = self.infcx.at(&cause, param_env).normalize(value);
         self.register_infer_ok_obligations(infer_ok)
+    }
+
+    /// Makes `expected <: actual`.
+    pub fn eq_exp<T>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        a_is_expected: bool,
+        a: T,
+        b: T,
+    ) -> Result<(), TypeError<'tcx>>
+    where
+        T: ToTrace<'tcx>,
+    {
+        self.infcx
+            .at(cause, param_env)
+            .eq_exp(a_is_expected, a, b)
+            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
     pub fn eq<T: ToTrace<'tcx>>(
@@ -125,6 +143,21 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
+    /// Checks whether `expected` is a subtype of `actual`: `expected <: actual`.
+    pub fn sub<T: ToTrace<'tcx>>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        expected: T,
+        actual: T,
+    ) -> Result<(), TypeError<'tcx>> {
+        self.infcx
+            .at(cause, param_env)
+            .sup(expected, actual)
+            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+    }
+
+    /// Checks whether `expected` is a supertype of `actual`: `expected :> actual`.
     pub fn sup<T: ToTrace<'tcx>>(
         &self,
         cause: &ObligationCause<'tcx>,
@@ -132,13 +165,10 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         expected: T,
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
-        match self.infcx.at(cause, param_env).sup(expected, actual) {
-            Ok(InferOk { obligations, value: () }) => {
-                self.register_obligations(obligations);
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
+        self.infcx
+            .at(cause, param_env)
+            .sup(expected, actual)
+            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
     pub fn select_where_possible(&self) -> Vec<FulfillmentError<'tcx>> {
@@ -173,7 +203,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             // sound and then uncomment this line again.
 
             // implied_bounds.insert(ty);
-            let normalized = self.normalize(cause.clone(), param_env, ty);
+            let normalized = self.normalize(&cause, param_env, ty);
             implied_bounds.insert(normalized);
         }
         implied_bounds

@@ -76,6 +76,7 @@ impl AsRef<str> for Foo {
 ///
 /// # title!
 #[doc(alias = "ThisIsAnAlias")]
+#[non_exhaustive]
 pub enum WhoLetTheDogOut {
     /// Woof!
     Woof,
@@ -342,6 +343,9 @@ pub mod doc_block_table {
     /// | header1                  | header2                  |
     /// |--------------------------|--------------------------|
     /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
     pub struct DocBlockTable {}
 
     impl DocBlockTableTrait for DocBlockTable {
@@ -406,6 +410,11 @@ pub struct WithGenerics<T: TraitWithNoDocblocks, S = String, E = WhoLetTheDogOut
     t: T,
     e: E,
     p: P,
+}
+
+pub struct StructWithPublicUndocumentedFields {
+    pub first: u32,
+    pub second: u32,
 }
 
 pub const CONST: u8 = 0;

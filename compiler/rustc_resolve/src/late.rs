@@ -16,7 +16,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_errors::DiagnosticId;
+use rustc_errors::{DiagnosticArgValue, DiagnosticId, IntoDiagnosticArg};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -31,6 +31,7 @@ use smallvec::{smallvec, SmallVec};
 
 use rustc_span::source_map::{respan, Spanned};
 use std::assert_matches::debug_assert_matches;
+use std::borrow::Cow;
 use std::collections::{hash_map::Entry, BTreeSet};
 use std::mem::{replace, swap, take};
 
@@ -75,6 +76,12 @@ impl PatternSource {
             PatternSource::For => "for binding",
             PatternSource::FnParam => "function parameter",
         }
+    }
+}
+
+impl IntoDiagnosticArg for PatternSource {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Borrowed(self.descr()))
     }
 }
 
@@ -648,7 +655,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             }
             TyKind::Path(ref qself, ref path) => {
                 self.diagnostic_metadata.current_type_path = Some(ty);
-                self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
+                self.smart_resolve_path(ty.id, &qself, path, PathSource::Type);
 
                 // Check whether we should interpret this as a bare trait object.
                 if qself.is_none()
@@ -749,7 +756,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 this.visit_generic_params(&tref.bound_generic_params, false);
                 this.smart_resolve_path(
                     tref.trait_ref.ref_id,
-                    None,
+                    &None,
                     &tref.trait_ref.path,
                     PathSource::Trait(AliasPossibility::Maybe),
                 );
@@ -978,7 +985,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                                 |this| {
                                     this.smart_resolve_path(
                                         ty.id,
-                                        qself.as_ref(),
+                                        qself,
                                         path,
                                         PathSource::Expr(None),
                                     );
@@ -1138,12 +1145,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         self.with_rib(ValueNS, InlineAsmSymRibKind, |this| {
             this.with_rib(TypeNS, InlineAsmSymRibKind, |this| {
                 this.with_label_rib(InlineAsmSymRibKind, |this| {
-                    this.smart_resolve_path(
-                        sym.id,
-                        sym.qself.as_ref(),
-                        &sym.path,
-                        PathSource::Expr(None),
-                    );
+                    this.smart_resolve_path(sym.id, &sym.qself, &sym.path, PathSource::Expr(None));
                     visit::walk_inline_asm_sym(this, sym);
                 });
             })
@@ -1836,6 +1838,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         let outer_failures = take(&mut self.diagnostic_metadata.current_elision_failures);
         let output_rib = if let Ok(res) = elision_lifetime.as_ref() {
+            self.r.lifetime_elision_allowed.insert(fn_id);
             LifetimeRibKind::Elided(*res)
         } else {
             LifetimeRibKind::ElisionFailure
@@ -1924,7 +1927,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                 // We have a single lifetime => success.
                                 elision_lifetime = Elision::Param(res)
                             } else {
-                                // We have have multiple lifetimes => error.
+                                // We have multiple lifetimes => error.
                                 elision_lifetime = Elision::Err;
                             }
                         }
@@ -2357,8 +2360,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     if let GenericParamKind::Lifetime = param.kind {
                         // Record lifetime res, so lowering knows there is something fishy.
                         self.record_lifetime_param(param.id, LifetimeRes::Error);
-                        continue;
                     }
+                    continue;
                 }
                 Entry::Vacant(entry) => {
                     entry.insert(param.ident.span);
@@ -2571,7 +2574,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             self.diagnostic_metadata.currently_processing_impl_trait =
                 Some((trait_ref.clone(), self_type.clone()));
             let res = self.smart_resolve_path_fragment(
-                None,
+                &None,
                 &path,
                 PathSource::Trait(AliasPossibility::No),
                 Finalize::new(trait_ref.ref_id, trait_ref.path.span),
@@ -3094,7 +3097,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 PatKind::TupleStruct(ref qself, ref path, ref sub_patterns) => {
                     self.smart_resolve_path(
                         pat.id,
-                        qself.as_ref(),
+                        qself,
                         path,
                         PathSource::TupleStruct(
                             pat.span,
@@ -3103,10 +3106,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     );
                 }
                 PatKind::Path(ref qself, ref path) => {
-                    self.smart_resolve_path(pat.id, qself.as_ref(), path, PathSource::Pat);
+                    self.smart_resolve_path(pat.id, qself, path, PathSource::Pat);
                 }
                 PatKind::Struct(ref qself, ref path, ..) => {
-                    self.smart_resolve_path(pat.id, qself.as_ref(), path, PathSource::Struct);
+                    self.smart_resolve_path(pat.id, qself, path, PathSource::Struct);
                 }
                 PatKind::Or(ref ps) => {
                     // Add a new set of bindings to the stack. `Or` here records that when a
@@ -3299,7 +3302,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn smart_resolve_path(
         &mut self,
         id: NodeId,
-        qself: Option<&QSelf>,
+        qself: &Option<P<QSelf>>,
         path: &Path,
         source: PathSource<'ast>,
     ) {
@@ -3313,7 +3316,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
     fn smart_resolve_path_fragment(
         &mut self,
-        qself: Option<&QSelf>,
+        qself: &Option<P<QSelf>>,
         path: &[Segment],
         source: PathSource<'ast>,
         finalize: Finalize,
@@ -3362,13 +3365,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // Before we start looking for candidates, we have to get our hands
             // on the type user is trying to perform invocation on; basically:
             // we're transforming `HashMap::new` into just `HashMap`.
-            let path = match path.split_last() {
+            let prefix_path = match path.split_last() {
                 Some((_, path)) if !path.is_empty() => path,
                 _ => return Some(parent_err),
             };
 
             let (mut err, candidates) =
-                this.smart_resolve_report_errors(path, path_span, PathSource::Type, None);
+                this.smart_resolve_report_errors(prefix_path, path_span, PathSource::Type, None);
 
             // There are two different error messages user might receive at
             // this point:
@@ -3412,11 +3415,23 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             if this.should_report_errs() {
                 if candidates.is_empty() {
-                    // When there is no suggested imports, we can just emit the error
-                    // and suggestions immediately. Note that we bypass the usually error
-                    // reporting routine (ie via `self.r.report_error`) because we need
-                    // to post-process the `ResolutionError` above.
-                    err.emit();
+                    if path.len() == 2 && prefix_path.len() == 1 {
+                        // Delay to check whether methond name is an associated function or not
+                        // ```
+                        // let foo = Foo {};
+                        // foo::bar(); // possibly suggest to foo.bar();
+                        //```
+                        err.stash(
+                            prefix_path[0].ident.span,
+                            rustc_errors::StashKey::CallAssocMethod,
+                        );
+                    } else {
+                        // When there is no suggested imports, we can just emit the error
+                        // and suggestions immediately. Note that we bypass the usually error
+                        // reporting routine (ie via `self.r.report_error`) because we need
+                        // to post-process the `ResolutionError` above.
+                        err.emit();
+                    }
                 } else {
                     // If there are suggested imports, the error reporting is delayed
                     this.r.use_injections.push(UseError {
@@ -3425,7 +3440,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         def_id,
                         instead: false,
                         suggestion: None,
-                        path: path.into(),
+                        path: prefix_path.into(),
                         is_call: source.is_call(),
                     });
                 }
@@ -3534,7 +3549,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     // Resolve in alternative namespaces if resolution in the primary namespace fails.
     fn resolve_qpath_anywhere(
         &mut self,
-        qself: Option<&QSelf>,
+        qself: &Option<P<QSelf>>,
         path: &[Segment],
         primary_ns: Namespace,
         span: Span,
@@ -3578,7 +3593,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     /// Handles paths that may refer to associated items.
     fn resolve_qpath(
         &mut self,
-        qself: Option<&QSelf>,
+        qself: &Option<P<QSelf>>,
         path: &[Segment],
         ns: Namespace,
         finalize: Finalize,
@@ -3608,7 +3623,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // but with `qself` set to `None`.
             let ns = if qself.position + 1 == path.len() { ns } else { TypeNS };
             let partial_res = self.smart_resolve_path_fragment(
-                None,
+                &None,
                 &path[..=qself.position],
                 PathSource::TraitItem(ns),
                 Finalize::with_root_span(finalize.node_id, finalize.path_span, qself.path_span),
@@ -3791,12 +3806,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // Next, resolve the node.
         match expr.kind {
             ExprKind::Path(ref qself, ref path) => {
-                self.smart_resolve_path(expr.id, qself.as_ref(), path, PathSource::Expr(parent));
+                self.smart_resolve_path(expr.id, qself, path, PathSource::Expr(parent));
                 visit::walk_expr(self, expr);
             }
 
             ExprKind::Struct(ref se) => {
-                self.smart_resolve_path(expr.id, se.qself.as_ref(), &se.path, PathSource::Struct);
+                self.smart_resolve_path(expr.id, &se.qself, &se.path, PathSource::Struct);
                 visit::walk_expr(self, expr);
             }
 
@@ -3839,7 +3854,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 }
             }
 
-            ExprKind::Loop(ref block, label) => self.resolve_labeled_block(label, expr.id, &block),
+            ExprKind::Loop(ref block, label, _) => {
+                self.resolve_labeled_block(label, expr.id, &block)
+            }
 
             ExprKind::While(ref cond, ref block, label) => {
                 self.with_resolved_label(label, expr.id, |this| {
@@ -3866,12 +3883,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ExprKind::Field(ref subexpression, _) => {
                 self.resolve_expr(subexpression, Some(expr));
             }
-            ExprKind::MethodCall(ref segment, ref receiver, ref arguments, _) => {
+            ExprKind::MethodCall(box MethodCall { ref seg, ref receiver, ref args, .. }) => {
                 self.resolve_expr(receiver, Some(expr));
-                for argument in arguments {
-                    self.resolve_expr(argument, None);
+                for arg in args {
+                    self.resolve_expr(arg, None);
                 }
-                self.visit_path_segment(segment);
+                self.visit_path_segment(seg);
             }
 
             ExprKind::Call(ref callee, ref arguments) => {
@@ -3910,10 +3927,15 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 visit::walk_expr(self, expr);
                 self.diagnostic_metadata.current_type_ascription.pop();
             }
-            // `async |x| ...` gets desugared to `|x| future_from_generator(|| ...)`, so we need to
+            // `async |x| ...` gets desugared to `|x| async {...}`, so we need to
             // resolve the arguments within the proper scopes so that usages of them inside the
             // closure are detected as upvars rather than normal closure arg usages.
-            ExprKind::Closure(_, _, Async::Yes { .. }, _, ref fn_decl, ref body, _span) => {
+            ExprKind::Closure(box ast::Closure {
+                asyncness: Async::Yes { .. },
+                ref fn_decl,
+                ref body,
+                ..
+            }) => {
                 self.with_rib(ValueNS, NormalRibKind, |this| {
                     this.with_label_rib(ClosureOrAsyncRibKind, |this| {
                         // Resolve arguments:
@@ -3933,7 +3955,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 });
             }
             // For closures, ClosureOrAsyncRibKind is added in visit_fn
-            ExprKind::Closure(ClosureBinder::For { ref generic_params, span }, ..) => {
+            ExprKind::Closure(box ast::Closure {
+                binder: ClosureBinder::For { ref generic_params, span },
+                ..
+            }) => {
                 self.with_generic_param_rib(
                     &generic_params,
                     NormalRibKind,
@@ -3990,9 +4015,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 let traits = self.traits_in_scope(ident, ValueNS);
                 self.r.trait_map.insert(expr.id, traits);
             }
-            ExprKind::MethodCall(ref segment, ..) => {
+            ExprKind::MethodCall(ref call) => {
                 debug!("(recording candidate traits for expr) recording traits for {}", expr.id);
-                let traits = self.traits_in_scope(segment.ident, ValueNS);
+                let traits = self.traits_in_scope(call.seg.ident, ValueNS);
                 self.r.trait_map.insert(expr.id, traits);
             }
             _ => {

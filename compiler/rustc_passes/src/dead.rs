@@ -124,7 +124,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     fn handle_field_access(&mut self, lhs: &hir::Expr<'_>, hir_id: hir::HirId) {
         match self.typeck_results().expr_ty_adjusted(lhs).kind() {
             ty::Adt(def, _) => {
-                let index = self.tcx.field_index(hir_id, self.typeck_results());
+                let index = self.typeck_results().field_index(hir_id);
                 self.insert_def_id(def.non_enum_variant().fields[index].did);
             }
             ty::Tuple(..) => {}
@@ -208,7 +208,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             if let PatKind::Wild = pat.pat.kind {
                 continue;
             }
-            let index = self.tcx.field_index(pat.hir_id, self.typeck_results());
+            let index = self.typeck_results().field_index(pat.hir_id);
             self.insert_def_id(variant.fields[index].did);
         }
     }
@@ -341,7 +341,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     fn mark_as_used_if_union(&mut self, adt: ty::AdtDef<'tcx>, fields: &[hir::ExprField<'_>]) {
         if adt.is_union() && adt.non_enum_variant().fields.len() > 1 && adt.did().is_local() {
             for field in fields {
-                let index = self.tcx.field_index(field.hir_id, self.typeck_results());
+                let index = self.typeck_results().field_index(field.hir_id);
                 self.insert_def_id(adt.non_enum_variant().fields[index].did);
             }
         }
@@ -362,7 +362,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         let has_repr_c = self.repr_has_repr_c;
         let has_repr_simd = self.repr_has_repr_simd;
         let live_fields = def.fields().iter().filter_map(|f| {
-            let def_id = tcx.hir().local_def_id(f.hir_id);
+            let def_id = f.def_id;
             if has_repr_c || (f.is_positional() && has_repr_simd) {
                 return Some(def_id);
             }
@@ -433,7 +433,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         self.in_pat = false;
     }
 
-    fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, _: hir::HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) {
         self.handle_res(path.res);
         intravisit::walk_path(self, path);
     }
@@ -522,17 +522,13 @@ fn check_item<'tcx>(
         DefKind::Enum => {
             let item = tcx.hir().item(id);
             if let hir::ItemKind::Enum(ref enum_def, _) = item.kind {
-                let hir = tcx.hir();
                 if allow_dead_code {
-                    worklist.extend(
-                        enum_def.variants.iter().map(|variant| hir.local_def_id(variant.id)),
-                    );
+                    worklist.extend(enum_def.variants.iter().map(|variant| variant.def_id));
                 }
 
                 for variant in enum_def.variants {
-                    if let Some(ctor_hir_id) = variant.data.ctor_hir_id() {
-                        struct_constructors
-                            .insert(hir.local_def_id(ctor_hir_id), hir.local_def_id(variant.id));
+                    if let Some(ctor_def_id) = variant.data.ctor_def_id() {
+                        struct_constructors.insert(ctor_def_id, variant.def_id);
                     }
                 }
             }
@@ -776,7 +772,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         self.tcx.emit_spanned_lint(
             lint,
             tcx.hir().local_def_id_to_hir_id(first_id),
-            MultiSpan::from_spans(spans.clone()),
+            MultiSpan::from_spans(spans),
             diag,
         );
     }

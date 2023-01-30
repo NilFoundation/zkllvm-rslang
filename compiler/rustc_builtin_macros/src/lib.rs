@@ -45,6 +45,7 @@ mod log_syntax;
 mod source_util;
 mod test;
 mod trace_macros;
+mod type_ascribe;
 mod util;
 
 pub mod asm;
@@ -92,6 +93,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         unreachable: edition_panic::expand_unreachable,
         stringify: source_util::expand_stringify,
         trace_macros: trace_macros::expand_trace_macros,
+        type_ascribe: type_ascribe::expand_type_ascribe,
     }
 
     register_attr! {
@@ -99,7 +101,8 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         bench: test::expand_bench,
         cfg_accessible: cfg_accessible::Expander,
         cfg_eval: cfg_eval::expand,
-        derive: derive::Expander,
+        derive: derive::Expander(false),
+        derive_const: derive::Expander(true),
         global_allocator: global_allocator::expand,
         test: test::expand_test,
         test_case: test::expand_test_case,

@@ -21,7 +21,7 @@ use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::Region;
 use rustc_middle::ty::TypeVisitor;
 use rustc_middle::ty::{self, RegionVid, Ty};
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
 
 use crate::borrowck_errors;
@@ -514,9 +514,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             span: *span,
             ty_err: match output_ty.kind() {
                 ty::Closure(_, _) => FnMutReturnTypeErr::ReturnClosure { span: *span },
-                ty::Adt(def, _)
-                    if self.infcx.tcx.is_diagnostic_item(sym::gen_future, def.did()) =>
-                {
+                ty::Generator(def, ..) if self.infcx.tcx.generator_is_async(*def) => {
                     FnMutReturnTypeErr::ReturnAsyncBlock { span: *span }
                 }
                 _ => FnMutReturnTypeErr::ReturnRef { span: *span },
@@ -923,14 +921,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
             hir::ExprKind::Block(blk, _) => {
-                if let Some(ref expr) = blk.expr {
+                if let Some(expr) = blk.expr {
                     // only when the block is a closure
                     if let hir::ExprKind::Closure(hir::Closure {
                         capture_clause: hir::CaptureBy::Ref,
+                        body,
                         ..
                     }) = expr.kind
                     {
-                        closure_span = Some(expr.span.shrink_to_lo());
+                        let body = map.body(*body);
+                        if !matches!(body.generator_kind, Some(hir::GeneratorKind::Async(..))) {
+                            closure_span = Some(expr.span.shrink_to_lo());
+                        }
                     }
                 }
             }

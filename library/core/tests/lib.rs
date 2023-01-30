@@ -4,6 +4,7 @@
 #![feature(array_windows)]
 #![feature(bigint_helper_methods)]
 #![feature(cell_update)]
+#![feature(const_align_offset)]
 #![feature(const_assume)]
 #![feature(const_align_of_val_raw)]
 #![feature(const_black_box)]
@@ -18,6 +19,7 @@
 #![feature(const_nonnull_new)]
 #![feature(const_num_from_num)]
 #![feature(const_pointer_byte_offsets)]
+#![feature(const_pointer_is_aligned)]
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
@@ -73,6 +75,7 @@
 #![feature(iter_is_partitioned)]
 #![feature(iter_next_chunk)]
 #![feature(iter_order_by)]
+#![feature(iter_repeat_n)]
 #![feature(iterator_try_collect)]
 #![feature(iterator_try_reduce)]
 #![feature(const_mut_refs)]
@@ -81,6 +84,7 @@
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
 #![feature(pointer_byte_offsets)]
+#![feature(pointer_is_aligned)]
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
 #![feature(once_cell)]
@@ -104,7 +108,9 @@
 #![feature(provide_any)]
 #![feature(utf8_chunks)]
 #![feature(is_ascii_octdigit)]
+#![feature(get_many_mut)]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(fuzzy_provenance_casts)]
 
 extern crate test;
 

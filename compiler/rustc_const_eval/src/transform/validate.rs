@@ -2,7 +2,7 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::BitSet;
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::Reveal;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::NonUseContext::VarDebugInfo;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
@@ -12,8 +12,7 @@ use rustc_middle::mir::{
     ProjectionElem, RuntimePhase, Rvalue, SourceScope, Statement, StatementKind, Terminator,
     TerminatorKind, UnOp, START_BLOCK,
 };
-use rustc_middle::ty::fold::BottomUpFolder;
-use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable, TypeVisitable};
+use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitable};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
@@ -46,8 +45,11 @@ impl<'tcx> MirPass<'tcx> for Validator {
             return;
         }
         let def_id = body.source.def_id();
-        let param_env = tcx.param_env(def_id);
         let mir_phase = self.mir_phase;
+        let param_env = match mir_phase.reveal() {
+            Reveal::UserFacing => tcx.param_env(def_id),
+            Reveal::All => tcx.param_env_reveal_all_normalized(def_id),
+        };
 
         let always_live_locals = always_storage_live_locals(body);
         let storage_liveness = MaybeStorageLive::new(always_live_locals)
@@ -70,44 +72,6 @@ impl<'tcx> MirPass<'tcx> for Validator {
     }
 }
 
-/// Returns whether the two types are equal up to lifetimes.
-/// All lifetimes, including higher-ranked ones, get ignored for this comparison.
-/// (This is unlike the `erasing_regions` methods, which keep higher-ranked lifetimes for soundness reasons.)
-///
-/// The point of this function is to approximate "equal up to subtyping".  However,
-/// the approximation is incorrect as variance is ignored.
-pub fn equal_up_to_regions<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
-    src: Ty<'tcx>,
-    dest: Ty<'tcx>,
-) -> bool {
-    // Fast path.
-    if src == dest {
-        return true;
-    }
-
-    // Normalize lifetimes away on both sides, then compare.
-    let normalize = |ty: Ty<'tcx>| {
-        tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty).fold_with(
-            &mut BottomUpFolder {
-                tcx,
-                // FIXME: We erase all late-bound lifetimes, but this is not fully correct.
-                // If you have a type like `<for<'a> fn(&'a u32) as SomeTrait>::Assoc`,
-                // this is not necessarily equivalent to `<fn(&'static u32) as SomeTrait>::Assoc`,
-                // since one may have an `impl SomeTrait for fn(&32)` and
-                // `impl SomeTrait for fn(&'static u32)` at the same time which
-                // specify distinct values for Assoc. (See also #56105)
-                lt_op: |_| tcx.lifetimes.re_erased,
-                // Leave consts and types unchanged.
-                ct_op: |ct| ct,
-                ty_op: |ty| ty,
-            },
-        )
-    };
-    tcx.infer_ctxt().build().can_eq(param_env, normalize(src), normalize(dest)).is_ok()
-}
-
 struct TypeChecker<'a, 'tcx> {
     when: &'a str,
     body: &'a Body<'tcx>,
@@ -121,6 +85,7 @@ struct TypeChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
+    #[track_caller]
     fn fail(&self, location: Location, msg: impl AsRef<str>) {
         let span = self.body.source_info(location).span;
         // We use `delay_span_bug` as we might see broken MIR when other errors have already
@@ -183,22 +148,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return true;
         }
 
-        // Normalize projections and things like that.
-        // Type-changing assignments can happen when subtyping is used. While
-        // all normal lifetimes are erased, higher-ranked types with their
-        // late-bound lifetimes are still around and can lead to type
-        // differences. So we compare ignoring lifetimes.
-
-        // First, try with reveal_all. This might not work in some cases, as the predicates
-        // can be cleared in reveal_all mode. We try the reveal first anyways as it is used
-        // by some other passes like inlining as well.
-        let param_env = self.param_env.with_reveal_all_normalized(self.tcx);
-        if equal_up_to_regions(self.tcx, param_env, src, dest) {
-            return true;
-        }
-
-        // If this fails, we can try it without the reveal.
-        equal_up_to_regions(self.tcx, self.param_env, src, dest)
+        crate::util::is_subtype(self.tcx, self.param_env, src, dest)
     }
 }
 
@@ -281,12 +231,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let check_equal = |this: &Self, location, f_ty| {
                     if !this.mir_assign_valid_types(ty, f_ty) {
                         this.fail(
-                        location,
-                        format!(
-                            "Field projection `{:?}.{:?}` specified type `{:?}`, but actual type is `{:?}`",
-                            parent, f, ty, f_ty
+                            location,
+                            format!(
+                                "Field projection `{:?}.{:?}` specified type `{:?}`, but actual type is `{:?}`",
+                                parent, f, ty, f_ty
+                            )
                         )
-                    )
                     }
                 };
 

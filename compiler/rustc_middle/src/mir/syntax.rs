@@ -6,6 +6,7 @@
 use super::{BasicBlock, Constant, Field, Local, SwitchTargets, UserTypeProjection};
 
 use crate::mir::coverage::{CodeRegion, CoverageKind};
+use crate::traits::Reveal;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, List, Ty};
@@ -85,8 +86,28 @@ pub enum MirPhase {
     ///
     /// Also note that the lint pass which reports eg `200_u8 + 200_u8` as an error is run as a part
     /// of analysis to runtime MIR lowering. To ensure lints are reported reliably, this means that
-    /// transformations which may supress such errors should not run on analysis MIR.
+    /// transformations which may suppress such errors should not run on analysis MIR.
     Runtime(RuntimePhase),
+}
+
+impl MirPhase {
+    pub fn name(&self) -> &'static str {
+        match *self {
+            MirPhase::Built => "built",
+            MirPhase::Analysis(AnalysisPhase::Initial) => "analysis",
+            MirPhase::Analysis(AnalysisPhase::PostCleanup) => "analysis-post-cleanup",
+            MirPhase::Runtime(RuntimePhase::Initial) => "runtime",
+            MirPhase::Runtime(RuntimePhase::PostCleanup) => "runtime-post-cleanup",
+            MirPhase::Runtime(RuntimePhase::Optimized) => "runtime-optimized",
+        }
+    }
+
+    pub fn reveal(&self) -> Reveal {
+        match *self {
+            MirPhase::Built | MirPhase::Analysis(_) => Reveal::UserFacing,
+            MirPhase::Runtime(_) => Reveal::All,
+        }
+    }
 }
 
 /// See [`MirPhase::Analysis`].
@@ -387,7 +408,7 @@ impl std::fmt::Display for NonDivergingIntrinsic<'_> {
 #[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub enum RetagKind {
-    /// The initial retag when entering a function.
+    /// The initial retag of arguments when entering a function.
     FnEntry,
     /// Retag preparing for a two-phase borrow.
     TwoPhase,
@@ -1185,7 +1206,8 @@ pub enum NullOp {
     AlignOf,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum UnOp {
     /// The `!` operator for logical inversion
     Not,
@@ -1193,7 +1215,8 @@ pub enum UnOp {
     Neg,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum BinOp {
     /// The `+` operator (addition)
     Add,

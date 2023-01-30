@@ -77,7 +77,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             if hir_id.owner != self.owner {
                 span_bug!(
                     span,
-                    "inconsistent DepNode at `{:?}` for `{:?}`: \
+                    "inconsistent HirId at `{:?}` for `{:?}`: \
                      current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?})",
                     self.source_map.span_to_diagnostic_string(span),
                     node,
@@ -145,7 +145,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     fn visit_item(&mut self, i: &'hir Item<'hir>) {
         debug_assert_eq!(i.owner_id, self.owner);
         self.with_parent(i.hir_id(), |this| {
-            if let ItemKind::Struct(ref struct_def, _) = i.kind {
+            if let ItemKind::Struct(struct_def, _) = &i.kind {
                 // If this is a tuple or unit-like struct, register the constructor.
                 if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {
                     this.insert(i.span, ctor_hir_id, Node::Ctor(struct_def));
@@ -303,12 +303,12 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_lifetime(&mut self, lifetime: &'hir Lifetime) {
-        self.insert(lifetime.span, lifetime.hir_id, Node::Lifetime(lifetime));
+        self.insert(lifetime.ident.span, lifetime.hir_id, Node::Lifetime(lifetime));
     }
 
     fn visit_variant(&mut self, v: &'hir Variant<'hir>) {
-        self.insert(v.span, v.id, Node::Variant(v));
-        self.with_parent(v.id, |this| {
+        self.insert(v.span, v.hir_id, Node::Variant(v));
+        self.with_parent(v.hir_id, |this| {
             // Register the constructor of this variant.
             if let Some(ctor_hir_id) = v.data.ctor_hir_id() {
                 this.insert(v.span, ctor_hir_id, Node::Ctor(&v.data));

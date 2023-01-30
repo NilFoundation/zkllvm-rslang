@@ -4,9 +4,8 @@ use rustc_index::vec::{Idx, IndexVec};
 
 use crate::middle::exported_symbols::ExportedSymbol;
 use crate::mir::Body;
-use crate::ty::abstract_const::Node;
 use crate::ty::{
-    self, Const, FnSig, GeneratorDiagnosticData, GenericPredicates, Predicate, TraitRef, Ty,
+    self, Clause, Const, FnSig, GeneratorDiagnosticData, GenericPredicates, Predicate, TraitRef, Ty,
 };
 
 pub trait ParameterizedOverTcx: 'static {
@@ -54,6 +53,7 @@ trivially_parameterized_over_tcx! {
     usize,
     (),
     u32,
+    bool,
     std::string::String,
     crate::metadata::ModChild,
     crate::middle::codegen_fn_attrs::CodegenFnAttrs,
@@ -70,7 +70,7 @@ trivially_parameterized_over_tcx! {
     ty::adjustment::CoerceUnsizedInfo,
     ty::fast_reject::SimplifiedTypeGen<DefId>,
     rustc_ast::Attribute,
-    rustc_ast::MacArgs,
+    rustc_ast::DelimArgs,
     rustc_attr::ConstStability,
     rustc_attr::DefaultBodyStability,
     rustc_attr::Deprecation,
@@ -122,8 +122,8 @@ parameterized_over_tcx! {
     TraitRef,
     Const,
     Predicate,
+    Clause,
     GeneratorDiagnosticData,
     Body,
-    Node,
     ExportedSymbol,
 }

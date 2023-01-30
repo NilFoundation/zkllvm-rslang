@@ -25,6 +25,7 @@ use crate::{
     types::{transparent_newtype_field, CItemKind},
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext,
 };
+use hir::IsAsync;
 use rustc_ast::attr;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
@@ -40,7 +41,10 @@ use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, Gate
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
-use rustc_hir::{ForeignItemKind, GenericParamKind, HirId, Node, PatKind, PredicateOrigin};
+use rustc_hir::intravisit::FnKind as HirFnKind;
+use rustc_hir::{
+    Body, FnDecl, ForeignItemKind, GenericParamKind, HirId, Node, PatKind, PredicateOrigin,
+};
 use rustc_index::vec::Idx;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
@@ -52,7 +56,7 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, Span};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{Abi, VariantIdx};
 use rustc_trait_selection::traits::{self, misc::can_type_implement_copy};
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
@@ -98,9 +102,10 @@ fn pierce_parens(mut expr: &ast::Expr) -> &ast::Expr {
 impl EarlyLintPass for WhileTrue {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         if let ast::ExprKind::While(cond, _, label) = &e.kind
-            && let ast::ExprKind::Lit(ref lit) = pierce_parens(cond).kind
-            && let ast::LitKind::Bool(true) = lit.kind
-            && !lit.span.from_expansion()
+            && let cond = pierce_parens(cond)
+            && let ast::ExprKind::Lit(token_lit) = cond.kind
+            && let token::Lit { kind: token::Bool, symbol: kw::True, .. } = token_lit
+            && !cond.span.from_expansion()
         {
             let condition_span = e.span.with_hi(cond.span.hi());
             cx.struct_span_lint(
@@ -185,9 +190,8 @@ impl<'tcx> LateLintPass<'tcx> for BoxPointers {
         // If it's a struct, we also have to check the fields' types
         match it.kind {
             hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
-                for struct_field in struct_def.fields() {
-                    let def_id = cx.tcx.hir().local_def_id(struct_field.hir_id);
-                    self.check_heap_type(cx, struct_field.span, cx.tcx.type_of(def_id));
+                for field in struct_def.fields() {
+                    self.check_heap_type(cx, field.span, cx.tcx.type_of(field.def_id));
                 }
             }
             _ => (),
@@ -259,7 +263,7 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
                 }
                 if let PatKind::Binding(binding_annot, _, ident, None) = fieldpat.pat.kind {
                     if cx.tcx.find_field_index(ident, &variant)
-                        == Some(cx.tcx.field_index(fieldpat.hir_id, cx.typeck_results()))
+                        == Some(cx.typeck_results().field_index(fieldpat.hir_id))
                     {
                         cx.struct_span_lint(
                             NON_SHORTHAND_FIELD_PATTERNS,
@@ -673,13 +677,12 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, sf: &hir::FieldDef<'_>) {
         if !sf.is_positional() {
-            let def_id = cx.tcx.hir().local_def_id(sf.hir_id);
-            self.check_missing_docs_attrs(cx, def_id, "a", "struct field")
+            self.check_missing_docs_attrs(cx, sf.def_id, "a", "struct field")
         }
     }
 
     fn check_variant(&mut self, cx: &LateContext<'_>, v: &hir::Variant<'_>) {
-        self.check_missing_docs_attrs(cx, cx.tcx.hir().local_def_id(v.id), "a", "variant");
+        self.check_missing_docs_attrs(cx, v.def_id, "a", "variant");
     }
 }
 
@@ -1269,10 +1272,10 @@ declare_lint_pass!(MutableTransmutes => [MUTABLE_TRANSMUTES]);
 
 impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
-        if let Some((&ty::Ref(_, _, from_mt), &ty::Ref(_, _, to_mt))) =
+        if let Some((&ty::Ref(_, _, from_mutbl), &ty::Ref(_, _, to_mutbl))) =
             get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (ty1.kind(), ty2.kind()))
         {
-            if to_mt == hir::Mutability::Mut && from_mt == hir::Mutability::Not {
+            if from_mutbl < to_mutbl {
                 cx.struct_span_lint(
                     MUTABLE_TRANSMUTES,
                     expr.span,
@@ -1335,6 +1338,72 @@ impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
                 }
             }
         }
+    }
+}
+
+declare_lint! {
+    /// The `ungated_async_fn_track_caller` lint warns when the
+    /// `#[track_caller]` attribute is used on an async function, method, or
+    /// closure, without enabling the corresponding unstable feature flag.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #[track_caller]
+    /// async fn foo() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The attribute must be used in conjunction with the
+    /// [`closure_track_caller` feature flag]. Otherwise, the `#[track_caller]`
+    /// annotation will function as as no-op.
+    ///
+    /// [`closure_track_caller` feature flag]: https://doc.rust-lang.org/beta/unstable-book/language-features/closure-track-caller.html
+    UNGATED_ASYNC_FN_TRACK_CALLER,
+    Warn,
+    "enabling track_caller on an async fn is a no-op unless the closure_track_caller feature is enabled"
+}
+
+declare_lint_pass!(
+    /// Explains corresponding feature flag must be enabled for the `#[track_caller] attribute to
+    /// do anything
+    UngatedAsyncFnTrackCaller => [UNGATED_ASYNC_FN_TRACK_CALLER]
+);
+
+impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'_>,
+        fn_kind: HirFnKind<'_>,
+        _: &'tcx FnDecl<'_>,
+        _: &'tcx Body<'_>,
+        span: Span,
+        hir_id: HirId,
+    ) {
+        if fn_kind.asyncness() == IsAsync::Async
+            && !cx.tcx.features().closure_track_caller
+            && let attrs = cx.tcx.hir().attrs(hir_id)
+            // Now, check if the function has the `#[track_caller]` attribute
+            && let Some(attr) = attrs.iter().find(|attr| attr.has_name(sym::track_caller))
+            {
+                cx.struct_span_lint(
+                    UNGATED_ASYNC_FN_TRACK_CALLER,
+                    attr.span,
+                    fluent::lint_ungated_async_fn_track_caller,
+                    |lint| {
+                        lint.span_label(span, fluent::label);
+                        rustc_session::parse::add_feature_diagnostics(
+                            lint,
+                            &cx.tcx.sess.parse_sess,
+                            sym::closure_track_caller,
+                        );
+                        lint
+                    },
+                );
+            }
     }
 }
 
@@ -1424,11 +1493,10 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
         let map = cx.tcx.hir();
-        let def_id = map.local_def_id(field.hir_id);
         if matches!(map.get(map.get_parent_node(field.hir_id)), Node::Variant(_)) {
             return;
         }
-        self.perform_lint(cx, "field", def_id, field.vis_span, false);
+        self.perform_lint(cx, "field", field.def_id, field.vis_span, false);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
@@ -1640,19 +1708,20 @@ declare_lint_pass!(
 impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         use rustc_middle::ty::visit::TypeVisitable;
+        use rustc_middle::ty::Clause;
         use rustc_middle::ty::PredicateKind::*;
 
         if cx.tcx.features().trivial_bounds {
             let predicates = cx.tcx.predicates_of(item.owner_id);
             for &(predicate, span) in predicates.predicates {
                 let predicate_kind_name = match predicate.kind().skip_binder() {
-                    Trait(..) => "trait",
-                    TypeOutlives(..) |
-                    RegionOutlives(..) => "lifetime",
+                    Clause(Clause::Trait(..)) => "trait",
+                    Clause(Clause::TypeOutlives(..)) |
+                    Clause(Clause::RegionOutlives(..)) => "lifetime",
 
                     // Ignore projections, as they can only be global
                     // if the trait bound is global
-                    Projection(..) |
+                    Clause(Clause::Projection(..)) |
                     // Ignore bounds that a user can't type
                     WellFormed(..) |
                     ObjectSafe(..) |
@@ -1661,6 +1730,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     Coerce(..) |
                     ConstEvaluatable(..) |
                     ConstEquate(..) |
+                    Ambiguous |
                     TypeWellFormedFromEnv(..) => continue,
                 };
                 if predicate.is_global() {
@@ -2032,10 +2102,10 @@ impl KeywordIdents {
 
 impl EarlyLintPass for KeywordIdents {
     fn check_mac_def(&mut self, cx: &EarlyContext<'_>, mac_def: &ast::MacroDef) {
-        self.check_tokens(cx, mac_def.body.inner_tokens());
+        self.check_tokens(cx, mac_def.body.tokens.clone());
     }
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
-        self.check_tokens(cx, mac.args.inner_tokens());
+        self.check_tokens(cx, mac.args.tokens.clone());
     }
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
         self.check_ident_token(cx, UnderMacro(false), ident);
@@ -2046,13 +2116,13 @@ declare_lint_pass!(ExplicitOutlivesRequirements => [EXPLICIT_OUTLIVES_REQUIREMEN
 
 impl ExplicitOutlivesRequirements {
     fn lifetimes_outliving_lifetime<'tcx>(
-        inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
+        inferred_outlives: &'tcx [(ty::Clause<'tcx>, Span)],
         def_id: DefId,
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(pred, _)| match pred.kind().skip_binder() {
-                ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match *a {
+            .filter_map(|(clause, _)| match *clause {
+                ty::Clause::RegionOutlives(ty::OutlivesPredicate(a, b)) => match *a {
                     ty::ReEarlyBound(ebr) if ebr.def_id == def_id => Some(b),
                     _ => None,
                 },
@@ -2062,13 +2132,13 @@ impl ExplicitOutlivesRequirements {
     }
 
     fn lifetimes_outliving_type<'tcx>(
-        inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
+        inferred_outlives: &'tcx [(ty::Clause<'tcx>, Span)],
         index: u32,
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(pred, _)| match pred.kind().skip_binder() {
-                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
+            .filter_map(|(clause, _)| match *clause {
+                ty::Clause::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
                     a.is_param(index).then_some(b)
                 }
                 _ => None,
@@ -2409,8 +2479,34 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
         }
 
         /// Information about why a type cannot be initialized this way.
-        /// Contains an error message and optionally a span to point at.
-        type InitError = (String, Option<Span>);
+        struct InitError {
+            message: String,
+            /// Spans from struct fields and similar that can be obtained from just the type.
+            span: Option<Span>,
+            /// Used to report a trace through adts.
+            nested: Option<Box<InitError>>,
+        }
+        impl InitError {
+            fn spanned(self, span: Span) -> InitError {
+                Self { span: Some(span), ..self }
+            }
+
+            fn nested(self, nested: impl Into<Option<InitError>>) -> InitError {
+                assert!(self.nested.is_none());
+                Self { nested: nested.into().map(Box::new), ..self }
+            }
+        }
+
+        impl<'a> From<&'a str> for InitError {
+            fn from(s: &'a str) -> Self {
+                s.to_owned().into()
+            }
+        }
+        impl From<String> for InitError {
+            fn from(message: String) -> Self {
+                Self { message, span: None, nested: None }
+            }
+        }
 
         /// Test if this constant is all-0.
         fn is_zero(expr: &hir::Expr<'_>) -> bool {
@@ -2466,25 +2562,54 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
 
         fn variant_find_init_error<'tcx>(
             cx: &LateContext<'tcx>,
+            ty: Ty<'tcx>,
             variant: &VariantDef,
             substs: ty::SubstsRef<'tcx>,
             descr: &str,
             init: InitKind,
         ) -> Option<InitError> {
-            variant.fields.iter().find_map(|field| {
-                ty_find_init_error(cx, field.ty(cx.tcx, substs), init).map(|(mut msg, span)| {
-                    if span.is_none() {
-                        // Point to this field, should be helpful for figuring
-                        // out where the source of the error is.
-                        let span = cx.tcx.def_span(field.did);
-                        write!(&mut msg, " (in this {descr})").unwrap();
-                        (msg, Some(span))
+            let mut field_err = variant.fields.iter().find_map(|field| {
+                ty_find_init_error(cx, field.ty(cx.tcx, substs), init).map(|mut err| {
+                    if !field.did.is_local() {
+                        err
+                    } else if err.span.is_none() {
+                        err.span = Some(cx.tcx.def_span(field.did));
+                        write!(&mut err.message, " (in this {descr})").unwrap();
+                        err
                     } else {
-                        // Just forward.
-                        (msg, span)
+                        InitError::from(format!("in this {descr}"))
+                            .spanned(cx.tcx.def_span(field.did))
+                            .nested(err)
                     }
                 })
-            })
+            });
+
+            // Check if this ADT has a constrained layout (like `NonNull` and friends).
+            if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty)) {
+                if let Abi::Scalar(scalar) | Abi::ScalarPair(scalar, _) = &layout.abi {
+                    let range = scalar.valid_range(cx);
+                    let msg = if !range.contains(0) {
+                        "must be non-null"
+                    } else if init == InitKind::Uninit && !scalar.is_always_valid(cx) {
+                        // Prefer reporting on the fields over the entire struct for uninit,
+                        // as the information bubbles out and it may be unclear why the type can't
+                        // be null from just its outside signature.
+
+                        "must be initialized inside its custom valid range"
+                    } else {
+                        return field_err;
+                    };
+                    if let Some(field_err) = &mut field_err {
+                        // Most of the time, if the field error is the same as the struct error,
+                        // the struct error only happens because of the field error.
+                        if field_err.message.contains(msg) {
+                            field_err.message = format!("because {}", field_err.message);
+                        }
+                    }
+                    return Some(InitError::from(format!("`{ty}` {msg}")).nested(field_err));
+                }
+            }
+            field_err
         }
 
         /// Return `Some` only if we are sure this type does *not*
@@ -2497,63 +2622,36 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             use rustc_type_ir::sty::TyKind::*;
             match ty.kind() {
                 // Primitive types that don't like 0 as a value.
-                Ref(..) => Some(("references must be non-null".to_string(), None)),
-                Adt(..) if ty.is_box() => Some(("`Box` must be non-null".to_string(), None)),
-                FnPtr(..) => Some(("function pointers must be non-null".to_string(), None)),
-                Never => Some(("the `!` type has no valid value".to_string(), None)),
+                Ref(..) => Some("references must be non-null".into()),
+                Adt(..) if ty.is_box() => Some("`Box` must be non-null".into()),
+                FnPtr(..) => Some("function pointers must be non-null".into()),
+                Never => Some("the `!` type has no valid value".into()),
                 RawPtr(tm) if matches!(tm.ty.kind(), Dynamic(..)) =>
                 // raw ptr to dyn Trait
                 {
-                    Some(("the vtable of a wide raw pointer must be non-null".to_string(), None))
+                    Some("the vtable of a wide raw pointer must be non-null".into())
                 }
                 // Primitive types with other constraints.
                 Bool if init == InitKind::Uninit => {
-                    Some(("booleans must be either `true` or `false`".to_string(), None))
+                    Some("booleans must be either `true` or `false`".into())
                 }
                 Char if init == InitKind::Uninit => {
-                    Some(("characters must be a valid Unicode codepoint".to_string(), None))
+                    Some("characters must be a valid Unicode codepoint".into())
                 }
                 Int(_) | Uint(_) if init == InitKind::Uninit => {
-                    Some(("integers must not be uninitialized".to_string(), None))
+                    Some("integers must be initialized".into())
                 }
-                Float(_) if init == InitKind::Uninit => {
-                    Some(("floats must not be uninitialized".to_string(), None))
-                }
+                Float(_) if init == InitKind::Uninit => Some("floats must be initialized".into()),
                 RawPtr(_) if init == InitKind::Uninit => {
-                    Some(("raw pointers must not be uninitialized".to_string(), None))
+                    Some("raw pointers must be initialized".into())
                 }
                 // Recurse and checks for some compound types. (but not unions)
                 Adt(adt_def, substs) if !adt_def.is_union() => {
-                    // First check if this ADT has a layout attribute (like `NonNull` and friends).
-                    use std::ops::Bound;
-                    match cx.tcx.layout_scalar_valid_range(adt_def.did()) {
-                        // We exploit here that `layout_scalar_valid_range` will never
-                        // return `Bound::Excluded`.  (And we have tests checking that we
-                        // handle the attribute correctly.)
-                        // We don't add a span since users cannot declare such types anyway.
-                        (Bound::Included(lo), Bound::Included(hi)) if 0 < lo && lo < hi => {
-                            return Some((format!("`{}` must be non-null", ty), None));
-                        }
-                        (Bound::Included(lo), Bound::Unbounded) if 0 < lo => {
-                            return Some((format!("`{}` must be non-null", ty), None));
-                        }
-                        (Bound::Included(_), _) | (_, Bound::Included(_))
-                            if init == InitKind::Uninit =>
-                        {
-                            return Some((
-                                format!(
-                                    "`{}` must be initialized inside its custom valid range",
-                                    ty,
-                                ),
-                                None,
-                            ));
-                        }
-                        _ => {}
-                    }
                     // Handle structs.
                     if adt_def.is_struct() {
                         return variant_find_init_error(
                             cx,
+                            ty,
                             adt_def.non_enum_variant(),
                             substs,
                             "struct field",
@@ -2577,13 +2675,14 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         Some((variant, definitely_inhabited))
                     });
                     let Some(first_variant) = potential_variants.next() else {
-                        return Some(("enums with no inhabited variants have no valid value".to_string(), Some(span)));
+                        return Some(InitError::from("enums with no inhabited variants have no valid value").spanned(span));
                     };
                     // So we have at least one potentially inhabited variant. Might we have two?
                     let Some(second_variant) = potential_variants.next() else {
                         // There is only one potentially inhabited variant. So we can recursively check that variant!
                         return variant_find_init_error(
                             cx,
+                            ty,
                             &first_variant.0,
                             substs,
                             "field of the only potentially inhabited enum variant",
@@ -2601,10 +2700,9 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                                 .filter(|(_variant, definitely_inhabited)| *definitely_inhabited)
                                 .count();
                         if definitely_inhabited > 1 {
-                            return Some((
-                                "enums with multiple inhabited variants have to be initialized to a variant".to_string(),
-                                Some(span),
-                            ));
+                            return Some(InitError::from(
+                                "enums with multiple inhabited variants have to be initialized to a variant",
+                            ).spanned(span));
                         }
                     }
                     // We couldn't find anything wrong here.
@@ -2633,8 +2731,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             // using zeroed or uninitialized memory.
             // We are extremely conservative with what we warn about.
             let conjured_ty = cx.typeck_results().expr_ty(expr);
-            if let Some((msg, span)) =
-                with_no_trimmed_paths!(ty_find_init_error(cx, conjured_ty, init))
+            if let Some(mut err) = with_no_trimmed_paths!(ty_find_init_error(cx, conjured_ty, init))
             {
                 // FIXME(davidtwco): make translatable
                 cx.struct_span_lint(
@@ -2660,10 +2757,17 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                             "help: use `MaybeUninit<T>` instead, \
                             and only call `assume_init` after initialization is done",
                         );
-                        if let Some(span) = span {
-                            lint.span_note(span, &msg);
-                        } else {
-                            lint.note(&msg);
+                        loop {
+                            if let Some(span) = err.span {
+                                lint.span_note(span, &err.message);
+                            } else {
+                                lint.note(&err.message);
+                            }
+                            if let Some(e) = err.nested {
+                                err = *e;
+                            } else {
+                                break;
+                            }
                         }
                         lint
                     },

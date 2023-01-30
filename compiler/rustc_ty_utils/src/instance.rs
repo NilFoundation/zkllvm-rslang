@@ -202,8 +202,14 @@ fn resolve_associated_item<'tcx>(
             )),
             substs: generator_data.substs,
         }),
+        traits::ImplSource::Future(future_data) => Some(Instance {
+            def: ty::InstanceDef::Item(ty::WithOptConstParam::unknown(
+                future_data.generator_def_id,
+            )),
+            substs: future_data.substs,
+        }),
         traits::ImplSource::Closure(closure_data) => {
-            let trait_closure_kind = tcx.fn_trait_kind_from_lang_item(trait_id).unwrap();
+            let trait_closure_kind = tcx.fn_trait_kind_from_def_id(trait_id).unwrap();
             Instance::resolve_closure(
                 tcx,
                 closure_data.closure_def_id,
@@ -264,8 +270,6 @@ fn resolve_associated_item<'tcx>(
         traits::ImplSource::AutoImpl(..)
         | traits::ImplSource::Param(..)
         | traits::ImplSource::TraitAlias(..)
-        | traits::ImplSource::DiscriminantKind(..)
-        | traits::ImplSource::Pointee(..)
         | traits::ImplSource::TraitUpcasting(_)
         | traits::ImplSource::ConstDestruct(_) => None,
     })

@@ -69,6 +69,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR")
         .reqopt("", "src-base", "directory to scan for test files", "PATH")
         .reqopt("", "build-base", "directory to deposit test outputs", "PATH")
+        .reqopt("", "sysroot-base", "directory containing the compiler sysroot", "PATH")
         .reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET")
         .reqopt(
             "",
@@ -234,6 +235,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(PathBuf::from),
         src_base,
         build_base: opt_path(matches, "build-base"),
+        sysroot_base: opt_path(matches, "sysroot-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),
         mode,
         suite: matches.opt_str("suite").unwrap(),
@@ -512,6 +514,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         options: test::Options::new(),
         time_options: None,
         force_run_in_process: false,
+        fail_fast: std::env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
     }
 }
 

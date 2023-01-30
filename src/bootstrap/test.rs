@@ -91,6 +91,42 @@ fn try_run_quiet(builder: &Builder<'_>, cmd: &mut Command) -> bool {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct CrateJsonDocLint {
+    host: TargetSelection,
+}
+
+impl Step for CrateJsonDocLint {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/jsondoclint")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(CrateJsonDocLint { host: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let bootstrap_host = builder.config.build;
+        let compiler = builder.compiler(0, bootstrap_host);
+
+        let cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolBootstrap,
+            bootstrap_host,
+            "test",
+            "src/tools/jsondoclint",
+            SourceType::InTree,
+            &[],
+        );
+        try_run(builder, &mut cargo.into());
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Linkcheck {
     host: TargetSelection,
 }
@@ -473,7 +509,7 @@ impl Miri {
         miri: &Path,
         target: TargetSelection,
     ) -> String {
-        let miri_sysroot = builder.out.join(compiler.host.triple).join("miri-sysrot");
+        let miri_sysroot = builder.out.join(compiler.host.triple).join("miri-sysroot");
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -508,7 +544,7 @@ impl Miri {
         cargo.arg("--print-sysroot");
 
         // FIXME: Is there a way in which we can re-use the usual `run` helpers?
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             String::new()
         } else {
             builder.verbose(&format!("running: {:?}", cargo));
@@ -1011,6 +1047,8 @@ impl Step for RustdocGUI {
                 //        instead of hard-coding this test
                 if entry.file_name() == "link_to_definition" {
                     cargo.env("RUSTDOCFLAGS", "-Zunstable-options --generate-link-to-definition");
+                } else if entry.file_name() == "scrape_examples" {
+                    cargo.arg("-Zrustdoc-scrape-examples=examples");
                 }
                 builder.run(&mut cargo);
             }
@@ -1401,6 +1439,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         cmd.arg("--src-base").arg(builder.src.join("src/test").join(suite));
         cmd.arg("--build-base").arg(testdir(builder, compiler.host).join(suite));
+        cmd.arg("--sysroot-base").arg(builder.sysroot(compiler));
         cmd.arg("--stage-id").arg(format!("stage{}-{}", compiler.stage, target));
         cmd.arg("--suite").arg(suite);
         cmd.arg("--mode").arg(mode);
@@ -1537,7 +1576,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         let mut copts_passed = false;
         if builder.config.llvm_enabled() {
             let llvm_config = builder.ensure(native::Llvm { target: builder.config.build });
-            if !builder.config.dry_run {
+            if !builder.config.dry_run() {
                 let llvm_version = output(Command::new(&llvm_config).arg("--version"));
                 let llvm_components = output(Command::new(&llvm_config).arg("--components"));
                 // Remove trailing newline from llvm-config output.
@@ -1555,14 +1594,14 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             // requirement, but the `-L` library path is not propagated across
             // separate compilations. We can add LLVM's library path to the
             // platform-specific environment variable as a workaround.
-            if !builder.config.dry_run && suite.ends_with("fulldeps") {
+            if !builder.config.dry_run() && suite.ends_with("fulldeps") {
                 let llvm_libdir = output(Command::new(&llvm_config).arg("--libdir"));
                 add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cmd);
             }
 
             // Only pass correct values for these flags for the `run-make` suite as it
             // requires that a C++ compiler was configured which isn't always the case.
-            if !builder.config.dry_run && matches!(suite, "run-make" | "run-make-fulldeps") {
+            if !builder.config.dry_run() && matches!(suite, "run-make" | "run-make-fulldeps") {
                 // The llvm/bin directory contains many useful cross-platform
                 // tools. Pass the path to run-make tests so they can use them.
                 let llvm_bin_path = llvm_config
@@ -1590,7 +1629,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         // Only pass correct values for these flags for the `run-make` suite as it
         // requires that a C++ compiler was configured which isn't always the case.
-        if !builder.config.dry_run && matches!(suite, "run-make" | "run-make-fulldeps") {
+        if !builder.config.dry_run() && matches!(suite, "run-make" | "run-make-fulldeps") {
             cmd.arg("--cc")
                 .arg(builder.cc(target))
                 .arg("--cxx")
@@ -1669,6 +1708,10 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         cmd.env("BOOTSTRAP_CARGO", &builder.initial_cargo);
 
         cmd.arg("--channel").arg(&builder.config.channel);
+
+        if let Some(commit) = builder.config.download_rustc_commit() {
+            cmd.env("FAKE_DOWNLOAD_RUSTC_PREFIX", format!("/rustc/{commit}"));
+        }
 
         builder.ci_env.force_coloring_in_ci(&mut cmd);
 

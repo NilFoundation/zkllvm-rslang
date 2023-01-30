@@ -19,9 +19,11 @@ use std::mem::discriminant;
 
 pub mod codec;
 pub mod sty;
+pub mod ty_info;
 
 pub use codec::*;
 pub use sty::*;
+pub use ty_info::*;
 
 /// Needed so we can use #[derive(HashStable_Generic)]
 pub trait HashStableContext {}
@@ -60,10 +62,10 @@ pub trait InternAs<T: ?Sized, R> {
     type Output;
     fn intern_with<F>(self, f: F) -> Self::Output
     where
-        F: FnOnce(&T) -> R;
+        F: FnOnce(&[T]) -> R;
 }
 
-impl<I, T, R, E> InternAs<[T], R> for I
+impl<I, T, R, E> InternAs<T, R> for I
 where
     E: InternIteratorElement<T, R>,
     I: Iterator<Item = E>,
