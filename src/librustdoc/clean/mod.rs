@@ -2033,6 +2033,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Int(int_ty) => Primitive(int_ty.into()),
         ty::Uint(uint_ty) => Primitive(uint_ty.into()),
         ty::Float(float_ty) => Primitive(float_ty.into()),
+        ty::Field(field_ty) => Primitive(field_ty.into()),
         ty::Str => Primitive(PrimitiveType::Str),
         ty::Slice(ty) => Slice(Box::new(clean_middle_ty(bound_ty.rebind(ty), cx, None, None))),
         ty::Array(ty, mut n) => {

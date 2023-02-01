@@ -1715,6 +1715,12 @@ pub(crate) enum PrimitiveType {
     U128,
     F32,
     F64,
+    Bls12381Base,
+    Bls12381Scalar,
+    Curve25519Base,
+    Curve25519Scalar,
+    PallasBase,
+    PallasScalar,
     Char,
     Bool,
     Str,
@@ -1731,7 +1737,7 @@ pub(crate) enum PrimitiveType {
 type SimplifiedTypes = FxHashMap<PrimitiveType, ArrayVec<SimplifiedType, 3>>;
 impl PrimitiveType {
     pub(crate) fn from_hir(prim: hir::PrimTy) -> PrimitiveType {
-        use ast::{FloatTy, IntTy, UintTy};
+        use ast::{FloatTy, IntTy, UintTy, FieldTy};
         match prim {
             hir::PrimTy::Int(IntTy::Isize) => PrimitiveType::Isize,
             hir::PrimTy::Int(IntTy::I8) => PrimitiveType::I8,
@@ -1745,6 +1751,12 @@ impl PrimitiveType {
             hir::PrimTy::Uint(UintTy::U32) => PrimitiveType::U32,
             hir::PrimTy::Uint(UintTy::U64) => PrimitiveType::U64,
             hir::PrimTy::Uint(UintTy::U128) => PrimitiveType::U128,
+            hir::PrimTy::Field(FieldTy::Bls12381Base) => PrimitiveType::Bls12381Base,
+            hir::PrimTy::Field(FieldTy::Bls12381Scalar) => PrimitiveType::Bls12381Scalar,
+            hir::PrimTy::Field(FieldTy::Curve25519Base) => PrimitiveType::Curve25519Base,
+            hir::PrimTy::Field(FieldTy::Curve25519Scalar) => PrimitiveType::Curve25519Scalar,
+            hir::PrimTy::Field(FieldTy::PallasBase) => PrimitiveType::PallasBase,
+            hir::PrimTy::Field(FieldTy::PallasScalar) => PrimitiveType::PallasScalar,
             hir::PrimTy::Float(FloatTy::F32) => PrimitiveType::F32,
             hir::PrimTy::Float(FloatTy::F64) => PrimitiveType::F64,
             hir::PrimTy::Str => PrimitiveType::Str,
@@ -1755,6 +1767,12 @@ impl PrimitiveType {
 
     pub(crate) fn from_symbol(s: Symbol) -> Option<PrimitiveType> {
         match s {
+            sym::__zkllvm_field_bls12381_base => Some(PrimitiveType::Bls12381Base),
+            sym::__zkllvm_field_bls12381_scalar => Some(PrimitiveType::Bls12381Scalar),
+            sym::__zkllvm_field_curve25519_base => Some(PrimitiveType::Curve25519Base),
+            sym::__zkllvm_field_curve25519_scalar => Some(PrimitiveType::Curve25519Scalar),
+            sym::__zkllvm_field_pallas_base => Some(PrimitiveType::PallasBase),
+            sym::__zkllvm_field_pallas_scalar => Some(PrimitiveType::PallasScalar),
             sym::isize => Some(PrimitiveType::Isize),
             sym::i8 => Some(PrimitiveType::I8),
             sym::i16 => Some(PrimitiveType::I16),
@@ -1873,6 +1891,12 @@ impl PrimitiveType {
             Reference => sym::reference,
             Fn => kw::Fn,
             Never => sym::never,
+            Bls12381Base => sym::__zkllvm_field_bls12381_base,
+            Bls12381Scalar => sym::__zkllvm_field_bls12381_scalar,
+            Curve25519Base => sym::__zkllvm_field_curve25519_base,
+            Curve25519Scalar => sym::__zkllvm_field_curve25519_scalar,
+            PallasBase => sym::__zkllvm_field_pallas_base,
+            PallasScalar => sym::__zkllvm_field_pallas_scalar,
         }
     }
 
@@ -1949,6 +1973,19 @@ impl From<ast::FloatTy> for PrimitiveType {
     }
 }
 
+impl From<ast::FieldTy> for PrimitiveType {
+    fn from(field_ty: ast::FieldTy) -> PrimitiveType {
+        match field_ty {
+            ast::FieldTy::Bls12381Base => PrimitiveType::Bls12381Base,
+            ast::FieldTy::Bls12381Scalar => PrimitiveType::Bls12381Scalar,
+            ast::FieldTy::Curve25519Base => PrimitiveType::Curve25519Base,
+            ast::FieldTy::Curve25519Scalar => PrimitiveType::Curve25519Scalar,
+            ast::FieldTy::PallasBase => PrimitiveType::PallasBase,
+            ast::FieldTy::PallasScalar => PrimitiveType::PallasScalar,
+        }
+    }
+}
+
 impl From<ty::IntTy> for PrimitiveType {
     fn from(int_ty: ty::IntTy) -> PrimitiveType {
         match int_ty {
@@ -1984,12 +2021,26 @@ impl From<ty::FloatTy> for PrimitiveType {
     }
 }
 
+impl From<ty::FieldTy> for PrimitiveType {
+    fn from(field_ty: ty::FieldTy) -> PrimitiveType {
+        match field_ty {
+            ty::FieldTy::Bls12381Base => PrimitiveType::Bls12381Base,
+            ty::FieldTy::Bls12381Scalar => PrimitiveType::Bls12381Scalar,
+            ty::FieldTy::Curve25519Base => PrimitiveType::Curve25519Base,
+            ty::FieldTy::Curve25519Scalar => PrimitiveType::Curve25519Scalar,
+            ty::FieldTy::PallasBase => PrimitiveType::PallasBase,
+            ty::FieldTy::PallasScalar => PrimitiveType::PallasScalar,
+        }
+    }
+}
+
 impl From<hir::PrimTy> for PrimitiveType {
     fn from(prim_ty: hir::PrimTy) -> PrimitiveType {
         match prim_ty {
             hir::PrimTy::Int(int_ty) => int_ty.into(),
             hir::PrimTy::Uint(uint_ty) => uint_ty.into(),
             hir::PrimTy::Float(float_ty) => float_ty.into(),
+            hir::PrimTy::Field(field_ty) => field_ty.into(),
             hir::PrimTy::Str => PrimitiveType::Str,
             hir::PrimTy::Bool => PrimitiveType::Bool,
             hir::PrimTy::Char => PrimitiveType::Char,
