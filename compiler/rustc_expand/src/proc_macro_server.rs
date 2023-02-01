@@ -57,6 +57,7 @@ impl FromInternal<token::LitKind> for LitKind {
             token::Char => LitKind::Char,
             token::Integer => LitKind::Integer,
             token::Float => LitKind::Float,
+            token::Field => todo!("field constants in macros"),
             token::Str => LitKind::Str,
             token::StrRaw(n) => LitKind::StrRaw(n),
             token::ByteStr => LitKind::ByteStr,
@@ -444,6 +445,7 @@ impl server::FreeFunctions for Rustc<'_, '_> {
                 | token::LitKind::CStrRaw(_)
                 | token::LitKind::Err => return Err(()),
                 token::LitKind::Integer | token::LitKind::Float => {}
+                token::LitKind::Field => todo!("field constants in macros"),
             }
 
             // Synthesize a new symbol that includes the minus sign.
