@@ -211,7 +211,7 @@ pub fn literal_to_string(lit: token::Lit) -> String {
         token::ByteStrRaw(n) => {
             format!("br{delim}\"{string}\"{delim}", delim = "#".repeat(n as usize), string = symbol)
         }
-        token::Integer | token::Float | token::Bool | token::Err => symbol.to_string(),
+        token::Integer | token::Float | token::Field | token::Bool | token::Err => symbol.to_string(),
     };
 
     if let Some(suffix) = suffix {
