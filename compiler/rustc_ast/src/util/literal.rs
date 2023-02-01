@@ -45,6 +45,7 @@ impl LitKind {
             // so all the handling is done internally.
             token::Integer => return integer_lit(symbol, suffix),
             token::Float => return float_lit(symbol, suffix),
+            token::Field => return field_lit(symbol),
 
             token::Str => {
                 // If there are no characters requiring special treatment we can
@@ -181,6 +182,9 @@ impl LitKind {
                     ast::LitFloatType::Unsuffixed => None,
                 };
                 (token::Float, symbol, suffix)
+            }
+            LitKind::Field(symbol) => {
+                (token::Field, symbol, None)
             }
             LitKind::Bool(value) => {
                 let symbol = if value { kw::True } else { kw::False };
@@ -322,4 +326,14 @@ fn integer_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitErr
             base < 10 && s.chars().any(|c| c.to_digit(10).map_or(false, |d| d >= base));
         if from_lexer { LitError::LexerError } else { LitError::IntTooLarge }
     })
+}
+
+fn field_lit(symbol: Symbol) -> Result<LitKind, LitError> {
+    debug!("field_lit: {:?}", symbol);
+
+    let symbol = strip_underscores(symbol);
+
+    // TODO: (aleasims) Check literal size and return LitError::*TooLarge.
+
+    Ok(LitKind::Field(symbol))
 }
