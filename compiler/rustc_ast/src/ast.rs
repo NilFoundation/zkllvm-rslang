@@ -1814,6 +1814,9 @@ pub enum LitKind {
     /// stored as a symbol rather than `f64` so that `LitKind` can impl `Eq`
     /// and `Hash`.
     Float(Symbol, LitFloatType),
+    /// A field literal (`1F`). Stored as a symbol because its value is too large
+    /// to be stored in a single integer.
+    Field(Symbol),
     /// A boolean literal (`true`, `false`).
     Bool(bool),
     /// Placeholder for a literal that wasn't well-formed in some way.
@@ -1833,7 +1836,7 @@ impl LitKind {
 
     /// Returns `true` if this is a numeric literal.
     pub fn is_numeric(&self) -> bool {
-        matches!(self, LitKind::Int(..) | LitKind::Float(..))
+        matches!(self, LitKind::Int(..) | LitKind::Float(..) | LitKind::Field(..))
     }
 
     /// Returns `true` if this literal has no suffix.
@@ -1846,7 +1849,7 @@ impl LitKind {
     pub fn is_suffixed(&self) -> bool {
         match *self {
             // suffixed variants
-            LitKind::Int(_, LitIntType::Signed(..) | LitIntType::Unsigned(..))
+            LitKind::Int(_, LitIntType::Signed(..) | LitIntType::Unsigned(..)) | LitKind::Field(..)
             | LitKind::Float(_, LitFloatType::Suffixed(..)) => true,
             // unsuffixed variants
             LitKind::Str(..)

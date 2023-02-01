@@ -69,6 +69,7 @@ pub enum LitKind {
     Byte,
     Char,
     Integer, // e.g. `1`, `1u8`, `1f32`
+    Field,
     Float,   // e.g. `1.`, `1.0`, `1e3f32`
     Str,
     StrRaw(u8), // raw string delimited by `n` hash symbols
@@ -141,7 +142,11 @@ impl fmt::Display for Lit {
                 delim = "#".repeat(n as usize),
                 string = symbol
             )?,
+<<<<<<< HEAD
             Integer | Float | Bool | Err => write!(f, "{symbol}")?,
+=======
+            Integer | Field | Float | Bool | Err => write!(f, "{}", symbol)?,
+>>>>>>> d4a3bb72ec6 (rustc_ast: add field literals and tokens (build fails))
         }
 
         if let Some(suffix) = suffix {
@@ -167,6 +172,7 @@ impl LitKind {
             Byte => "byte",
             Char => "char",
             Integer => "integer",
+            Field => "field",
             Float => "float",
             Str | StrRaw(..) => "string",
             ByteStr | ByteStrRaw(..) => "byte string",
