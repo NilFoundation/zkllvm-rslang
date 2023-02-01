@@ -188,6 +188,7 @@ symbols! {
         Equal,
         Err,
         Error,
+        F,
         File,
         FileType,
         Fn,
