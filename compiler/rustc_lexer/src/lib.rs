@@ -176,6 +176,8 @@ pub enum LiteralKind {
     Int { base: Base, empty_int: bool },
     /// "12.34f32", "1e3", but not "1f32`.
     Float { base: Base, empty_exponent: bool },
+    /// "12F"
+    Field { base: Base, empty_field: bool },
     /// "'a'", "'\\'", "'''", "';"
     Char { terminated: bool },
     /// "b'a'", "b'\\'", "b'''", "b';"
@@ -397,6 +399,11 @@ impl Cursor<'_> {
             c @ '0'..='9' => {
                 let literal_kind = self.number(c);
                 let suffix_start = self.pos_within_token();
+                // if let Int { base, empty_int } = literal_kind {
+                //     if self.first() == 'F' {
+                //         literal_kind = Field { base, empty_field: empty_int }
+                //     }
+                // }
                 self.eat_literal_suffix();
                 TokenKind::Literal { kind: literal_kind, suffix_start }
             }
@@ -573,7 +580,7 @@ impl Cursor<'_> {
                     self.eat_hexadecimal_digits()
                 }
                 // Not a base prefix.
-                '0'..='9' | '_' | '.' | 'e' | 'E' => {
+                '0'..='9' | '_' | '.' | 'e' | 'E' | 'F' => {
                     self.eat_decimal_digits();
                     true
                 }
@@ -583,6 +590,9 @@ impl Cursor<'_> {
             // Base prefix was provided, but there were no digits
             // after it, e.g. "0x".
             if !has_digits {
+                if self.first() == 'F' {
+                    return Field { base, empty_field: true };
+                }
                 return Int { base, empty_int: true };
             }
         } else {
@@ -616,6 +626,7 @@ impl Cursor<'_> {
                 let empty_exponent = !self.eat_float_exponent();
                 Float { base, empty_exponent }
             }
+            'F' => Field { base, empty_field: false },
             _ => Int { base, empty_int: false },
         }
     }
