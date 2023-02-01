@@ -158,9 +158,6 @@ fn lit_to_mir_constant<'tcx>(
         (ast::LitKind::Int(n, _), ty::Uint(_)) | (ast::LitKind::Int(n, _), ty::Int(_)) => {
             trunc(if neg { (*n as i128).overflowing_neg().0 as u128 } else { *n })?
         }
-        (ast::LitKind::Int(_n, _), ty::Field(_)) => {
-            todo!()
-        }
         (ast::LitKind::Float(n, _), ty::Float(fty)) => parse_float_into_constval(*n, *fty, neg)
             .ok_or_else(|| {
                 LitToConstError::Reported(tcx.sess.delay_span_bug(

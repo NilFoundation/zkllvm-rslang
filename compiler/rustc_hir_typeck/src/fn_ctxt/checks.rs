@@ -1312,7 +1312,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => Ty::new_uint(tcx, ty::uint_ty(t)),
             ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
-                    ty::Int(_) | ty::Uint(_) | ty::Field(_) => Some(ty),
+                    ty::Int(_) | ty::Uint(_) => Some(ty),
                     ty::Char => Some(tcx.types.u8),
                     ty::RawPtr(..) => Some(tcx.types.usize),
                     ty::FnDef(..) | ty::FnPtr(_) => Some(tcx.types.usize),
@@ -1330,6 +1330,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 });
                 opt_ty.unwrap_or_else(|| self.next_float_var())
             }
+            ast::LitKind::Field(_) => todo!(),
             ast::LitKind::Bool(_) => tcx.types.bool,
             ast::LitKind::CStr(_, _) => Ty::new_imm_ref(
                 tcx,
