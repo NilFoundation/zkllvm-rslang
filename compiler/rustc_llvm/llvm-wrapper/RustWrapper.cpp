@@ -1349,6 +1349,10 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
     return LLVMFloatTypeKind;
   case Type::DoubleTyID:
     return LLVMDoubleTypeKind;
+  case Type::EllipticCurveTyID:
+    return LLVMEllipticCurveTypeKind;
+  case Type::GaloisFieldTyID:
+    return LLVMGaloisFieldTypeKind;
   case Type::X86_FP80TyID:
     return LLVMX86_FP80TypeKind;
   case Type::FP128TyID:
