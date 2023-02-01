@@ -179,6 +179,8 @@ pub enum LiteralKind {
     Int { base: Base, empty_int: bool },
     /// "12.34f32", "1e3", but not "1f32".
     Float { base: Base, empty_exponent: bool },
+    /// "12F"
+    Field { base: Base, empty_field: bool },
     /// "'a'", "'\\'", "'''", "';"
     Char { terminated: bool },
     /// "b'a'", "b'\\'", "b'''", "b';"
@@ -383,6 +385,11 @@ impl Cursor<'_> {
             c @ '0'..='9' => {
                 let literal_kind = self.number(c);
                 let suffix_start = self.pos_within_token();
+                // if let Int { base, empty_int } = literal_kind {
+                //     if self.first() == 'F' {
+                //         literal_kind = Field { base, empty_field: empty_int }
+                //     }
+                // }
                 self.eat_literal_suffix();
                 TokenKind::Literal { kind: literal_kind, suffix_start }
             }
@@ -584,6 +591,9 @@ impl Cursor<'_> {
                     base = Base::Binary;
                     self.bump();
                     if !self.eat_decimal_digits() {
+                        if self.first() == 'F' {
+                            return Field { base, empty_field: true };
+                        }
                         return Int { base, empty_int: true };
                     }
                 }
@@ -591,6 +601,9 @@ impl Cursor<'_> {
                     base = Base::Octal;
                     self.bump();
                     if !self.eat_decimal_digits() {
+                        if self.first() == 'F' {
+                            return Field { base, empty_field: true };
+                        }
                         return Int { base, empty_int: true };
                     }
                 }
@@ -598,6 +611,9 @@ impl Cursor<'_> {
                     base = Base::Hexadecimal;
                     self.bump();
                     if !self.eat_hexadecimal_digits() {
+                        if self.first() == 'F' {
+                            return Field { base, empty_field: true };
+                        }
                         return Int { base, empty_int: true };
                     }
                 }
@@ -607,7 +623,7 @@ impl Cursor<'_> {
                 }
 
                 // Also not a base prefix; nothing more to do here.
-                '.' | 'e' | 'E' => {}
+                '.' | 'e' | 'E' | 'F' => {}
 
                 // Just a 0.
                 _ => return Int { base, empty_int: false },
@@ -643,6 +659,7 @@ impl Cursor<'_> {
                 let empty_exponent = !self.eat_float_exponent();
                 Float { base, empty_exponent }
             }
+            'F' => Field { base, empty_field: false },
             _ => Int { base, empty_int: false },
         }
     }

@@ -70,7 +70,10 @@ impl LitKind {
             // so all the handling is done internally.
             token::Integer => return integer_lit(symbol, suffix),
             token::Float => return float_lit(symbol, suffix),
-            token::Field => return field_lit(symbol),
+            token::Field => {
+                assert!(suffix.is_some());
+                return field_lit(symbol, suffix.unwrap())
+            },
 
             token::Str => {
                 // If there are no characters requiring special treatment we can
@@ -401,10 +404,17 @@ fn integer_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitErr
     })
 }
 
-fn field_lit(symbol: Symbol) -> Result<LitKind, LitError> {
-    debug!("field_lit: {:?}", symbol);
+fn field_lit(symbol: Symbol, suffix: Symbol) -> Result<LitKind, LitError> {
+    debug!("field_lit: {:?}, {:?}", symbol, suffix);
 
     let symbol = strip_underscores(symbol);
+
+    match suffix {
+        sym::F => {}
+        _ => {
+            return Err(LitError::InvalidSuffix);
+        }
+    }
 
     // TODO: (aleasims) Check literal size and return LitError::*TooLarge.
 
