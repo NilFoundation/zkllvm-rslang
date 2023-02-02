@@ -159,6 +159,9 @@ pub(crate) fn lit_to_mir_constant<'tcx>(
                     format!("couldn't parse float literal: {:?}", lit_input.lit),
                 ))
             })?,
+        (ast::LitKind::Field(_n), ty::Field(_ty)) => {
+            todo!("parse field into constval")
+        }
         (ast::LitKind::Bool(b), ty::Bool) => ConstValue::Scalar(Scalar::from_bool(*b)),
         (ast::LitKind::Char(c), ty::Char) => ConstValue::Scalar(Scalar::from_char(*c)),
         (ast::LitKind::Err, _) => {
