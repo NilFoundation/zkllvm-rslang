@@ -2717,11 +2717,11 @@ impl<'tcx> Ty<'tcx> {
             | ty::Never
             | ty::Tuple(_)
             | ty::Error(_)
-            | ty::Infer(IntVar(_) | FloatVar(_)) => tcx.types.u8,
+            | ty::Infer(IntVar(_) | FloatVar(_) | FieldVar(_)) => tcx.types.u8,
 
             ty::Bound(..)
             | ty::Placeholder(_)
-            | ty::Infer(FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            | ty::Infer(FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) | ty::FreshFieldTy(_)) => {
                 bug!("`discriminant_ty` applied to unexpected type: {:?}", self)
             }
         }
@@ -2737,7 +2737,7 @@ impl<'tcx> Ty<'tcx> {
         let tail = tcx.struct_tail_with_normalize(self, normalize, || {});
         match tail.kind() {
             // Sized types
-            ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_) | ty::FieldVar(_))
             | ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
@@ -2777,7 +2777,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Infer(ty::TyVar(_))
             | ty::Bound(..)
             | ty::Placeholder(..)
-            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) | ty::FreshFieldTy(_)) => {
                 bug!("`ptr_metadata_ty` applied to unexpected type: {:?} (tail = {:?})", self, tail)
             }
         }
@@ -2825,7 +2825,7 @@ impl<'tcx> Ty<'tcx> {
     /// this method doesn't return `Option<bool>`.
     pub fn is_trivially_sized(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind() {
-            ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_) | ty::FieldVar(_))
             | ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
@@ -2855,6 +2855,10 @@ impl<'tcx> Ty<'tcx> {
             ty::Infer(ty::TyVar(_)) => false,
 
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                bug!("`is_trivially_sized` applied to unexpected type: {:?}", self)
+            }
+
+            ty::Infer(ty::FreshFieldTy(_)) => {
                 bug!("`is_trivially_sized` applied to unexpected type: {:?}", self)
             }
         }

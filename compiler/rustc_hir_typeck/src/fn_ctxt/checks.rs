@@ -1330,7 +1330,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 });
                 opt_ty.unwrap_or_else(|| self.next_float_var())
             }
-            ast::LitKind::Field(_) => todo!(),
+            ast::LitKind::Field(_) => {
+                let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
+                    ty::Field(_) => Some(ty),
+                    _ => None,
+                });
+                opt_ty.unwrap_or_else(|| todo!())
+            },
             ast::LitKind::Bool(_) => tcx.types.bool,
             ast::LitKind::CStr(_, _) => Ty::new_imm_ref(
                 tcx,

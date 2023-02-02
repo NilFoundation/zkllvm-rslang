@@ -248,6 +248,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Infer(ty::TyVar(_)) => "inferred type".into(),
             ty::Infer(ty::IntVar(_)) => "integer".into(),
             ty::Infer(ty::FloatVar(_)) => "floating-point number".into(),
+            ty::Infer(ty::FieldVar(_)) => "field".into(),
             ty::Placeholder(..) => "placeholder type".into(),
             ty::Bound(..) => "bound type".into(),
             ty::Infer(ty::FreshTy(_)) => "fresh type".into(),
