@@ -260,6 +260,7 @@ const NUM_PREINTERNED_TY_VARS: u32 = 100;
 const NUM_PREINTERNED_FRESH_TYS: u32 = 20;
 const NUM_PREINTERNED_FRESH_INT_TYS: u32 = 3;
 const NUM_PREINTERNED_FRESH_FLOAT_TYS: u32 = 3;
+const NUM_PREINTERNED_FRESH_FIELD_TYS: u32 = 3;
 
 // This number may seem high, but it is reached in all but the smallest crates.
 const NUM_PREINTERNED_RE_VARS: u32 = 500;
@@ -311,6 +312,9 @@ pub struct CommonTypes<'tcx> {
 
     /// Pre-interned `Infer(ty::FreshFloatTy(n))` for small values of `n`.
     pub fresh_float_tys: Vec<Ty<'tcx>>,
+
+    /// Pre-interned `Infer(ty::FreshFieldTy(n))` for small values of `n`.
+    pub fresh_field_tys: Vec<Ty<'tcx>>,
 }
 
 pub struct CommonLifetimes<'tcx> {
@@ -351,6 +355,8 @@ impl<'tcx> CommonTypes<'tcx> {
             (0..NUM_PREINTERNED_FRESH_INT_TYS).map(|n| mk(Infer(ty::FreshIntTy(n)))).collect();
         let fresh_float_tys: Vec<_> =
             (0..NUM_PREINTERNED_FRESH_FLOAT_TYS).map(|n| mk(Infer(ty::FreshFloatTy(n)))).collect();
+        let fresh_field_tys: Vec<_> =
+            (0..NUM_PREINTERNED_FRESH_FIELD_TYS).map(|n| mk(Infer(ty::FreshFieldTy(n)))).collect();
 
         CommonTypes {
             __zkllvm_field_bls12381_base: mk(Field(ty::FieldTy::Bls12381Base)),
@@ -386,6 +392,7 @@ impl<'tcx> CommonTypes<'tcx> {
             fresh_tys,
             fresh_int_tys,
             fresh_float_tys,
+            fresh_field_tys,
         }
     }
 }

@@ -1922,6 +1922,16 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn new_fresh_float(tcx: TyCtxt<'tcx>, n: u32) -> Ty<'tcx> {
+        // Use a pre-interned one when possible.
+        tcx.types
+            .fresh_field_tys
+            .get(n as usize)
+            .copied()
+            .unwrap_or_else(|| Ty::new_infer(tcx, ty::FreshFieldTy(n)))
+    }
+
+    #[inline]
     pub fn new_param(tcx: TyCtxt<'tcx>, index: u32, name: Symbol) -> Ty<'tcx> {
         tcx.mk_ty_from_kind(Param(ParamTy { index, name }))
     }

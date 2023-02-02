@@ -34,6 +34,7 @@ use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, InferTy, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
+use rustc_middle::ty::FieldVid;
 use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgs, GenericArgsRef};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -115,6 +116,9 @@ pub struct InferCtxtInner<'tcx> {
     /// Map from floating variable to the kind of float it represents.
     float_unification_storage: ut::UnificationTableStorage<ty::FloatVid>,
 
+    /// Map from field variable to the kind of field it represents.
+    field_unification_storage: ut::UnificationTableStorage<ty::FieldVid>,
+
     /// Tracks the set of region variables and the constraints between them.
     ///
     /// This is initially `Some(_)` but when
@@ -172,6 +176,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             const_unification_storage: ut::UnificationTableStorage::new(),
             int_unification_storage: ut::UnificationTableStorage::new(),
             float_unification_storage: ut::UnificationTableStorage::new(),
+            field_unification_storage: ut::UnificationTableStorage::new(),
             region_constraint_storage: Some(RegionConstraintStorage::new()),
             region_obligations: vec![],
             opaque_type_storage: Default::default(),
@@ -216,6 +221,11 @@ impl<'tcx> InferCtxtInner<'tcx> {
     #[inline]
     fn float_unification_table(&mut self) -> UnificationTable<'_, 'tcx, ty::FloatVid> {
         self.float_unification_storage.with_log(&mut self.undo_log)
+    }
+
+    #[inline]
+    fn field_unification_table(&mut self) -> UnificationTable<'_, 'tcx, ty::FieldVid> {
+        self.field_unification_storage.with_log(&mut self.undo_log)
     }
 
     #[inline]
@@ -345,6 +355,7 @@ impl<'tcx> ty::InferCtxtLike<TyCtxt<'tcx>> for InferCtxt<'tcx> {
                 Ok(_) => None,
             },
             IntVar(_) | FloatVar(_) | FreshTy(_) | FreshIntTy(_) | FreshFloatTy(_) => None,
+            FieldVar(_) | FreshFieldTy(_) => None,
         }
     }
 
@@ -539,6 +550,7 @@ pub enum NllRegionVariableOrigin {
 pub enum FixupError<'tcx> {
     UnresolvedIntTy(IntVid),
     UnresolvedFloatTy(FloatVid),
+    UnresolvedFieldTy(FieldVid),
     UnresolvedTy(TyVid),
     UnresolvedConst(ConstVid<'tcx>),
 }
@@ -565,6 +577,11 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
                 f,
                 "cannot determine the type of this number; \
                  add a suffix to specify the type explicitly"
+            ),
+            UnresolvedFieldTy(_) => write!(
+                f,
+                "cannot determine the type of this field number; \
+                 declare this value with explicit type"
             ),
             UnresolvedTy(_) => write!(f, "unconstrained type"),
             UnresolvedConst(_) => write!(f, "unconstrained const value"),
@@ -1072,6 +1089,14 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn next_float_var(&self) -> Ty<'tcx> {
         Ty::new_float_var(self.tcx, self.next_float_var_id())
+    }
+
+    fn next_field_var_id(&self) -> FieldVid {
+        self.inner.borrow_mut().field_unification_table().new_key(None)
+    }
+
+    pub fn next_field_var(&self) -> Ty<'tcx> {
+        self.tcx.mk_field_var(self.next_field_var_id())
     }
 
     /// Creates a fresh region variable with the next available index.
@@ -1846,7 +1871,16 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
                 .probe_value(v)
                 .map(|v| v.to_type(self.infcx.tcx)),
 
+            ty::FieldVar(v) => self
+                .infcx
+                .inner
+                .borrow_mut()
+                .field_unification_table()
+                .probe_value(v)
+                .map(|v| v.to_type(self.infcx.tcx)),
+
             ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => None,
+            ty::FreshFieldTy(_) => None,
         }
     }
 }

@@ -231,7 +231,8 @@ impl<'tcx> CanonicalVarKind<'tcx> {
         match self {
             CanonicalVarKind::Ty(kind) => match kind {
                 CanonicalTyVarKind::General(ui) => ui,
-                CanonicalTyVarKind::Float | CanonicalTyVarKind::Int => ty::UniverseIndex::ROOT,
+                CanonicalTyVarKind::Float | CanonicalTyVarKind::Int
+                | CanonicalTyVarKind::Field => ty::UniverseIndex::ROOT,
             },
 
             CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.universe,
@@ -290,6 +291,9 @@ pub enum CanonicalTyVarKind {
 
     /// Floating-point type variable `?F` (that can only be unified with float types).
     Float,
+
+    /// Field type variable `?FI` (that can only be unified with field types).
+    Field,
 }
 
 /// After we execute a query with a canonicalized key, we get back a
