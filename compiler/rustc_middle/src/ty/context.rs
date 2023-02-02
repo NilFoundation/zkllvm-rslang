@@ -23,7 +23,7 @@ use crate::ty::{
     ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVar, TyVid, TypeAndMut, TypeckResults, UintTy,
     Visibility,
 };
-use crate::ty::FieldTy;
+use crate::ty::{FieldTy, FieldVar};
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -2003,6 +2003,11 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_float_var(self, v: FloatVid) -> Ty<'tcx> {
         self.mk_ty_infer(FloatVar(v))
+    }
+
+    #[inline]
+    pub fn mk_field_var(self, v: FieldVid) -> Ty<'tcx> {
+        self.mk_ty_infer(FieldVar(v))
     }
 
     #[inline]
