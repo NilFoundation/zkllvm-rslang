@@ -540,6 +540,9 @@ pub enum IntVarValue {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct FloatVarValue(pub FloatTy);
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct FieldVarValue(pub FieldTy);
+
 rustc_index::newtype_index! {
     /// A **ty**pe **v**ariable **ID**.
     #[debug_format = "_#{}t"]
@@ -555,6 +558,12 @@ pub struct IntVid {
 /// An **float**ing-point (`f32` or `f64`) type **v**ariable **ID**.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
 pub struct FloatVid {
+    pub index: u32,
+}
+
+/// An **field** (`__zkllvm_field_bls12381_base`, etc.) type **v**ariable **ID**.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+pub struct FieldVid {
     pub index: u32,
 }
 
@@ -581,6 +590,13 @@ pub enum InferTy {
     /// We don't know until it's used what type it's supposed to be, so
     /// we create a fresh type variable.
     FloatVar(FloatVid),
+    /// A field type variable (`{field}`).
+    ///
+    /// These are created when the compiler sees a field literal 'F'
+    /// that could be any field type.
+    /// We don't know until it's used what type it's supposed to be, so
+    /// we create a fresh type variable.
+    FieldVar(FieldVid),
 
     /// A [`FreshTy`][Self::FreshTy] is one that is generated as a replacement
     /// for an unbound type variable. This is convenient for caching etc. See
@@ -592,6 +608,8 @@ pub enum InferTy {
     FreshIntTy(u32),
     /// Like [`FreshTy`][Self::FreshTy], but as a replacement for [`FloatVar`][Self::FloatVar].
     FreshFloatTy(u32),
+    /// Like [`FreshTy`][Self::FreshTy], but as a replacement for [`FieldVar`][Self::FieldVar].
+    FreshFieldTy(u32),
 }
 
 /// Raw `TyVid` are used as the unification key for `sub_relations`;
@@ -642,6 +660,23 @@ impl UnifyKey for FloatVid {
     }
     fn tag() -> &'static str {
         "FloatVid"
+    }
+}
+
+impl EqUnifyValue for FieldVarValue {}
+
+impl UnifyKey for FieldVid {
+    type Value = Option<FieldVarValue>;
+    #[inline]
+    fn index(&self) -> u32 {
+        self.index
+    }
+    #[inline]
+    fn from_index(i: u32) -> FieldVid {
+        FieldVid { index: i }
+    }
+    fn tag() -> &'static str {
+        "FieldVid"
     }
 }
 
@@ -719,10 +754,10 @@ impl<CTX> HashStable<CTX> for InferTy {
         use InferTy::*;
         discriminant(self).hash_stable(ctx, hasher);
         match self {
-            TyVar(_) | IntVar(_) | FloatVar(_) => {
+            TyVar(_) | IntVar(_) | FloatVar(_) | FieldVar(_) => {
                 panic!("type variables should not be hashed: {self:?}")
             }
-            FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) => v.hash_stable(ctx, hasher),
+            FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) | FreshFieldTy(v) => v.hash_stable(ctx, hasher),
         }
     }
 }
@@ -742,6 +777,12 @@ impl fmt::Debug for FloatVarValue {
     }
 }
 
+impl fmt::Debug for FieldVarValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 impl fmt::Debug for IntVid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "_#{}i", self.index)
@@ -754,6 +795,12 @@ impl fmt::Debug for FloatVid {
     }
 }
 
+impl fmt::Debug for FieldVid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "_#{}F", self.index)
+    }
+}
+
 impl fmt::Debug for InferTy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use InferTy::*;
@@ -761,9 +808,11 @@ impl fmt::Debug for InferTy {
             TyVar(ref v) => v.fmt(f),
             IntVar(ref v) => v.fmt(f),
             FloatVar(ref v) => v.fmt(f),
+            FieldVar(ref v) => v.fmt(f),
             FreshTy(v) => write!(f, "FreshTy({v:?})"),
             FreshIntTy(v) => write!(f, "FreshIntTy({v:?})"),
             FreshFloatTy(v) => write!(f, "FreshFloatTy({v:?})"),
+            FreshFieldTy(v) => write!(f, "FreshFieldTy({:?})", v),
         }
     }
 }
@@ -786,9 +835,11 @@ impl fmt::Display for InferTy {
             TyVar(_) => write!(f, "_"),
             IntVar(_) => write!(f, "{}", "{integer}"),
             FloatVar(_) => write!(f, "{}", "{float}"),
+            FieldVar(_) => write!(f, "{}", "{field}"),
             FreshTy(v) => write!(f, "FreshTy({v})"),
             FreshIntTy(v) => write!(f, "FreshIntTy({v})"),
             FreshFloatTy(v) => write!(f, "FreshFloatTy({v})"),
+            FreshFieldTy(v) => write!(f, "FreshFieldTy({})", v),
         }
     }
 }
