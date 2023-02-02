@@ -175,7 +175,18 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                 ty::FreshFloatTy,
             ),
 
-            ty::Infer(ty::FreshTy(ct) | ty::FreshIntTy(ct) | ty::FreshFloatTy(ct)) => {
+            ty::Infer(ty::FieldVar(v)) => self.freshen_ty(
+                self.infcx
+                    .inner
+                    .borrow_mut()
+                    .field_unification_table()
+                    .probe_value(v)
+                    .map(|v| v.to_type(tcx)),
+                ty::FieldVar(v),
+                ty::FreshFieldTy,
+            ),
+
+            ty::Infer(ty::FreshTy(ct) | ty::FreshIntTy(ct) | ty::FreshFloatTy(ct) | ty::FreshFieldTy(ct)) => {
                 if ct >= self.ty_freshen_count {
                     bug!(
                         "Encountered a freshend type with id {} \
