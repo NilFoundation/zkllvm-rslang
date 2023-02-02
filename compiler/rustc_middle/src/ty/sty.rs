@@ -1887,6 +1887,11 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn new_field_var(tcx: TyCtxt<'tcx>, v: ty::FieldVid) -> Ty<'tcx> {
+        Ty::new_infer(tcx, FieldVar(v))
+    }
+
+    #[inline]
     pub fn new_fresh(tcx: TyCtxt<'tcx>, n: u32) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
         tcx.types

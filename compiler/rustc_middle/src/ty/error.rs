@@ -51,6 +51,7 @@ pub enum TypeError<'tcx> {
     ArgumentSorts(ExpectedFound<Ty<'tcx>>, usize),
     IntMismatch(ExpectedFound<ty::IntVarValue>),
     FloatMismatch(ExpectedFound<ty::FloatTy>),
+    FieldMismatch(ExpectedFound<ty::FieldTy>),
     Traits(ExpectedFound<DefId>),
     VariadicMismatch(ExpectedFound<bool>),
 
@@ -172,6 +173,12 @@ impl<'tcx> TypeError<'tcx> {
                 values.found.name_str()
             )
             .into(),
+            FieldMismatch(ref values) => format!(
+                "expected `{}`, found `{}`",
+                values.expected.name_str(),
+                values.found.name_str()
+            )
+            .into(),
             VariadicMismatch(ref values) => format!(
                 "expected {} fn, found {} function",
                 if values.expected { "variadic" } else { "non-variadic" },
@@ -207,7 +214,7 @@ impl<'tcx> TypeError<'tcx> {
             CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | ConstnessMismatch(_)
             | PolarityMismatch(_) | Mismatch | AbiMismatch(_) | FixedArraySize(_)
             | ArgumentSorts(..) | Sorts(_) | IntMismatch(_) | FloatMismatch(_)
-            | VariadicMismatch(_) | TargetFeatureCast(_) => false,
+            | FieldMismatch(_) | VariadicMismatch(_) | TargetFeatureCast(_) => false,
 
             Mutability
             | ArgumentMutability(_)
