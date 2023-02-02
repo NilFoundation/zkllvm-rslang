@@ -24,6 +24,7 @@ pub(crate) enum UndoLog<'tcx> {
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>),
     IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
     FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
+    FieldUnificationTable(sv::UndoLog<ut::Delegate<ty::FieldVid>>),
     RegionConstraintCollector(region_constraints::UndoLog<'tcx>),
     RegionUnificationTable(sv::UndoLog<ut::Delegate<RegionVidKey<'tcx>>>),
     ProjectionCache(traits::UndoLog<'tcx>),
@@ -56,6 +57,8 @@ impl_from! {
 
     FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
 
+    FieldUnificationTable(sv::UndoLog<ut::Delegate<ty::FieldVid>>),
+
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>),
 
     RegionUnificationTable(sv::UndoLog<ut::Delegate<RegionVidKey<'tcx>>>),
@@ -71,6 +74,7 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
             UndoLog::ConstUnificationTable(undo) => self.const_unification_storage.reverse(undo),
             UndoLog::IntUnificationTable(undo) => self.int_unification_storage.reverse(undo),
             UndoLog::FloatUnificationTable(undo) => self.float_unification_storage.reverse(undo),
+            UndoLog::FieldUnificationTable(undo) => self.field_unification_storage.reverse(undo),
             UndoLog::RegionConstraintCollector(undo) => {
                 self.region_constraint_storage.as_mut().unwrap().reverse(undo)
             }
