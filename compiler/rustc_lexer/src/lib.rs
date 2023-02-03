@@ -385,11 +385,6 @@ impl Cursor<'_> {
             c @ '0'..='9' => {
                 let literal_kind = self.number(c);
                 let suffix_start = self.pos_within_token();
-                // if let Int { base, empty_int } = literal_kind {
-                //     if self.first() == 'F' {
-                //         literal_kind = Field { base, empty_field: empty_int }
-                //     }
-                // }
                 self.eat_literal_suffix();
                 TokenKind::Literal { kind: literal_kind, suffix_start }
             }
