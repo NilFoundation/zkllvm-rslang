@@ -721,7 +721,9 @@ impl Token {
     pub fn is_numeric_lit(&self) -> bool {
         matches!(
             self.kind,
-            Literal(Lit { kind: LitKind::Integer, .. }) | Literal(Lit { kind: LitKind::Float, .. })
+            Literal(Lit { kind: LitKind::Integer, .. })
+            | Literal(Lit { kind: LitKind::Float, .. })
+            | Literal(Lit { kind: LitKind::Field, .. })
         )
     }
 
