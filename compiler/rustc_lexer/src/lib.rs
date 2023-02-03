@@ -575,20 +575,22 @@ impl Cursor<'_> {
                     self.eat_hexadecimal_digits()
                 }
                 // Not a base prefix.
-                '0'..='9' | '_' | '.' | 'e' | 'E' | 'F' => {
+                '0'..='9' | '_' | '.' | 'e' | 'E' => {
                     self.eat_decimal_digits();
                     true
                 }
+                // Just a field 0.
+                'g' | 'G' => return Field { base, empty_field: false },
                 // Just a 0.
                 _ => return Int { base, empty_int: false },
             };
             // Base prefix was provided, but there were no digits
             // after it, e.g. "0x".
             if !has_digits {
-                if self.first() == 'F' {
-                    return Field { base, empty_field: true };
+                return match self.first() {
+                    'g' | 'G' => Field { base, empty_field: true },
+                    _ => Int { base, empty_int: true },
                 }
-                return Int { base, empty_int: true };
             }
         } else {
             // No base prefix, parse number in the usual way.
@@ -621,7 +623,7 @@ impl Cursor<'_> {
                 let empty_exponent = !self.eat_float_exponent();
                 Float { base, empty_exponent }
             }
-            'F' => Field { base, empty_field: false },
+            'g' | 'G' => Field { base, empty_field: false },
             _ => Int { base, empty_int: false },
         }
     }
