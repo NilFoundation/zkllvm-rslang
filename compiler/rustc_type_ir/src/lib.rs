@@ -655,7 +655,7 @@ pub enum InferTy {
     FloatVar(FloatVid),
     /// A field type variable (`{field}`).
     ///
-    /// These are created when the compiler sees a field literal 'F'
+    /// These are created when the compiler sees a field literal 'g' or 'G'
     /// that could be any field type.
     /// We don't know until it's used what type it's supposed to be, so
     /// we create a fresh type variable.
