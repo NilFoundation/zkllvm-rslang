@@ -410,7 +410,7 @@ fn field_lit(symbol: Symbol, suffix: Symbol) -> Result<LitKind, LitError> {
     let symbol = strip_underscores(symbol);
 
     match suffix {
-        sym::F => {}
+        sym::G | sym::g => {}
         _ => {
             return Err(LitError::InvalidSuffix);
         }
