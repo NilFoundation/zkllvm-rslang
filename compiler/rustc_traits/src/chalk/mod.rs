@@ -70,6 +70,7 @@ pub(crate) fn evaluate_goal<'tcx>(
                             chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::Float),
                             chalk_ir::UniverseIndex::root(),
                         ),
+                        CanonicalTyVarKind::Field => todo!(),
                     },
                     CanonicalVarKind::Region(ui) => chalk_ir::WithKind::new(
                         chalk_ir::VariableKind::Lifetime,
