@@ -14,6 +14,8 @@ use rustc_middle::ty::{
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::Size;
 
+use num::{Num, BigUint};
+
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that
     /// `expr` is a valid compile-time constant!
@@ -165,8 +167,35 @@ fn lit_to_mir_constant<'tcx>(
                     format!("couldn't parse float literal: {:?}", lit_input.lit),
                 ))
             })?,
-        (ast::LitKind::Field(_n), ty::Field(_ty)) => {
-            todo!("parse field into constval")
+        (ast::LitKind::Field(n), ty::Field(fty)) => {
+            // FIXME: (aleasims) remove external crates here
+            let s = n.as_str();
+            let base = match s.as_bytes() {
+                [b'0', b'x', ..] => 16,
+                [b'0', b'o', ..] => 8,
+                [b'0', b'b', ..] => 2,
+                _ => 10,
+            };
+            let s = &s[if base != 10 { 2 } else { 0 }..];
+            trace!("symbol to big_int {}", &s);
+
+            let big_uint = BigUint::from_str_radix(s, base).map_err(|_| {
+                LitToConstError::Reported(tcx.sess.delay_span_bug(
+                    DUMMY_SP,
+                    format!("couldn't parse field literal: {:?}", lit_input.lit),
+                ))
+            })?;
+            trace!("big_int {}", big_uint);
+
+            // FIXME: (aleasims) handle sign
+            let mut bytes_be = big_uint.to_bytes_be();
+            trace!("bytes_be {:?}", bytes_be);
+            debug_assert!(bytes_be.len() <= 48);
+
+            let mut rest = vec![0u8; 48 - bytes_be.len()];
+            rest.append(&mut bytes_be);
+            debug_assert_eq!(rest.len(), 48);
+            ConstValue::from_field_be_bytes(rest.as_slice().try_into().unwrap(), fty.bit_width())
         }
         (ast::LitKind::Bool(b), ty::Bool) => ConstValue::Scalar(Scalar::from_bool(*b)),
         (ast::LitKind::Char(c), ty::Char) => ConstValue::Scalar(Scalar::from_char(*c)),

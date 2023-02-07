@@ -459,6 +459,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             let fmt_val = |val: &ConstValue<'tcx>| match val {
                 ConstValue::ZeroSized => "<ZST>".to_string(),
                 ConstValue::Scalar(s) => format!("Scalar({s:?})"),
+                ConstValue::Field(f) => format!("Field({:?})", f),
                 ConstValue::Slice { .. } => "Slice(..)".to_string(),
                 ConstValue::ByRef { .. } => "ByRef(..)".to_string(),
             };
@@ -711,6 +712,7 @@ pub fn write_allocations<'tcx>(
             ConstValue::ByRef { alloc, .. } | ConstValue::Slice { data: alloc, .. } => {
                 Either::Right(alloc_ids_from_alloc(alloc))
             }
+            ConstValue::Field(..) => Either::Left(Either::Right(std::iter::empty())),
         }
     }
     struct CollectAllocIds(BTreeSet<AllocId>);

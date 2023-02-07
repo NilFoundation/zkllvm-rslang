@@ -939,9 +939,9 @@ mod size_asserts {
     static_assert_size!(Block, 56);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 40);
-    static_assert_size!(Pat<'_>, 64);
-    static_assert_size!(PatKind<'_>, 48);
-    static_assert_size!(Stmt<'_>, 56);
-    static_assert_size!(StmtKind<'_>, 48);
+    static_assert_size!(Pat<'_>, 88);
+    static_assert_size!(PatKind<'_>, 72);
+    static_assert_size!(Stmt<'_>, 48);
+    static_assert_size!(StmtKind<'_>, 40);
     // tidy-alphabetical-end
 }

@@ -506,6 +506,7 @@ TrivialTypeTraversalAndLiftImpls! {
     interpret::Scalar,
     rustc_target::abi::Size,
     ty::BoundVar,
+    ty::consts::ScalarField,
 }
 
 TrivialTypeTraversalAndLiftImpls! {

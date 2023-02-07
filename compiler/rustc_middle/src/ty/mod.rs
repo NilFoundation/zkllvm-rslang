@@ -87,6 +87,7 @@ pub use self::closure::{
 pub use self::consts::{
     Const, ConstData, ConstInt, Expr, InferConst, ScalarInt, UnevaluatedConst, ValTree,
 };
+pub use self::consts::ScalarField;
 pub use self::context::{
     tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed,
 };
