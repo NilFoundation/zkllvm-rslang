@@ -245,6 +245,7 @@ TrivialTypeTraversalAndLiftImpls! {
     rustc_type_ir::DebruijnIndex,
     ty::BoundVar,
     ty::Placeholder<ty::BoundVar>,
+    ty::consts::ScalarField,
 }
 
 TrivialTypeTraversalAndLiftImpls! {

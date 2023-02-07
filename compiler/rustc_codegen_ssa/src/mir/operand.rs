@@ -100,6 +100,9 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             ConstValue::ByRef { alloc, offset } => {
                 return bx.load_operand(bx.from_const_alloc(layout, alloc, offset));
             }
+            ConstValue::Field(_) => {
+                todo!()
+            }
         };
 
         OperandRef { val, layout }

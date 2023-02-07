@@ -454,6 +454,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 ConstValue::Scalar(s) => format!("Scalar({:?})", s),
                 ConstValue::Slice { .. } => format!("Slice(..)"),
                 ConstValue::ByRef { .. } => format!("ByRef(..)"),
+                ConstValue::Field(f) => format!("Field({:?})", f),
             };
 
             let fmt_valtree = |valtree: &ty::ValTree<'tcx>| match valtree {
@@ -700,6 +701,7 @@ pub fn write_allocations<'tcx>(
             ConstValue::ByRef { alloc, .. } | ConstValue::Slice { data: alloc, .. } => {
                 Either::Right(alloc_ids_from_alloc(alloc))
             }
+            ConstValue::Field(..) => Either::Left(Either::Right(std::iter::empty())),
         }
     }
     struct CollectAllocIds(BTreeSet<AllocId>);
