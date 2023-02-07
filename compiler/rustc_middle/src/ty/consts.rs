@@ -6,10 +6,12 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::HashStable;
 use std::fmt;
 
+mod field;
 mod int;
 mod kind;
 mod valtree;
 
+pub use field::*;
 pub use int::*;
 pub use kind::*;
 pub use valtree::*;

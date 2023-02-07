@@ -654,6 +654,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self,
                 ))
             }
+            ConstValue::Field(_) => {
+                todo!()
+            }
         };
         Ok(OpTy { op, layout, align: Some(layout.align.abi) })
     }
