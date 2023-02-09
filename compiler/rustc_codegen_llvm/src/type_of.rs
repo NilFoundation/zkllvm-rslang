@@ -8,7 +8,7 @@ use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty, TypeVisitable};
 use rustc_target::abi::{Abi, AddressSpace, Align, FieldsShape};
-use rustc_target::abi::{Int, Pointer, F32, F64};
+use rustc_target::abi::{Int, Pointer, F32, F64, Field};
 use rustc_target::abi::{PointeeInfo, Scalar, Size, TyAbiInterface, Variants};
 use smallvec::{smallvec, SmallVec};
 
@@ -241,7 +241,6 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
                 ty::FnPtr(sig) => {
                     cx.fn_ptr_backend_type(cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
                 }
-                ty::Field(ty) => cx.type_field_from_ty(ty),
                 _ => self.scalar_llvm_type_at(cx, scalar, Size::ZERO),
             };
             cx.scalar_lltypes.borrow_mut().insert(self.ty, llty);
@@ -323,6 +322,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
                     };
                 cx.type_ptr_to_ext(pointee, address_space)
             }
+            Field(f) => cx.type_from_field(f),
         }
     }
 
