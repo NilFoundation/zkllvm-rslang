@@ -13,6 +13,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::ScalarField;
 use rustc_session::cstore::{DllCallingConvention, DllImport, PeImportNameType};
 use rustc_target::abi::{self, AddressSpace, HasDataLayout, Pointer};
 use rustc_target::spec::Target;
@@ -297,6 +298,19 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     self.const_bitcast(llval, llty)
                 }
             }
+        }
+    }
+
+    fn field_to_backend(&self, sf: ScalarField, layout: abi::Scalar, llty: &'ll Type) -> &'ll Value {
+        unsafe {
+            llvm::LLVMConstField(
+                llty,
+                llvm::LLVMConstIntOfArbitraryPrecision(
+                    self.type_ix(layout.size(self).bits()),
+                    6,
+                    sf.words().as_ptr(),
+                ),
+            )
         }
     }
 
