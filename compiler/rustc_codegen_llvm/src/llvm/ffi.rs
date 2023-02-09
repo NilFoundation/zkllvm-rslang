@@ -949,6 +949,9 @@ extern "C" {
         low: &mut u64,
     ) -> bool;
 
+    // Operations on field constants
+    pub fn LLVMConstField<'a>(FieldTy: &'a Type, ConstantVal: &'a Value) -> &'a Value;
+
     // Operations on composite constants
     pub fn LLVMConstStringInContext(
         C: &Context,
