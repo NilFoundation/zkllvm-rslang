@@ -78,4 +78,9 @@ impl ScalarField {
         };
         Self { data, size }
     }
+
+    /// Get limbs as an array of `u64`.
+    pub fn words(&self) -> &[u64; 6] {
+        self.data.as_words()
+    }
 }
