@@ -100,8 +100,12 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             ConstValue::ByRef { alloc, offset } => {
                 return bx.load_operand(bx.from_const_alloc(layout, alloc, offset));
             }
-            ConstValue::Field(_) => {
-                todo!()
+            ConstValue::Field(f) => {
+                let Abi::Scalar(scalar) = layout.abi else {
+                    bug!("from_const: invalid ByVal layout: {:#?}", layout);
+                };
+                let llval = bx.field_to_backend(f, scalar, bx.immediate_backend_type(layout));
+                OperandValue::Immediate(llval)
             }
         };
 
