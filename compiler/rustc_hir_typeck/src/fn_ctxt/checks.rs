@@ -1205,7 +1205,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Field(_) => Some(ty),
                     _ => None,
                 });
-                opt_ty.unwrap_or_else(|| todo!())
+                opt_ty.unwrap_or_else(|| self.next_field_var())
             },
             ast::LitKind::Bool(_) => tcx.types.bool,
             ast::LitKind::Err => tcx.ty_error(),
