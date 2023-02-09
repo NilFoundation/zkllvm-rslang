@@ -105,17 +105,6 @@ impl<'ll> CodegenCx<'ll, '_> {
         }
     }
 
-    pub(crate) fn type_field_from_ty(&self, t: ty::FieldTy) -> &'ll Type {
-        match t {
-            ty::FieldTy::Bls12381Base => self.type_field_bls12381_base(),
-            ty::FieldTy::Bls12381Scalar => self.type_field_bls12381_scalar(),
-            ty::FieldTy::Curve25519Base => self.type_field_curve25519_base(),
-            ty::FieldTy::Curve25519Scalar => self.type_field_curve25519_scalar(),
-            ty::FieldTy::PallasBase => self.type_field_pallas_base(),
-            ty::FieldTy::PallasScalar => self.type_field_pallas_scalar(),
-        }
-    }
-
     pub(crate) fn type_float_from_ty(&self, t: ty::FloatTy) -> &'ll Type {
         match t {
             ty::FloatTy::F32 => self.type_f32(),
