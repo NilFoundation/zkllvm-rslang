@@ -776,6 +776,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                             throw_validation_failure!(self.path, Uninit { expected }),
                         Immediate::Scalar(..) | Immediate::ScalarPair(..) =>
                             bug!("arrays/slices can never have Scalar/ScalarPair layout"),
+                        Immediate::Field(..) =>
+                            bug!("arrays/slices can never have Field layout"),
                     }
                 };
 

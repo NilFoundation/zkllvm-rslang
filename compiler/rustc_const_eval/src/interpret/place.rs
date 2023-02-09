@@ -427,6 +427,7 @@ where
             val.layout.ty.builtin_deref(true).expect("`ref_to_mplace` called on non-ptr type").ty;
         let layout = self.layout_of(pointee_type)?;
         let (ptr, meta) = match **val {
+            Immediate::Field(_) => todo!(),
             Immediate::Scalar(ptr) => (ptr, MemPlaceMeta::None),
             Immediate::ScalarPair(ptr, meta) => (ptr, MemPlaceMeta::Meta(meta)),
             Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
@@ -700,6 +701,9 @@ where
         };
 
         match value {
+            Immediate::Field(_) => {
+                todo!()
+            }
             Immediate::Scalar(scalar) => {
                 let Abi::Scalar(s) = layout.abi else {
                     span_bug!(

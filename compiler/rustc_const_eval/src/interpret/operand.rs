@@ -9,6 +9,7 @@ use rustc_hir::def::Namespace;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, Ty, ValTree};
+use rustc_middle::ty::ScalarField;
 use rustc_middle::{mir, ty};
 use rustc_span::Span;
 use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size};
@@ -28,6 +29,8 @@ use super::{
 /// defined on `Immediate`, and do not have to work with a `Place`.
 #[derive(Copy, Clone, Debug)]
 pub enum Immediate<Prov: Provenance = AllocId> {
+    /// A single field value.
+    Field(ScalarField),
     /// A single scalar value (must have *initialized* `Scalar` ABI).
     Scalar(Scalar<Prov>),
     /// A pair of two scalar value (must have `ScalarPair` ABI where both fields are
@@ -70,6 +73,7 @@ impl<Prov: Provenance> Immediate<Prov> {
     pub fn to_scalar(self) -> Scalar<Prov> {
         match self {
             Immediate::Scalar(val) => val,
+            Immediate::Field(..) => bug!("Got a field where a scalar was expected"),
             Immediate::ScalarPair(..) => bug!("Got a scalar pair where a scalar was expected"),
             Immediate::Uninit => bug!("Got uninit where a scalar was expected"),
         }
@@ -80,6 +84,7 @@ impl<Prov: Provenance> Immediate<Prov> {
     pub fn to_scalar_pair(self) -> (Scalar<Prov>, Scalar<Prov>) {
         match self {
             Immediate::ScalarPair(val1, val2) => (val1, val2),
+            Immediate::Field(..) => bug!("Got a field where a scalar pair was expected"),
             Immediate::Scalar(..) => bug!("Got a scalar where a scalar pair was expected"),
             Immediate::Uninit => bug!("Got uninit where a scalar pair was expected"),
         }
@@ -114,6 +119,9 @@ impl<Prov: Provenance> std::fmt::Display for ImmTy<'_, Prov> {
         }
         ty::tls::with(|tcx| {
             match self.imm {
+                Immediate::Field(fl) => {
+                    write!(f, "({:x}): {}", fl, self.layout.ty)
+                }
                 Immediate::Scalar(s) => {
                     if let Some(ty) = tcx.lift(self.layout.ty) {
                         let cx = FmtPrinter::new(tcx, Namespace::ValueNS);
@@ -567,7 +575,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Immediate::Uninit => {
                     throw_ub!(InvalidUninitBytes(None))
                 }
-                Immediate::Scalar(..) | Immediate::ScalarPair(..) => {
+                Immediate::Field(..) | Immediate::Scalar(..) | Immediate::ScalarPair(..) => {
                     bug!("arrays/slices can never have Scalar/ScalarPair layout")
                 }
             },
@@ -766,9 +774,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self,
                 ))
             }
-            ConstValue::Field(_) => {
-                todo!()
-            }
+            ConstValue::Field(f) => Operand::Immediate(Immediate::Field(f)),
         };
         Ok(OpTy { op, layout, align: Some(layout.align.abi) })
     }
@@ -780,9 +786,9 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
-    static_assert_size!(Immediate, 48);
-    static_assert_size!(ImmTy<'_>, 64);
-    static_assert_size!(Operand, 56);
-    static_assert_size!(OpTy<'_>, 80);
+    static_assert_size!(Immediate, 64);
+    static_assert_size!(ImmTy<'_>, 80);
+    static_assert_size!(Operand, 64);
+    static_assert_size!(OpTy<'_>, 88);
     // tidy-alphabetical-end
 }
