@@ -81,6 +81,7 @@ where
                     _ => return Err(CannotUseFpConv),
                 }
             }
+            abi::Field(..) => return Err(CannotUseFpConv),
         },
         Abi::Vector { .. } | Abi::Uninhabited => return Err(CannotUseFpConv),
         Abi::ScalarPair(..) | Abi::Aggregate { .. } => match arg_layout.fields {
