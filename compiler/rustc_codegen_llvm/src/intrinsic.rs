@@ -156,6 +156,9 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                             }
                             // `va_arg` should never be used with the return type f32.
                             Primitive::F32 => bug!("the va_arg intrinsic does not work with `f32`"),
+                            Primitive::Field(..) => {
+                                todo!()
+                            },
                         }
                     }
                     _ => bug!("the va_arg intrinsic does not work with non-scalar types"),

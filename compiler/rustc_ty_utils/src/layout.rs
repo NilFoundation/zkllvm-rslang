@@ -108,7 +108,7 @@ fn layout_of_uncached<'tcx>(
     let dl = cx.data_layout();
     let scalar_unit = |value: Primitive| {
         let size = value.size(dl);
-        assert!(size.bits() <= 128);
+        assert!(size.bits() <= 384);
         Scalar::Initialized { value, valid_range: WrappingRange::full(size) }
     };
     let scalar = |value: Primitive| tcx.mk_layout(LayoutS::scalar(cx, scalar_unit(value)));
@@ -136,10 +136,15 @@ fn layout_of_uncached<'tcx>(
         )),
         ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
         ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
-        ty::Field(_) => {
-            // FIXME: This is a really dirty hack here.
-            // Maybe we should consider creating own abi primitive.
-            scalar(Int(Integer::I64, false))
+        ty::Field(fty) => {
+            scalar(Field(match fty {
+                ty::FieldTy::Bls12381Base => Field::Bls12381Base,
+                ty::FieldTy::Bls12381Scalar => Field::Bls12381Scalar,
+                ty::FieldTy::Curve25519Base => Field::Curve25519Base,
+                ty::FieldTy::Curve25519Scalar => Field::Curve25519Scalar,
+                ty::FieldTy::PallasBase => Field::PallasBase,
+                ty::FieldTy::PallasScalar => Field::PallasScalar,
+            }))
         }
         ty::Float(fty) => scalar(match fty {
             ty::FloatTy::F32 => F32,

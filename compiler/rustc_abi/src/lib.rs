@@ -889,6 +889,43 @@ impl Integer {
     }
 }
 
+/// Fields.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, HashStable_Generic)]
+pub enum Field {
+    Bls12381Base,
+    Bls12381Scalar,
+    Curve25519Base,
+    Curve25519Scalar,
+    PallasBase,
+    PallasScalar,
+}
+
+impl Field {
+    #[inline]
+    pub fn size(self) -> Size {
+        match self {
+            Field::Bls12381Base => Size::from_bytes(48),
+            Field::Bls12381Scalar => Size::from_bytes(32),
+            Field::Curve25519Base => Size::from_bytes(32),
+            Field::Curve25519Scalar => Size::from_bytes(32),
+            Field::PallasBase => Size::from_bytes(32),
+            Field::PallasScalar => Size::from_bytes(32),
+        }
+    }
+
+    pub fn align(self) -> AbiAndPrefAlign {
+        let align = |bytes| Align::from_bytes(bytes).unwrap();
+        match self {
+            Field::Bls12381Base => AbiAndPrefAlign::new(align(48)),
+            Field::Bls12381Scalar => AbiAndPrefAlign::new(align(32)),
+            Field::Curve25519Base => AbiAndPrefAlign::new(align(32)),
+            Field::Curve25519Scalar => AbiAndPrefAlign::new(align(32)),
+            Field::PallasBase => AbiAndPrefAlign::new(align(32)),
+            Field::PallasScalar => AbiAndPrefAlign::new(align(32)),
+        }
+    }
+}
+
 /// Fundamental unit of memory access and layout.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
@@ -904,6 +941,7 @@ pub enum Primitive {
     F32,
     F64,
     Pointer(AddressSpace),
+    Field(Field),
 }
 
 impl Primitive {
@@ -918,6 +956,7 @@ impl Primitive {
             // different address spaces can have different sizes
             // (but TargetDataLayout doesn't currently parse that part of the DL string)
             Pointer(_) => dl.pointer_size,
+            Field(f) => f.size(),
         }
     }
 
@@ -932,6 +971,7 @@ impl Primitive {
             // different address spaces can have different alignments
             // (but TargetDataLayout doesn't currently parse that part of the DL string)
             Pointer(_) => dl.pointer_align,
+            Field(f) => f.align(),
         }
     }
 }
