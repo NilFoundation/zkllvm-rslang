@@ -6,7 +6,7 @@ use crate::mir::place::PlaceRef;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
-use rustc_target::abi::{AddressSpace, Integer};
+use rustc_target::abi::{AddressSpace, Field, Integer};
 
 // This depends on `Backend` and not `BackendTypes`, because consumers will probably want to use
 // `LayoutOf` or `HasTyCtxt`. This way, they don't have to add a constraint on it themselves.
@@ -66,6 +66,18 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
             I32 => self.type_i32(),
             I64 => self.type_i64(),
             I128 => self.type_i128(),
+        }
+    }
+
+    fn type_from_field(&self, f: Field) -> Self::Type {
+        use Field::*;
+        match f {
+            Bls12381Base => self.type_field_bls12381_base(),
+            Bls12381Scalar => self.type_field_bls12381_scalar(),
+            Curve25519Base => self.type_field_curve25519_base(),
+            Curve25519Scalar => self.type_field_curve25519_scalar(),
+            PallasBase => self.type_field_pallas_base(),
+            PallasScalar => self.type_field_pallas_scalar(),
         }
     }
 
