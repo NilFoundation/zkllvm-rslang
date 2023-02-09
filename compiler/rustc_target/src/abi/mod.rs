@@ -709,6 +709,43 @@ impl Integer {
     }
 }
 
+/// Fields.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, HashStable_Generic)]
+pub enum Field {
+    Bls12381Base,
+    Bls12381Scalar,
+    Curve25519Base,
+    Curve25519Scalar,
+    PallasBase,
+    PallasScalar,
+}
+
+impl Field {
+    #[inline]
+    pub fn size(self) -> Size {
+        match self {
+            Field::Bls12381Base => Size::from_bytes(48),
+            Field::Bls12381Scalar => Size::from_bytes(32),
+            Field::Curve25519Base => Size::from_bytes(32),
+            Field::Curve25519Scalar => Size::from_bytes(32),
+            Field::PallasBase => Size::from_bytes(32),
+            Field::PallasScalar => Size::from_bytes(32),
+        }
+    }
+
+    pub fn align(self) -> AbiAndPrefAlign {
+        let align = |bytes| Align::from_bytes(bytes).unwrap();
+        match self {
+            Field::Bls12381Base => AbiAndPrefAlign::new(align(48)),
+            Field::Bls12381Scalar => AbiAndPrefAlign::new(align(32)),
+            Field::Curve25519Base => AbiAndPrefAlign::new(align(32)),
+            Field::Curve25519Scalar => AbiAndPrefAlign::new(align(32)),
+            Field::PallasBase => AbiAndPrefAlign::new(align(32)),
+            Field::PallasScalar => AbiAndPrefAlign::new(align(32)),
+        }
+    }
+}
+
 /// Fundamental unit of memory access and layout.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum Primitive {
@@ -723,6 +760,7 @@ pub enum Primitive {
     F32,
     F64,
     Pointer,
+    Field(Field),
 }
 
 impl Primitive {
@@ -734,6 +772,7 @@ impl Primitive {
             F32 => Size::from_bits(32),
             F64 => Size::from_bits(64),
             Pointer => dl.pointer_size,
+            Field(f) => f.size(),
         }
     }
 
@@ -745,6 +784,7 @@ impl Primitive {
             F32 => dl.f32_align,
             F64 => dl.f64_align,
             Pointer => dl.pointer_align,
+            Field(f) => f.align(),
         }
     }
 
@@ -1173,7 +1213,7 @@ impl Niche {
     pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
         let Self { value, valid_range: v, .. } = *self;
         let size = value.size(cx);
-        assert!(size.bits() <= 128);
+        assert!(size.bits() <= 384);
         let max_value = size.unsigned_int_max();
 
         // Find out how many values are outside the valid range.
