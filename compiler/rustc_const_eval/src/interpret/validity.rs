@@ -849,8 +849,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     Right(imm) => match *imm {
                         Immediate::Uninit =>
                             throw_validation_failure!(self.path, { "uninitialized bytes" }),
-                        Immediate::Scalar(..) | Immediate::ScalarPair(..) =>
-                            bug!("arrays/slices can never have Scalar/ScalarPair layout"),
+                        Immediate::Scalar(..) | Immediate::ScalarPair(..) | Immediate::Field(..) =>
+                            bug!("arrays/slices can never have Scalar/ScalarPair/Field layout"),
                     }
                 };
 
