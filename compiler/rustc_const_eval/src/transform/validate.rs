@@ -832,8 +832,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             self.fail(location, format!("Cannot offset by non-isize type {b:?}"));
                         }
                     }
-                    Eq | Lt | Le | Ne | Ge | Gt => {
-                        // FIXME: (aleasims) cannot Lt/Le/Ge/Gt fields!
+                    Eq | Ne  => {
                         for x in [a, b] {
                             check_kinds!(
                                 x,
