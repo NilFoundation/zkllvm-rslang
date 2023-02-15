@@ -432,6 +432,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         }
                     }
                     Eq | Lt | Le | Ne | Ge | Gt => {
+                        // FIXME: (aleasims) cannot Lt/Le/Ge/Gt fields!
                         for x in [a, b] {
                             check_kinds!(
                                 x,
@@ -540,7 +541,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let a = operand.ty(&self.body.local_decls, self.tcx);
                 match op {
                     UnOp::Neg => {
-                        check_kinds!(a, "Cannot negate type {:?}", ty::Int(..) | ty::Float(..))
+                        check_kinds!(a, "Cannot negate type {:?}", ty::Int(..) | ty::Float(..) | ty::Field(..))
                     }
                     UnOp::Not => {
                         check_kinds!(
