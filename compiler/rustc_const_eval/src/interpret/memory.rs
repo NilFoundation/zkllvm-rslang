@@ -15,6 +15,7 @@ use std::ptr;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::display_allocation;
+use rustc_middle::ty::ScalarField;
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
@@ -982,6 +983,16 @@ impl<'tcx, 'a, Prov: Provenance, Extra, Bytes: AllocBytes>
         Ok(self
             .alloc
             .write_uninit(&self.tcx, self.range)
+            .map_err(|e| e.to_interp_error(self.alloc_id))?)
+    }
+
+    /// `range` is relative to this allocation reference, not the base of the allocation.
+    pub fn write_field(&mut self, range: AllocRange, val: ScalarField) -> InterpResult<'tcx> {
+        let range = self.range.subrange(range);
+        debug!("write_field at {:?}{range:?}: {val:?}", self.alloc_id);
+        Ok(self
+            .alloc
+            .write_field(&self.tcx, range, val)
             .map_err(|e| e.to_interp_error(self.alloc_id))?)
     }
 }
