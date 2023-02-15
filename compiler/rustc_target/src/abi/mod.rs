@@ -733,16 +733,8 @@ impl Field {
         }
     }
 
-    pub fn align(self) -> AbiAndPrefAlign {
-        let align = |bytes| Align::from_bytes(bytes).unwrap();
-        match self {
-            Field::Bls12381Base => AbiAndPrefAlign::new(align(48)),
-            Field::Bls12381Scalar => AbiAndPrefAlign::new(align(32)),
-            Field::Curve25519Base => AbiAndPrefAlign::new(align(32)),
-            Field::Curve25519Scalar => AbiAndPrefAlign::new(align(32)),
-            Field::PallasBase => AbiAndPrefAlign::new(align(32)),
-            Field::PallasScalar => AbiAndPrefAlign::new(align(32)),
-        }
+    pub fn align() -> AbiAndPrefAlign {
+        AbiAndPrefAlign::new(Align::from_bytes(0).unwrap())
     }
 }
 
@@ -784,7 +776,7 @@ impl Primitive {
             F32 => dl.f32_align,
             F64 => dl.f64_align,
             Pointer => dl.pointer_align,
-            Field(f) => f.align(),
+            Field(_) => Field::align(),
         }
     }
 
