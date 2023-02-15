@@ -203,6 +203,29 @@ debug! {
   u8 u16 u32 u64 u128 usize
 }
 
+#[cfg(not(bootstrap))]
+macro_rules! debug_field {
+    ($($T:ident)*) => {$(
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl fmt::Debug for $T {
+            #[inline]
+            fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                unreachable!("field types cannot be used in real machine code")
+            }
+        }
+    )*};
+}
+
+#[cfg(not(bootstrap))]
+debug_field! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
+
 // 2 digit decimal look up table
 static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
       2021222324252627282930313233343536373839\
@@ -685,4 +708,26 @@ fn u128_mulhi(x: u128, y: u128) -> u128 {
     let high2 = (x_hi as u128 * y_lo as u128 + m_lo as u128) >> 64;
 
     x_hi as u128 * y_hi as u128 + high1 + high2
+}
+
+#[cfg(not(bootstrap))]
+macro_rules! display_field {
+    ($($T:ident)*) => {$(
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl fmt::Display for $T {
+            fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                unreachable!("field types cannot be used in real machine code")
+            }
+        }
+    )*};
+}
+
+#[cfg(not(bootstrap))]
+display_field! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
 }
