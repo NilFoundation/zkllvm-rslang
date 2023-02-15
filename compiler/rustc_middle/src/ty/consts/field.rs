@@ -11,7 +11,7 @@ use crypto_bigint::{U384, Encoding};
 /// It is backed by a [`U384`].
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct ScalarField {
-    // FIXME: remove external crate here
+    // FIXME: (aleasims) remove external crate here
     data: U384,
     /// Size corresponds to bit width of the field value.
     size: NonZeroU16,
@@ -19,7 +19,7 @@ pub struct ScalarField {
 
 impl fmt::Debug for ScalarField {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.data)
+        write!(f, "0x{:x}", self)
     }
 }
 
@@ -77,6 +77,16 @@ impl ScalarField {
             bug!("invalid bit width set to field type (zero)");
         };
         Self { data, size }
+    }
+
+    /// Get data as [`U384`]. 
+    pub fn data(&self) -> U384 {
+        self.data
+    }
+
+    /// Get size in bits.
+    pub fn size(&self) -> NonZeroU16 {
+        self.size
     }
 
     /// Get limbs as an array of `u64`.
