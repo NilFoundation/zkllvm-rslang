@@ -22,6 +22,7 @@ use super::{
     Pointer, PointerArithmetic, Provenance, ResourceExhaustionInfo, Scalar, ScalarSizeMismatch,
     UndefinedBehaviorInfo, UnsupportedOpInfo,
 };
+use super::write_target_field;
 use crate::ty;
 use init_mask::*;
 use provenance_map::*;
@@ -608,6 +609,26 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
             assert_eq!(range.size, cx.data_layout().pointer_size);
             self.provenance.insert_ptr(range.start, provenance, cx);
         }
+
+        Ok(())
+    }
+
+    /// Writes a field.
+    #[instrument(skip(self, cx), level = "debug")]
+    pub fn write_field(
+        &mut self,
+        cx: &impl HasDataLayout,
+        range: AllocRange,
+        val: ty::ScalarField,
+    ) -> AllocResult {
+        assert!(self.mutability == Mutability::Mut);
+
+        let bytes = val.data();
+
+        let endian = cx.data_layout().endian;
+        info!("endian {:?}, range {:?}", endian, range);
+        let dst = self.get_bytes_mut(cx, range)?;
+        write_target_field(endian, dst, bytes).unwrap();
 
         Ok(())
     }
