@@ -1296,7 +1296,17 @@ mod impls {
     }
 
     partial_eq_impl! {
-        bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 __zkllvm_field_pallas_base
+        bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64
+    }
+
+    #[cfg(not(bootstrap))]
+    partial_eq_impl! {
+        __zkllvm_field_bls12381_base
+        __zkllvm_field_bls12381_scalar
+        __zkllvm_field_curve25519_base
+        __zkllvm_field_curve25519_scalar
+        __zkllvm_field_pallas_base
+        __zkllvm_field_pallas_scalar
     }
 
     macro_rules! eq_impl {
@@ -1306,7 +1316,17 @@ mod impls {
         )*)
     }
 
-    eq_impl! { () bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 __zkllvm_field_pallas_base }
+    eq_impl! { () bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+
+    #[cfg(not(bootstrap))]
+    eq_impl! {
+        __zkllvm_field_bls12381_base
+        __zkllvm_field_bls12381_scalar
+        __zkllvm_field_curve25519_base
+        __zkllvm_field_curve25519_scalar
+        __zkllvm_field_pallas_base
+        __zkllvm_field_pallas_scalar
+    }
 
     macro_rules! partial_ord_impl {
         ($($t:ty)*) => ($(
