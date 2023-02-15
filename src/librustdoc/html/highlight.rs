@@ -815,7 +815,7 @@ impl<'src> Classifier<'src> {
                 | LiteralKind::CStr { .. }
                 | LiteralKind::RawCStr { .. } => Class::String,
                 // Number literals.
-                LiteralKind::Float { .. } | LiteralKind::Int { .. } => Class::Number,
+                LiteralKind::Float { .. } | LiteralKind::Int { .. } | LiteralKind::Field { .. } => Class::Number,
             },
             TokenKind::Ident | TokenKind::RawIdent if lookahead == Some(TokenKind::Bang) => {
                 self.in_macro = true;
