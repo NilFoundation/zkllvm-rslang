@@ -65,3 +65,22 @@ pub use u64;
 pub use u8;
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use usize;
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use __zkllvm_field_bls12381_base;
+#[cfg(not(bootstrap))]
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use __zkllvm_field_bls12381_scalar;
+#[cfg(not(bootstrap))]
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use __zkllvm_field_curve25519_base;
+#[cfg(not(bootstrap))]
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use __zkllvm_field_curve25519_scalar;
+#[cfg(not(bootstrap))]
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use __zkllvm_field_pallas_base;
+#[cfg(not(bootstrap))]
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use __zkllvm_field_pallas_scalar;
