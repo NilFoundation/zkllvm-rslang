@@ -101,6 +101,22 @@ impl<'tcx> InferCtxt<'tcx> {
                 self.unify_float_variable(!a_is_expected, v_id, v)
             }
 
+            // Relate field variables to other types
+            (&ty::Infer(ty::FieldVar(a_id)), &ty::Infer(ty::FieldVar(b_id))) => {
+                self.inner
+                    .borrow_mut()
+                    .field_unification_table()
+                    .unify_var_var(a_id, b_id)
+                    .map_err(|e| field_unification_error(relation.a_is_expected(), e))?;
+                Ok(a)
+            }
+            (&ty::Infer(ty::FieldVar(v_id)), &ty::Field(v)) => {
+                self.unify_field_variable(a_is_expected, v_id, v)
+            }
+            (&ty::Field(v), &ty::Infer(ty::FieldVar(v_id))) => {
+                self.unify_field_variable(!a_is_expected, v_id, v)
+            }
+
             // We don't expect `TyVar` or `Fresh*` vars at this point with lazy norm.
             (
                 ty::Alias(..),
@@ -340,6 +356,20 @@ impl<'tcx> InferCtxt<'tcx> {
             .map_err(|e| float_unification_error(vid_is_expected, e))?;
         Ok(Ty::new_float(self.tcx, val))
     }
+
+    fn unify_field_variable(
+        &self,
+        vid_is_expected: bool,
+        vid: ty::FieldVid,
+        val: ty::FieldTy,
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
+        self.inner
+            .borrow_mut()
+            .field_unification_table()
+            .unify_var_value(vid, Some(ty::FieldVarValue(val)))
+            .map_err(|e| field_unification_error(vid_is_expected, e))?;
+        Ok(self.tcx.mk_mach_field(val))
+    }
 }
 
 impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
@@ -492,4 +522,12 @@ fn float_unification_error<'tcx>(
 ) -> TypeError<'tcx> {
     let (ty::FloatVarValue(a), ty::FloatVarValue(b)) = v;
     TypeError::FloatMismatch(ExpectedFound::new(a_is_expected, a, b))
+}
+
+fn field_unification_error<'tcx>(
+    a_is_expected: bool,
+    v: (ty::FieldVarValue, ty::FieldVarValue),
+) -> TypeError<'tcx> {
+    let (ty::FieldVarValue(a), ty::FieldVarValue(b)) = v;
+    TypeError::FieldMismatch(ExpectedFound::new(a_is_expected, a, b))
 }

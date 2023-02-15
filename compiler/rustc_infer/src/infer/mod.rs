@@ -1664,6 +1664,10 @@ impl<'tcx> InferCtxt<'tcx> {
                 self.inner.borrow_mut().float_unification_table().probe_value(v).is_some()
             }
 
+            TyOrConstInferVar::TyField(v) => {
+                self.inner.borrow_mut().field_unification_table().probe_value(v).is_some()
+            }
+
             TyOrConstInferVar::Const(v) => {
                 // If `probe_value` returns a `Known` value, it never equals
                 // `ty::ConstKind::Infer(ty::InferConst::Var(v))`.
@@ -1742,6 +1746,8 @@ pub enum TyOrConstInferVar<'tcx> {
     TyInt(IntVid),
     /// Equivalent to `ty::Infer(ty::FloatVar(_))`.
     TyFloat(FloatVid),
+    /// Equivalent to `ty::Infer(ty::FieldVar(_))`.
+    TyField(FieldVid),
 
     /// Equivalent to `ty::ConstKind::Infer(ty::InferConst::Var(_))`.
     Const(ConstVid<'tcx>),
@@ -1766,6 +1772,7 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
             ty::Infer(ty::TyVar(v)) => Some(TyOrConstInferVar::Ty(v)),
             ty::Infer(ty::IntVar(v)) => Some(TyOrConstInferVar::TyInt(v)),
             ty::Infer(ty::FloatVar(v)) => Some(TyOrConstInferVar::TyFloat(v)),
+            ty::Infer(ty::FieldVar(v)) => Some(TyOrConstInferVar::TyField(v)),
             _ => None,
         }
     }

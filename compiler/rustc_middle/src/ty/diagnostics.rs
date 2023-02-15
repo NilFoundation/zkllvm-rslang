@@ -39,8 +39,10 @@ impl<'tcx> Ty<'tcx> {
                 | Infer(
                     InferTy::IntVar(_)
                         | InferTy::FloatVar(_)
+                        | InferTy::FieldVar(_)
                         | InferTy::FreshIntTy(_)
                         | InferTy::FreshFloatTy(_)
+                        | InferTy::FreshFieldTy(_)
                 )
         )
     }
@@ -59,8 +61,10 @@ impl<'tcx> Ty<'tcx> {
             | Infer(
                 InferTy::IntVar(_)
                 | InferTy::FloatVar(_)
+                | InferTy::FieldVar(_)
                 | InferTy::FreshIntTy(_)
-                | InferTy::FreshFloatTy(_),
+                | InferTy::FreshFloatTy(_)
+                | InferTy::FreshFieldTy(_),
             ) => true,
             Ref(_, x, _) | Array(x, _) | Slice(x) => x.peel_refs().is_simple_ty(),
             Tuple(tys) if tys.is_empty() => true,

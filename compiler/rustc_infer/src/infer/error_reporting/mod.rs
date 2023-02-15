@@ -1190,6 +1190,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 | (
                     &ty::Infer(ty::InferTy::FloatVar(_)),
                     &ty::Float(_) | &ty::Infer(ty::InferTy::FloatVar(_)),
+                )
+                | (&ty::Field(_), &ty::Infer(ty::InferTy::FieldVar(_)))
+                | (
+                    &ty::Infer(ty::InferTy::FieldVar(_)),
+                    &ty::Field(_) | &ty::Infer(ty::InferTy::FieldVar(_)),
                 ) => true,
                 _ => false,
             }
@@ -2800,6 +2805,11 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
             | (
                 ty::Infer(ty::InferTy::FloatVar(_)),
                 ty::Float(_) | ty::Infer(ty::InferTy::FloatVar(_)),
+            )
+            | (ty::Field(_), ty::Infer(ty::InferTy::FieldVar(_)))
+            | (
+                ty::Infer(ty::InferTy::FieldVar(_)),
+                ty::Field(_) | ty::Infer(ty::InferTy::FieldVar(_)),
             )
             | (ty::Infer(ty::InferTy::TyVar(_)), _)
             | (_, ty::Infer(ty::InferTy::TyVar(_))) => Ok(a),

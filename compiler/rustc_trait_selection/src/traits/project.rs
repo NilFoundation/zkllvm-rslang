@@ -1800,6 +1800,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Tuple(..)
                         // Integers and floats always have `u8` as their discriminant.
                         | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
+                        ty::Infer(ty::InferTy::FieldVar(_)) => true,
 
                          // type parameters, opaques, and unnormalized projections have pointer
                         // metadata if they're known (e.g. by the param_env) to be sized
@@ -1834,6 +1835,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Int(_)
                         | ty::Uint(_)
                         | ty::Float(_)
+                        | ty::Field(_)
                         | ty::Str
                         | ty::Array(..)
                         | ty::Slice(_)
@@ -1856,6 +1858,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Tuple(..)
                         // Integers and floats are always Sized, and so have unit type metadata.
                         | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
+                        ty::InferTy::FieldVar(..)) => true,
 
                         // type parameters, opaques, and unnormalized projections have pointer
                         // metadata if they're known (e.g. by the param_env) to be sized

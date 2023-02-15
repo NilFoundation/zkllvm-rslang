@@ -1207,8 +1207,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Int(_)
                 | ty::Uint(_)
                 | ty::Float(_)
+                | ty::Field(_)
                 | ty::Infer(ty::IntVar(_))
                 | ty::Infer(ty::FloatVar(_))
+                | ty::Infer(ty::FieldVar(_))
                 | ty::Str
                 | ty::RawPtr(_)
                 | ty::Ref(..)

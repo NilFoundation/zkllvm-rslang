@@ -74,7 +74,8 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
                 _,
                 &ty::Infer(ty::FreshTy(_))
                 | &ty::Infer(ty::FreshIntTy(_))
-                | &ty::Infer(ty::FreshFloatTy(_)),
+                | &ty::Infer(ty::FreshFloatTy(_))
+                | &ty::Infer(ty::FreshFieldTy(_)),
             ) => Ok(a),
 
             (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {

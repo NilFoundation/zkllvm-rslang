@@ -221,6 +221,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for FullTypeResolver<'a, 'tcx> {
                 ty::Infer(ty::TyVar(vid)) => Err(FixupError::UnresolvedTy(vid)),
                 ty::Infer(ty::IntVar(vid)) => Err(FixupError::UnresolvedIntTy(vid)),
                 ty::Infer(ty::FloatVar(vid)) => Err(FixupError::UnresolvedFloatTy(vid)),
+                ty::Infer(ty::FieldVar(vid)) => Err(FixupError::UnresolvedFieldTy(vid)),
                 ty::Infer(_) => {
                     bug!("Unexpected type in full type resolver: {:?}", t);
                 }

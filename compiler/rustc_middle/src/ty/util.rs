@@ -1350,6 +1350,7 @@ pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
         | ty::Float(_)
         | ty::Infer(ty::IntVar(_))
         | ty::Infer(ty::FloatVar(_))
+        | ty::Infer(ty::FieldVar(_))
         | ty::Str
         | ty::RawPtr(_)
         | ty::Ref(..)
