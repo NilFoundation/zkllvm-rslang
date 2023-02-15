@@ -566,6 +566,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // Int, bool, and char operations are fine.
                 } else if ty.is_floating_point() {
                     self.check_op(ops::FloatingPointOp);
+                } else if ty.is_field() {
+                    // Field operations are fine.
                 } else {
                     span_bug!(self.span, "non-primitive type in `Rvalue::UnaryOp`: {:?}", ty);
                 }
