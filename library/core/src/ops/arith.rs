@@ -106,7 +106,17 @@ macro_rules! add_impl {
     )*)
 }
 
-add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 __zkllvm_field_pallas_base }
+add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+
+#[cfg(not(bootstrap))]
+add_impl! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
 
 /// The subtraction operator `-`.
 ///
@@ -214,7 +224,17 @@ macro_rules! sub_impl {
     )*)
 }
 
-sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 __zkllvm_field_pallas_base }
+sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+
+#[cfg(not(bootstrap))]
+sub_impl! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
 
 /// The multiplication operator `*`.
 ///
@@ -343,7 +363,17 @@ macro_rules! mul_impl {
     )*)
 }
 
-mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 __zkllvm_field_pallas_base }
+mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+
+#[cfg(not(bootstrap))]
+mul_impl! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
 
 /// The division operator `/`.
 ///
@@ -483,8 +513,7 @@ macro_rules! div_impl_integer {
 
 div_impl_integer! {
     (usize u8 u16 u32 u64 u128) => "This operation will panic if `other == 0`.",
-    (isize i8 i16 i32 i64 i128) => "This operation will panic if `other == 0` or the division results in overflow.",
-    (__zkllvm_field_pallas_base) => "This operation will panic if `other == 0`."
+    (isize i8 i16 i32 i64 i128) => "This operation will panic if `other == 0` or the division results in overflow."
 }
 
 macro_rules! div_impl_float {
@@ -502,6 +531,38 @@ macro_rules! div_impl_float {
 }
 
 div_impl_float! { f32 f64 }
+
+#[cfg(not(bootstrap))]
+macro_rules! div_impl_field {
+    ($($t:ty)*) => ($(
+        /// This operation rounds towards zero, truncating any
+        /// fractional part of the exact result.
+        ///
+        /// # Panics
+        ///
+        /// This operation will panic if `other == 0`.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+        impl const Div for $t {
+            type Output = $t;
+
+            #[inline]
+            fn div(self, other: $t) -> $t { self / other }
+        }
+
+        forward_ref_binop! { impl const Div, div for $t, $t }
+    )*)
+}
+
+#[cfg(not(bootstrap))]
+div_impl_field! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
 
 /// The remainder operator `%`.
 ///
@@ -585,8 +646,7 @@ macro_rules! rem_impl_integer {
 
 rem_impl_integer! {
     (usize u8 u16 u32 u64 u128) => "This operation will panic if `other == 0`.",
-    (isize i8 i16 i32 i64 i128) => "This operation will panic if `other == 0` or if `self / other` results in overflow.",
-    (__zkllvm_field_pallas_base) => "This operation will panic if `other == 0`."
+    (isize i8 i16 i32 i64 i128) => "This operation will panic if `other == 0` or if `self / other` results in overflow."
 }
 
 macro_rules! rem_impl_float {
@@ -619,6 +679,38 @@ macro_rules! rem_impl_float {
 }
 
 rem_impl_float! { f32 f64 }
+
+#[cfg(not(bootstrap))]
+macro_rules! rem_impl_field {
+    ($($t:ty)*) => ($(
+        /// This operation satisfies `n % d == n - (n / d) * d`. The
+        /// result has the same sign as the left operand.
+        ///
+        /// # Panics
+        ///
+        /// This operation will panic if `other == 0`.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+        impl const Rem for $t {
+            type Output = $t;
+
+            #[inline]
+            fn rem(self, other: $t) -> $t { self % other }
+        }
+
+        forward_ref_binop! { impl const Rem, rem for $t, $t }
+    )*)
+}
+
+#[cfg(not(bootstrap))]
+rem_impl_field! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
 
 /// The unary negation operator `-`.
 ///
@@ -695,6 +787,34 @@ macro_rules! neg_impl {
 
 neg_impl! { isize i8 i16 i32 i64 i128 f32 f64 }
 
+#[cfg(not(bootstrap))]
+macro_rules! neg_impl_field {
+    ($($t:ty)*) => ($(
+        /// This operations returns the inverse element by addition in the field.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
+        impl const Neg for $t {
+            type Output = $t;
+
+            #[inline]
+            #[rustc_inherit_overflow_checks]
+            fn neg(self) -> $t { -self }
+        }
+
+        forward_ref_unop! { impl const Neg, neg for $t }
+    )*)
+}
+
+#[cfg(not(bootstrap))]
+neg_impl_field! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
+
 /// The addition assignment operator `+=`.
 ///
 /// # Examples
@@ -760,6 +880,16 @@ macro_rules! add_assign_impl {
 }
 
 add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+
+#[cfg(not(bootstrap))]
+add_assign_impl! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
 
 /// The subtraction assignment operator `-=`.
 ///
@@ -827,6 +957,16 @@ macro_rules! sub_assign_impl {
 
 sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
+#[cfg(not(bootstrap))]
+sub_assign_impl! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
+
 /// The multiplication assignment operator `*=`.
 ///
 /// # Examples
@@ -884,6 +1024,16 @@ macro_rules! mul_assign_impl {
 
 mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
+#[cfg(not(bootstrap))]
+mul_assign_impl! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
+
 /// The division assignment operator `/=`.
 ///
 /// # Examples
@@ -939,6 +1089,16 @@ macro_rules! div_assign_impl {
 }
 
 div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+
+#[cfg(not(bootstrap))]
+div_assign_impl! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
 
 /// The remainder assignment operator `%=`.
 ///
@@ -999,3 +1159,13 @@ macro_rules! rem_assign_impl {
 }
 
 rem_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+
+#[cfg(not(bootstrap))]
+rem_assign_impl! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
