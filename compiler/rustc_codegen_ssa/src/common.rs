@@ -79,6 +79,8 @@ pub enum SynchronizationScope {
 pub enum TypeKind {
     Void,
     Half,
+    GaloisField,
+    EllipticCurve,
     Float,
     Double,
     X86_FP80,
