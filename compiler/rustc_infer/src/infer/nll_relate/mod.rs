@@ -944,7 +944,7 @@ where
         debug!("TypeGeneralizer::tys(a={:?})", a);
 
         match *a.kind() {
-            ty::Infer(ty::TyVar(_)) | ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_))
+            ty::Infer(ty::TyVar(_)) | ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_)) | ty::Infer(ty::FieldVar(_))
                 if D::forbid_inference_vars() =>
             {
                 bug!("unexpected inference variable encountered in NLL generalization: {:?}", a);
@@ -986,7 +986,7 @@ where
                 }
             }
 
-            ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_) | ty::FieldVar(_)) => {
                 // No matter what mode we are in,
                 // integer/floating-point types must be equal to be
                 // relatable.

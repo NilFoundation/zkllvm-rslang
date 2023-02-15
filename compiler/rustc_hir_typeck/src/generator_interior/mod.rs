@@ -108,7 +108,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
 
                 // If we encounter an int/float variable, then inference fallback didn't
                 // finish due to some other error. Don't emit spurious additional errors.
-                if let ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(_)) =
+                if let ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(_) | ty::InferTy::FieldVar(_)) =
                     unresolved_type.kind()
                 {
                     self.fcx
