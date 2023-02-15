@@ -231,7 +231,16 @@ mod impls {
         isize i8 i16 i32 i64 i128
         f32 f64
         bool char
+    }
+
+    #[cfg(not(bootstrap))]
+    impl_clone! {
+        __zkllvm_field_bls12381_base
+        __zkllvm_field_bls12381_scalar
+        __zkllvm_field_curve25519_base
+        __zkllvm_field_curve25519_scalar
         __zkllvm_field_pallas_base
+        __zkllvm_field_pallas_scalar
     }
 
     #[unstable(feature = "never_type", issue = "35121")]
