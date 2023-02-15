@@ -114,6 +114,22 @@ impl<'tcx> InferCtxt<'tcx> {
                 self.unify_float_variable(!a_is_expected, v_id, v)
             }
 
+            // Relate field variables to other types
+            (&ty::Infer(ty::FieldVar(a_id)), &ty::Infer(ty::FieldVar(b_id))) => {
+                self.inner
+                    .borrow_mut()
+                    .field_unification_table()
+                    .unify_var_var(a_id, b_id)
+                    .map_err(|e| field_unification_error(relation.a_is_expected(), e))?;
+                Ok(a)
+            }
+            (&ty::Infer(ty::FieldVar(v_id)), &ty::Field(v)) => {
+                self.unify_field_variable(a_is_expected, v_id, v)
+            }
+            (&ty::Field(v), &ty::Infer(ty::FieldVar(v_id))) => {
+                self.unify_field_variable(!a_is_expected, v_id, v)
+            }
+
             // All other cases of inference are errors
             (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
                 Err(TypeError::Sorts(ty::relate::expected_found(relation, a, b)))
@@ -284,6 +300,20 @@ impl<'tcx> InferCtxt<'tcx> {
             .unify_var_value(vid, Some(ty::FloatVarValue(val)))
             .map_err(|e| float_unification_error(vid_is_expected, e))?;
         Ok(self.tcx.mk_mach_float(val))
+    }
+
+    fn unify_field_variable(
+        &self,
+        vid_is_expected: bool,
+        vid: ty::FieldVid,
+        val: ty::FieldTy,
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
+        self.inner
+            .borrow_mut()
+            .field_unification_table()
+            .unify_var_value(vid, Some(ty::FieldVarValue(val)))
+            .map_err(|e| field_unification_error(vid_is_expected, e))?;
+        Ok(self.tcx.mk_mach_field(val))
     }
 }
 
@@ -669,7 +699,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     }
                 }
             }
-            ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_) | ty::FieldVar(_)) => {
                 // No matter what mode we are in,
                 // integer/floating-point types must be equal to be
                 // relatable.
@@ -795,6 +825,14 @@ fn float_unification_error<'tcx>(
     TypeError::FloatMismatch(ExpectedFound::new(a_is_expected, a, b))
 }
 
+fn field_unification_error<'tcx>(
+    a_is_expected: bool,
+    v: (ty::FieldVarValue, ty::FieldVarValue),
+) -> TypeError<'tcx> {
+    let (ty::FieldVarValue(a), ty::FieldVarValue(b)) = v;
+    TypeError::FieldMismatch(ExpectedFound::new(a_is_expected, a, b))
+}
+
 struct ConstInferUnifier<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'tcx>,
 
@@ -891,7 +929,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                     }
                 }
             }
-            ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => Ok(t),
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_) | ty::FieldVar(_)) => Ok(t),
             _ => relate::super_relate_tys(self, t, t),
         }
     }

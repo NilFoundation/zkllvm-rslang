@@ -1937,7 +1937,7 @@ impl<'tcx> Ty<'tcx> {
                 | FnDef(..)
                 | FnPtr(_)
                 | RawPtr(_)
-                | Infer(IntVar(_) | FloatVar(_))
+                | Infer(IntVar(_) | FloatVar(_) | FieldVar(_))
         )
     }
 
@@ -2344,7 +2344,7 @@ impl<'tcx> Ty<'tcx> {
             // These aren't even `Clone`
             ty::Str | ty::Slice(..) | ty::Foreign(..) | ty::Dynamic(..) => false,
 
-            ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
+            ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_) | ty::InferTy::FieldVar(_))
             | ty::Int(..)
             | ty::Uint(..)
             | ty::Field(..)

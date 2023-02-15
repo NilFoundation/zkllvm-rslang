@@ -1791,10 +1791,15 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             match (ty.kind(), last_ty.kind()) {
                                 (Infer(InferTy::IntVar(_)), Infer(InferTy::IntVar(_)))
                                 | (Infer(InferTy::FloatVar(_)), Infer(InferTy::FloatVar(_)))
+                                | (Infer(InferTy::FieldVar(_)), Infer(InferTy::FieldVar(_)))
                                 | (Infer(InferTy::FreshIntTy(_)), Infer(InferTy::FreshIntTy(_)))
                                 | (
                                     Infer(InferTy::FreshFloatTy(_)),
                                     Infer(InferTy::FreshFloatTy(_)),
+                                )
+                                | (
+                                    Infer(InferTy::FreshFieldTy(_)),
+                                    Infer(InferTy::FreshFieldTy(_)),
                                 ) => true,
                                 _ => ty == last_ty,
                             }
