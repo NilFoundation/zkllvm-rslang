@@ -129,6 +129,16 @@ impl PrimitiveExt for Primitive {
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
             Pointer => tcx.mk_mut_ptr(tcx.mk_unit()),
+            Field(f) => {
+                match f {
+                    Field::Bls12381Base => tcx.types.__zkllvm_field_bls12381_base,
+                    Field::Bls12381Scalar => tcx.types.__zkllvm_field_bls12381_scalar,
+                    Field::Curve25519Base => tcx.types.__zkllvm_field_curve25519_base,
+                    Field::Curve25519Scalar => tcx.types.__zkllvm_field_curve25519_scalar,
+                    Field::PallasBase => tcx.types.__zkllvm_field_pallas_base,
+                    Field::PallasScalar => tcx.types.__zkllvm_field_pallas_scalar,
+                }
+            },
         }
     }
 
@@ -139,7 +149,7 @@ impl PrimitiveExt for Primitive {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
             Pointer => tcx.types.usize,
-            F32 | F64 => bug!("floats do not have an int type"),
+            F32 | F64  | Field(..) => bug!("floats do not have an int type"),
         }
     }
 }

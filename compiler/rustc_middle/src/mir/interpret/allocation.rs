@@ -19,9 +19,9 @@ use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
-    read_target_uint, write_target_uint, AllocId, InterpError, InterpResult, Pointer, Provenance,
-    ResourceExhaustionInfo, Scalar, ScalarSizeMismatch, UndefinedBehaviorInfo, UninitBytesAccess,
-    UnsupportedOpInfo,
+    write_target_field, read_target_uint, write_target_uint, AllocId, InterpError,
+    InterpResult, Pointer, Provenance, ResourceExhaustionInfo, Scalar, ScalarSizeMismatch,
+    UndefinedBehaviorInfo, UninitBytesAccess, UnsupportedOpInfo,
 };
 use crate::ty;
 use init_mask::*;
@@ -521,6 +521,26 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
             assert_eq!(range.size, cx.data_layout().pointer_size);
             self.provenance.insert_ptr(range.start, provenance, cx);
         }
+
+        Ok(())
+    }
+
+    /// Writes a field.
+    #[instrument(skip(self, cx), level = "debug")]
+    pub fn write_field(
+        &mut self,
+        cx: &impl HasDataLayout,
+        range: AllocRange,
+        val: ty::ScalarField,
+    ) -> AllocResult {
+        assert!(self.mutability == Mutability::Mut);
+
+        let bytes = val.data();
+
+        let endian = cx.data_layout().endian;
+        info!("endian {:?}, range {:?}", endian, range);
+        let dst = self.get_bytes_mut(cx, range)?;
+        write_target_field(endian, dst, bytes).unwrap();
 
         Ok(())
     }
