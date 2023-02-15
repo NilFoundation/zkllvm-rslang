@@ -469,8 +469,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             self.fail(location, format!("Cannot offset by non-isize type {:?}", b));
                         }
                     }
-                    Eq | Lt | Le | Ne | Ge | Gt => {
-                        // FIXME: (aleasims) cannot Lt/Le/Ge/Gt fields!
+                    Eq | Ne  => {
                         for x in [a, b] {
                             check_kinds!(
                                 x,
@@ -480,6 +479,28 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                     | ty::Int(..)
                                     | ty::Uint(..)
                                     | ty::Field(..)
+                                    | ty::Float(..)
+                                    | ty::RawPtr(..)
+                                    | ty::FnPtr(..)
+                            )
+                        }
+                        // The function pointer types can have lifetimes
+                        if !self.mir_assign_valid_types(a, b) {
+                            self.fail(
+                                location,
+                                format!("Cannot compare unequal types {:?} and {:?}", a, b),
+                            );
+                        }
+                    }
+                    Lt | Le | Ge | Gt => {
+                        for x in [a, b] {
+                            check_kinds!(
+                                x,
+                                "Cannot compare type {:?}",
+                                ty::Bool
+                                    | ty::Char
+                                    | ty::Int(..)
+                                    | ty::Uint(..)
                                     | ty::Float(..)
                                     | ty::RawPtr(..)
                                     | ty::FnPtr(..)
