@@ -1261,7 +1261,50 @@ mod prim_isize {}
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_usize {}
 
+#[doc(primitive = "__zkllvm_field_bls12381_base")]
+//
+/// Bls12381 base field.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+mod prim_zkllvm_field_bls12381_base {}
+
+#[doc(primitive = "__zkllvm_field_bls12381_scalar")]
+//
+/// Bls12381 scalar field.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+mod prim_zkllvm_field_bls12381_scalar {}
+
+#[doc(primitive = "__zkllvm_field_curve25519_base")]
+//
+/// Curve25519 base field.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+mod prim_zkllvm_field_curve25519_base {}
+
+#[doc(primitive = "__zkllvm_field_curve25519_scalar")]
+//
+/// Curve25519 scalar field.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+mod prim_zkllvm_field_curve25519_scalar {}
+
+#[doc(primitive = "__zkllvm_field_pallas_base")]
+//
+/// Pallas base field.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+mod prim_zkllvm_field_pallas_base {}
+
+#[doc(primitive = "__zkllvm_field_pallas_scalar")]
+//
+/// Pallas scalar field.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+mod prim_zkllvm_field_pallas_scalar {}
+
 #[rustc_doc_primitive = "reference"]
+#[doc(primitive = "reference")]
 #[doc(alias = "&")]
 #[doc(alias = "&mut")]
 //
