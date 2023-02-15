@@ -174,3 +174,16 @@ default_impl! { i128, 0, "Returns the default value of `0`" }
 
 default_impl! { f32, 0.0f32, "Returns the default value of `0.0`" }
 default_impl! { f64, 0.0f64, "Returns the default value of `0.0`" }
+
+#[cfg(not(bootstrap))]
+default_impl! { __zkllvm_field_bls12381_base, 0g, "Returns the default value of `0`" }
+#[cfg(not(bootstrap))]
+default_impl! { __zkllvm_field_bls12381_scalar, 0g, "Returns the default value of `0`" }
+#[cfg(not(bootstrap))]
+default_impl! { __zkllvm_field_curve25519_base, 0g, "Returns the default value of `0`" }
+#[cfg(not(bootstrap))]
+default_impl! { __zkllvm_field_curve25519_scalar, 0g, "Returns the default value of `0`" }
+#[cfg(not(bootstrap))]
+default_impl! { __zkllvm_field_pallas_base, 0g, "Returns the default value of `0`" }
+#[cfg(not(bootstrap))]
+default_impl! { __zkllvm_field_pallas_scalar, 0g, "Returns the default value of `0`" }
