@@ -913,16 +913,8 @@ impl Field {
         }
     }
 
-    pub fn align(self) -> AbiAndPrefAlign {
-        let align = |bytes| Align::from_bytes(bytes).unwrap();
-        match self {
-            Field::Bls12381Base => AbiAndPrefAlign::new(align(48)),
-            Field::Bls12381Scalar => AbiAndPrefAlign::new(align(32)),
-            Field::Curve25519Base => AbiAndPrefAlign::new(align(32)),
-            Field::Curve25519Scalar => AbiAndPrefAlign::new(align(32)),
-            Field::PallasBase => AbiAndPrefAlign::new(align(32)),
-            Field::PallasScalar => AbiAndPrefAlign::new(align(32)),
-        }
+    pub fn align() -> AbiAndPrefAlign {
+        AbiAndPrefAlign::new(Align::from_bytes(0).unwrap())
     }
 }
 
@@ -971,7 +963,7 @@ impl Primitive {
             // different address spaces can have different alignments
             // (but TargetDataLayout doesn't currently parse that part of the DL string)
             Pointer(_) => dl.pointer_align,
-            Field(f) => f.align(),
+            Field(_) => Field::align(),
         }
     }
 }
@@ -1445,6 +1437,8 @@ pub struct Niche {
 impl Niche {
     pub fn from_scalar<C: HasDataLayout>(cx: &C, offset: Size, scalar: Scalar) -> Option<Self> {
         let Scalar::Initialized { value, valid_range } = scalar else { return None };
+        // We cannot specify a niche for field values, since they do not fit in u128.
+        if matches!(value, Primitive::Field(..)) { return None };
         let niche = Niche { offset, value, valid_range };
         if niche.available(cx) > 0 { Some(niche) } else { None }
     }
