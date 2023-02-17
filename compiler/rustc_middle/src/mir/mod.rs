@@ -10,7 +10,7 @@ use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::visit::{TypeVisitable, TypeVisitor};
-use crate::ty::{self, List, Ty, TyCtxt};
+use crate::ty::{self, List, ScalarField, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 
@@ -2340,7 +2340,11 @@ impl<'tcx> ConstantKind<'tcx> {
                 bug!("could not compute layout for {:?}: {:?}", param_env_ty.value, e)
             })
             .size;
-        let cv = ConstValue::Scalar(Scalar::from_uint(bits, size));
+        let cv = if param_env_ty.value.is_field() {
+            ConstValue::Field(ScalarField::from_uint(bits, size))
+        } else {
+            ConstValue::Scalar(Scalar::from_uint(bits, size))
+        };
 
         Self::Val(cv, param_env_ty.value)
     }

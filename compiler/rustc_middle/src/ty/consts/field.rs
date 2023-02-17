@@ -2,6 +2,7 @@ use std::fmt;
 use std::num::NonZeroU16;
 
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_target::abi::Size;
 
 use crypto_bigint::{U384, Encoding};
 
@@ -77,6 +78,10 @@ impl ScalarField {
             bug!("invalid bit width set to field type (zero)");
         };
         Self { data, size }
+    }
+
+    pub fn from_uint(_i: impl Into<u128>, _size: Size) -> Self {
+        todo!()
     }
 
     /// Get data as [`U384`]. 
