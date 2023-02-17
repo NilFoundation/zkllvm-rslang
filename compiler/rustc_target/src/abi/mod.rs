@@ -1198,6 +1198,8 @@ pub struct Niche {
 impl Niche {
     pub fn from_scalar<C: HasDataLayout>(cx: &C, offset: Size, scalar: Scalar) -> Option<Self> {
         let Scalar::Initialized { value, valid_range } = scalar else { return None };
+        // We cannot specify a niche for field values, since they do not fit in u128.
+        if matches!(value, Primitive::Field(..)) { return None };
         let niche = Niche { offset, value, valid_range };
         if niche.available(cx) > 0 { Some(niche) } else { None }
     }
