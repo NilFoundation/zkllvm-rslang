@@ -561,12 +561,12 @@ impl FieldTy {
 
     pub fn bit_width(self) -> u64 {
         match self {
-            FieldTy::Bls12381Base => 381,
-            FieldTy::Bls12381Scalar => 255,
-            FieldTy::Curve25519Base => 255,
-            FieldTy::Curve25519Scalar => 253,
-            FieldTy::PallasBase => 255,
-            FieldTy::PallasScalar => 255,
+            FieldTy::Bls12381Base => 384, // actual is 381
+            FieldTy::Bls12381Scalar => 256, // actual is 255
+            FieldTy::Curve25519Base => 256, // actual is 255
+            FieldTy::Curve25519Scalar => 256, // actual is 253
+            FieldTy::PallasBase => 256, // actual is 255
+            FieldTy::PallasScalar => 256, // actual is 255
         }
     }
 }
