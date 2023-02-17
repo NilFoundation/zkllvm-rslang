@@ -137,14 +137,21 @@ fn layout_of_uncached<'tcx>(
         ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
         ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
         ty::Field(fty) => {
-            scalar(Field(match fty {
+            let value = Field(match fty {
                 ty::FieldTy::Bls12381Base => Field::Bls12381Base,
                 ty::FieldTy::Bls12381Scalar => Field::Bls12381Scalar,
                 ty::FieldTy::Curve25519Base => Field::Curve25519Base,
                 ty::FieldTy::Curve25519Scalar => Field::Curve25519Scalar,
                 ty::FieldTy::PallasBase => Field::PallasBase,
                 ty::FieldTy::PallasScalar => Field::PallasScalar,
-            }))
+            });
+            tcx.intern_layout(LayoutS::scalar(
+                cx,
+                Scalar::Initialized {
+                    value,
+                    valid_range: WrappingRange { start: 0, end: 0 },
+                },
+            ))
         }
         ty::Float(fty) => scalar(match fty {
             ty::FloatTy::F32 => F32,
