@@ -240,6 +240,20 @@ pub(super) fn sanity_check_layout<'tcx>(
                         "size mismatch between ABI and layout in {layout:#?}"
                     );
                 }
+                Abi::Field(field) => {
+                    let size = field.size();
+                    let align = Field::align().abi;
+                    assert_eq!(
+                        layout.layout.size(),
+                        size,
+                        "size mismatch between ABI and layout in {layout:#?}"
+                    );
+                    assert_eq!(
+                        layout.layout.align().abi,
+                        align,
+                        "alignment mismatch between ABI and layout in {layout:#?}"
+                    );
+                },
                 Abi::Uninhabited | Abi::Aggregate { .. } => {} // Nothing to check.
             }
         }
