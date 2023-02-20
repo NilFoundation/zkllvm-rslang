@@ -1223,7 +1223,7 @@ impl Niche {
     pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
         let Self { value, valid_range: v, .. } = *self;
         let size = value.size(cx);
-        assert!(size.bits() <= 384);
+        assert!(size.bits() <= 128);
         let max_value = size.unsigned_int_max();
 
         // Find out how many values are outside the valid range.
