@@ -254,11 +254,11 @@ TrivialTypeTraversalAndLiftImpls! {
     ::rustc_errors::ErrorGuaranteed,
     Field,
     interpret::Scalar,
+    interpret::ScalarField,
     rustc_target::abi::Size,
     rustc_type_ir::DebruijnIndex,
     ty::BoundVar,
     ty::Placeholder<ty::BoundVar>,
-    ty::consts::ScalarField,
 }
 
 TrivialTypeTraversalAndLiftImpls! {
