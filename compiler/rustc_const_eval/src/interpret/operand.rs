@@ -4,7 +4,7 @@
 use rustc_hir::def::Namespace;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
-use rustc_middle::ty::{ConstInt, ScalarField, Ty};
+use rustc_middle::ty::{ConstInt, Ty};
 use rustc_middle::{mir, ty};
 use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
@@ -12,7 +12,7 @@ use rustc_target::abi::{VariantIdx, Variants};
 use super::{
     alloc_range, from_known_layout, mir_assign_valid_types, AllocId, ConstValue, Frame, GlobalId,
     InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Place, PlaceTy, Pointer,
-    Provenance, Scalar,
+    Provenance, Scalar, ScalarField,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.

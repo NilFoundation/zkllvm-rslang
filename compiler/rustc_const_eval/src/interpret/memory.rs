@@ -15,13 +15,12 @@ use std::ptr;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::display_allocation;
-use rustc_middle::ty::ScalarField;
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
     alloc_range, AllocId, AllocMap, AllocRange, Allocation, CheckInAllocMsg, GlobalAlloc, InterpCx,
-    InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Provenance, Scalar,
+    InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Provenance, Scalar, ScalarField
 };
 
 #[derive(Debug, PartialEq, Copy, Clone)]

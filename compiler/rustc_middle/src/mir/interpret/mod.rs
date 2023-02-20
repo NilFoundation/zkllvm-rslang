@@ -128,7 +128,7 @@ pub use self::error::{
     UninitBytesAccess, UnsupportedOpInfo,
 };
 
-pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar};
+pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar, ScalarField};
 
 pub use self::allocation::{
     alloc_range, AllocRange, Allocation, ConstAllocation, InitChunk, InitChunkIter, InitMask,

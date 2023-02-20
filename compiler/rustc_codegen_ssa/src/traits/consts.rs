@@ -1,7 +1,6 @@
 use super::BackendTypes;
 use crate::mir::place::PlaceRef;
-use rustc_middle::mir::interpret::{ConstAllocation, Scalar};
-use rustc_middle::ty::ScalarField;
+use rustc_middle::mir::interpret::{ConstAllocation, Scalar, ScalarField};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_target::abi::{self, Size};
 

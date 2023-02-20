@@ -4,13 +4,14 @@
 
 use crate::mir::interpret::{
     AllocRange, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, LitToConstInput, Scalar,
+    ScalarField,
 };
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::visit::{TypeVisitable, TypeVisitor};
-use crate::ty::{self, List, ScalarField, Ty, TyCtxt};
+use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 

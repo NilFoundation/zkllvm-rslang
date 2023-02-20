@@ -16,7 +16,7 @@ use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
     read_target_field, write_target_field, read_target_uint, write_target_uint, AllocId,
-    InterpError, InterpResult, Pointer, Provenance, ResourceExhaustionInfo, Scalar,
+    InterpError, InterpResult, Pointer, Provenance, ResourceExhaustionInfo, Scalar, ScalarField,
     ScalarSizeMismatch, UndefinedBehaviorInfo, UninitBytesAccess, UnsupportedOpInfo,
 };
 use crate::ty;
@@ -502,7 +502,7 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
         &self,
         cx: &impl HasDataLayout,
         range: AllocRange,
-    ) -> AllocResult<ty::ScalarField> {
+    ) -> AllocResult<ScalarField> {
         // First and foremost, if anything is uninit, bail.
         if self.is_init(range).is_err() {
             return Err(AllocError::InvalidUninitBytes(None));
@@ -518,7 +518,7 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
             return Err(AllocError::ReadPointerAsBytes);
         }
         // There is no provenance, we can just return the bits.
-        Ok(ty::ScalarField::from_u384(bits, range.size))
+        Ok(ScalarField::from_u384(bits, range.size))
     }
 
     /// Writes a field.
@@ -527,7 +527,7 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
         &mut self,
         cx: &impl HasDataLayout,
         range: AllocRange,
-        val: ty::ScalarField,
+        val: ScalarField,
     ) -> AllocResult {
         assert!(self.mutability == Mutability::Mut);
 
