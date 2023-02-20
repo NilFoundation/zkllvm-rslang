@@ -22,7 +22,7 @@ use super::{
     Pointer, PointerArithmetic, Provenance, ResourceExhaustionInfo, Scalar, ScalarSizeMismatch,
     UndefinedBehaviorInfo, UnsupportedOpInfo,
 };
-use super::write_target_field;
+use super::{write_target_field, read_target_field};
 use crate::ty;
 use init_mask::*;
 use provenance_map::*;
@@ -611,6 +611,30 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         }
 
         Ok(())
+    }
+
+    /// Reads a field.
+    pub fn read_field(
+        &self,
+        cx: &impl HasDataLayout,
+        range: AllocRange,
+    ) -> AllocResult<ty::ScalarField> {
+        // First and foremost, if anything is uninit, bail.
+        if self.is_init(range).is_err() {
+            return Err(AllocError::InvalidUninitBytes(None));
+        }
+
+        // Get the integer part of the result. We HAVE TO check provenance before returning this!
+        let bytes = self.get_bytes_unchecked(range);
+        let bits = read_target_field(cx.data_layout().endian, bytes).unwrap();
+
+        // Fallback path for when we cannot treat provenance bytewise or ignore it.
+        assert!(!Prov::OFFSET_IS_ADDR);
+        if self.range_has_provenance(cx, range) {
+            return Err(AllocError::ReadPointerAsBytes);
+        }
+        // There is no provenance, we can just return the bits.
+        Ok(ty::ScalarField::from_u384(bits, range.size))
     }
 
     /// Writes a field.

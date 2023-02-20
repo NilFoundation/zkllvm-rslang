@@ -687,3 +687,20 @@ pub fn write_target_field(
     debug_assert!(target.len() == 0);
     Ok(())
 }
+
+#[inline]
+pub fn read_target_field(endianness: Endian, mut source: &[u8]) -> Result<U384, io::Error> {
+    let mut buf = [0u8; 48];
+    let uint = match endianness {
+        Endian::Little => {
+            source.read(&mut buf)?;
+            Ok(U384::from_le_bytes(buf))
+        }
+        Endian::Big => {
+            source.read(&mut buf[16 - source.len()..])?;
+            Ok(U384::from_be_bytes(buf))
+        }
+    };
+    debug_assert!(source.len() == 0);
+    uint
+}
