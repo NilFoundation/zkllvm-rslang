@@ -36,6 +36,7 @@ fn uncached_llvm_type<'a, 'tcx>(
                 false,
             );
         }
+        Abi::Field(_) => bug!("handled elsewhere"),
         Abi::Uninhabited | Abi::Aggregate { .. } => {}
     }
 
@@ -193,6 +194,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     fn is_llvm_immediate(&self) -> bool {
         match self.abi {
             Abi::Scalar(_) | Abi::Vector { .. } => true,
+            Abi::Field(_) => true,
             Abi::ScalarPair(..) | Abi::Uninhabited | Abi::Aggregate { .. } => false,
         }
     }
@@ -200,7 +202,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     fn is_llvm_scalar_pair(&self) -> bool {
         match self.abi {
             Abi::ScalarPair(..) => true,
-            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } | Abi::Aggregate { .. } => false,
+            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } | Abi::Aggregate { .. } | Abi::Field(..) => false,
         }
     }
 
@@ -232,6 +234,11 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
                 _ => self.scalar_llvm_type_at(cx, scalar),
             };
             cx.scalar_lltypes.borrow_mut().insert(self.ty, llty);
+            return llty;
+        }
+        if let Abi::Field(field) = self.abi {
+            // FIXME: (aleasims) cache types
+            let llty = cx.type_from_field(field);
             return llty;
         }
 
@@ -296,7 +303,6 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             F32 => cx.type_f32(),
             F64 => cx.type_f64(),
             Pointer(address_space) => cx.type_ptr_ext(address_space),
-            Field(f) => cx.type_from_field(f),
         }
     }
 

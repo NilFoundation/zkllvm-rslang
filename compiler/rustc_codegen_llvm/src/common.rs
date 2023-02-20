@@ -301,16 +301,18 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn field_to_backend(&self, sf: ScalarField, layout: abi::Scalar, llty: &'ll Type) -> &'ll Value {
+    fn field_to_backend(&self, sf: ScalarField, layout: abi::Field, llty: &'ll Type) -> &'ll Value {
+        trace!("field_to_backend llty: {:?}", llty);
         unsafe {
-            llvm::LLVMConstField(
-                llty,
-                llvm::LLVMConstIntOfArbitraryPrecision(
-                    self.type_ix(layout.size(self).bits()),
-                    6,
-                    sf.words().as_ptr(),
-                ),
-            )
+            let llap_int = llvm::LLVMConstIntOfArbitraryPrecision(
+                self.type_ix(layout.real_bits()), // we need real bit size here
+                6,
+                sf.words().as_ptr(),
+            );
+            trace!("llap_int: {:?}", llap_int);
+            let llval = llvm::LLVMConstField(llty, llap_int);
+            trace!("llval: {:?}", llval);
+            llval
         }
     }
 
