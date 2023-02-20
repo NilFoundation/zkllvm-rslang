@@ -82,6 +82,13 @@ impl ScalarField {
         Self { data, size }
     }
 
+    pub fn from_u384(i: impl Into<U384>, size: Size) -> Self {
+        let Ok(size) = NonZeroU16::try_from(size.bytes() as u16) else {
+            bug!("field type size is zero");
+        };
+        Self { data: i.into(), size }
+    }
+
     pub fn from_uint(i: impl Into<u128>, size: Size) -> Self {
         let i: u128 = i.into();
         let Ok(size) = NonZeroU16::try_from(size.bytes() as u16) else {
