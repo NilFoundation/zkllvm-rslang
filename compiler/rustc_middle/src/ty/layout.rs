@@ -129,16 +129,6 @@ impl PrimitiveExt for Primitive {
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
             Pointer => tcx.mk_mut_ptr(tcx.mk_unit()),
-            Field(f) => {
-                match f {
-                    Field::Bls12381Base => tcx.types.__zkllvm_field_bls12381_base,
-                    Field::Bls12381Scalar => tcx.types.__zkllvm_field_bls12381_scalar,
-                    Field::Curve25519Base => tcx.types.__zkllvm_field_curve25519_base,
-                    Field::Curve25519Scalar => tcx.types.__zkllvm_field_curve25519_scalar,
-                    Field::PallasBase => tcx.types.__zkllvm_field_pallas_base,
-                    Field::PallasScalar => tcx.types.__zkllvm_field_pallas_scalar,
-                }
-            },
         }
     }
 
@@ -149,7 +139,36 @@ impl PrimitiveExt for Primitive {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
             Pointer => tcx.types.usize,
-            F32 | F64  | Field(..) => bug!("floats do not have an int type"),
+            F32 | F64 => bug!("floats do not have an int type"),
+        }
+    }
+}
+
+pub trait FieldExt {
+    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
+    fn from_field_ty(fty: ty::FieldTy) -> Field;
+}
+
+impl FieldExt for Field {
+    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        match self {
+            Field::Bls12381Base => tcx.types.__zkllvm_field_bls12381_base,
+            Field::Bls12381Scalar => tcx.types.__zkllvm_field_bls12381_scalar,
+            Field::Curve25519Base => tcx.types.__zkllvm_field_curve25519_base,
+            Field::Curve25519Scalar => tcx.types.__zkllvm_field_curve25519_scalar,
+            Field::PallasBase => tcx.types.__zkllvm_field_pallas_base,
+            Field::PallasScalar => tcx.types.__zkllvm_field_pallas_scalar,
+        }
+    }
+
+    fn from_field_ty(fty: ty::FieldTy) -> Field {
+        match fty {
+            ty::FieldTy::Bls12381Base => Field::Bls12381Base,
+            ty::FieldTy::Bls12381Scalar => Field::Bls12381Scalar,
+            ty::FieldTy::Curve25519Base => Field::Curve25519Base,
+            ty::FieldTy::Curve25519Scalar => Field::Curve25519Scalar,
+            ty::FieldTy::PallasBase => Field::PallasBase,
+            ty::FieldTy::PallasScalar => Field::PallasScalar,
         }
     }
 }
