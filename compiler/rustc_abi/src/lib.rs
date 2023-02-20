@@ -933,7 +933,6 @@ pub enum Primitive {
     F32,
     F64,
     Pointer(AddressSpace),
-    Field(Field),
 }
 
 impl Primitive {
@@ -948,7 +947,6 @@ impl Primitive {
             // different address spaces can have different sizes
             // (but TargetDataLayout doesn't currently parse that part of the DL string)
             Pointer(_) => dl.pointer_size,
-            Field(f) => f.size(),
         }
     }
 
@@ -963,7 +961,6 @@ impl Primitive {
             // different address spaces can have different alignments
             // (but TargetDataLayout doesn't currently parse that part of the DL string)
             Pointer(_) => dl.pointer_align,
-            Field(_) => Field::align(),
         }
     }
 }
@@ -1297,6 +1294,7 @@ pub enum Abi {
         /// If true, the size is exact, otherwise it's only a lower bound.
         sized: bool,
     },
+    Field(Field),
 }
 
 impl Abi {
@@ -1305,6 +1303,7 @@ impl Abi {
     pub fn is_unsized(&self) -> bool {
         match *self {
             Abi::Uninhabited | Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
+            Abi::Field(_) => false,
             Abi::Aggregate { sized } => !sized,
         }
     }
@@ -1338,11 +1337,18 @@ impl Abi {
         matches!(*self, Abi::Scalar(_))
     }
 
+    /// Returns `true` is this is a field type
+    #[inline]
+    pub fn is_field(&self) -> bool {
+        matches!(*self, Abi::Field(_))
+    }
+
     /// Returns the fixed alignment of this ABI, if any is mandated.
     pub fn inherent_align<C: HasDataLayout>(&self, cx: &C) -> Option<AbiAndPrefAlign> {
         Some(match *self {
             Abi::Scalar(s) => s.align(cx),
             Abi::ScalarPair(s1, s2) => s1.align(cx).max(s2.align(cx)),
+            Abi::Field(_) => Field::align(),
             Abi::Vector { element, count } => {
                 cx.data_layout().vector_align(element.size(cx) * count)
             }
@@ -1362,6 +1368,7 @@ impl Abi {
                 let field2_offset = s1.size(cx).align_to(s2.align(cx).abi);
                 (field2_offset + s2.size(cx)).align_to(self.inherent_align(cx)?.abi)
             }
+            Abi::Field(f) => f.size(),
             Abi::Vector { element, count } => {
                 // No padding in vectors, except possibly for trailing padding
                 // to make the size a multiple of align (e.g. for vectors of size 3).
@@ -1376,6 +1383,7 @@ impl Abi {
         match *self {
             Abi::Scalar(s) => Abi::Scalar(s.to_union()),
             Abi::ScalarPair(s1, s2) => Abi::ScalarPair(s1.to_union(), s2.to_union()),
+            Abi::Field(f) => bug!("cannot convert field ABI to union"),
             Abi::Vector { element, count } => Abi::Vector { element: element.to_union(), count },
             Abi::Uninhabited | Abi::Aggregate { .. } => Abi::Aggregate { sized: true },
         }
@@ -1437,8 +1445,6 @@ pub struct Niche {
 impl Niche {
     pub fn from_scalar<C: HasDataLayout>(cx: &C, offset: Size, scalar: Scalar) -> Option<Self> {
         let Scalar::Initialized { value, valid_range } = scalar else { return None };
-        // We cannot specify a niche for field values, since they do not fit in u128.
-        if matches!(value, Primitive::Field(..)) { return None };
         let niche = Niche { offset, value, valid_range };
         if niche.available(cx) > 0 { Some(niche) } else { None }
     }
@@ -1706,6 +1712,7 @@ impl LayoutS {
     pub fn is_zst(&self) -> bool {
         match self.abi {
             Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
+            Abi::Field(_) => false,
             Abi::Uninhabited => self.size.bytes() == 0,
             Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
         }

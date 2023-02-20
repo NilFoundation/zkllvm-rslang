@@ -51,7 +51,6 @@ where
 
             Abi::Scalar(scalar) => match scalar.primitive() {
                 abi::Int(..) | abi::Pointer(_) => Class::Int,
-                abi::Field(..) => Class::Int,
                 abi::F32 | abi::F64 => Class::Sse,
             },
 
@@ -75,6 +74,8 @@ where
 
                 return Ok(());
             }
+
+            Abi::Field(_) => return Ok(()),
         };
 
         // Fill in `cls` for scalars (Int/Sse) and vectors (Sse).
