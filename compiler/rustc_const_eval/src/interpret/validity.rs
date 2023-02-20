@@ -22,6 +22,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{
     Abi, FieldIdx, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
 };
+use rustc_target::abi::Field as FieldAbi;
 
 use std::hash::Hash;
 
@@ -316,6 +317,14 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         Ok(self.read_immediate(op, expected)?.to_scalar())
     }
 
+    fn read_field(
+        &self,
+        op: &OpTy<'tcx, M::Provenance>,
+        expected: impl Display,
+    ) -> InterpResult<'tcx, ty::ScalarField> {
+        Ok(self.read_immediate(op, expected)?.to_field())
+    }
+
     fn check_wide_ptr_meta(
         &mut self,
         meta: MemPlaceMeta<M::Provenance>,
@@ -504,7 +513,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 );
                 Ok(true)
             }
-            ty::Float(_) | ty::Int(_) | ty::Uint(_) | ty::Field(_) => {
+            ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
                 // NOTE: Keep this in sync with the array optimization for int/float
                 // types below!
                 self.read_scalar(
@@ -515,6 +524,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         ExpectedKind::Int
                     },
                 )?;
+                Ok(true)
+            }
+            ty::Field(_) => {
+                let _ = self.read_field(value, "a field")?;
                 Ok(true)
             }
             ty::RawPtr(..) => {
@@ -636,6 +649,15 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 OutOfRange { value: format!("{bits}"), range: valid_range, max_value }
             )
         }
+    }
+
+    fn visit_scalar_field(
+        &mut self,
+        _field: ty::ScalarField,
+        _field_layout: FieldAbi,
+    ) -> InterpResult<'tcx> {
+        // FIXME: (aleasims) perform some checks here.
+        Ok(())
     }
 }
 
@@ -870,6 +892,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     self.visit_scalar(a, a_layout)?;
                     self.visit_scalar(b, b_layout)?;
                 }
+            }
+            Abi::Field(f_layout) => {
+                let field = self.read_field(op, "initialized field value")?;
+                self.visit_scalar_field(field, f_layout)?;
             }
             Abi::Vector { .. } => {
                 // No checks here, we assume layout computation gets this right.

@@ -1027,6 +1027,20 @@ impl<'tcx, 'a, Prov: Provenance, Extra, Bytes: AllocBytes> AllocRef<'a, 'tcx, Pr
     }
 
     /// `range` is relative to this allocation reference, not the base of the allocation.
+    pub fn read_field(
+        &self,
+        range: AllocRange,
+    ) -> InterpResult<'tcx, ScalarField> {
+        let range = self.range.subrange(range);
+        let res = self
+            .alloc
+            .read_field(&self.tcx, range)
+            .map_err(|e| e.to_interp_error(self.alloc_id))?;
+        debug!("read_field at {:?}{range:?}: {res:?}", self.alloc_id);
+        Ok(res)
+    }
+
+    /// `range` is relative to this allocation reference, not the base of the allocation.
     pub fn get_bytes_strip_provenance<'b>(&'b self) -> InterpResult<'tcx, &'a [u8]> {
         Ok(self
             .alloc

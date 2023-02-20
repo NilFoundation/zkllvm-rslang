@@ -47,6 +47,13 @@ impl<Prov: Provenance> From<Scalar<Prov>> for Immediate<Prov> {
     }
 }
 
+impl<Prov: Provenance> From<ScalarField> for Immediate<Prov> {
+    #[inline(always)]
+    fn from(val: ScalarField) -> Self {
+        Immediate::Field(val)
+    }
+}
+
 impl<Prov: Provenance> Immediate<Prov> {
     pub fn from_pointer(p: Pointer<Prov>, cx: &impl HasDataLayout) -> Self {
         Immediate::Scalar(Scalar::from_pointer(p, cx))
@@ -87,6 +94,17 @@ impl<Prov: Provenance> Immediate<Prov> {
             Immediate::Field(..) => bug!("Got a field where a scalar pair was expected"),
             Immediate::Scalar(..) => bug!("Got a scalar where a scalar pair was expected"),
             Immediate::Uninit => bug!("Got uninit where a scalar pair was expected"),
+        }
+    }
+
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    pub fn to_field(self) -> ScalarField {
+        match self {
+            Immediate::Scalar(..) => bug!("Got a scalar where a field was expected"),
+            Immediate::Field(val) => val,
+            Immediate::ScalarPair(..) => bug!("Got a scalar pair where a field was expected"),
+            Immediate::Uninit => bug!("Got uninit where a field was expected"),
         }
     }
 }
@@ -460,8 +478,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 )?;
                 Some(ImmTy { imm: Immediate::ScalarPair(a_val, b_val), layout: mplace.layout })
             }
+            Abi::Field(f) => {
+                let size = f.size();
+                assert_eq!(size, mplace.layout.size, "abi::Scalar size does not match layout size");
+                let field = alloc.read_field(alloc_range(Size::ZERO, size))?;
+                Some(ImmTy { imm: field.into(), layout: mplace.layout })
+            },
             _ => {
-                // Neither a scalar nor scalar pair.
+                // Neither a scalar nor scalar pair, nor a field.
                 None
             }
         })
@@ -503,6 +527,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             op.layout().abi,
             Abi::Scalar(abi::Scalar::Initialized { .. })
                 | Abi::ScalarPair(abi::Scalar::Initialized { .. }, abi::Scalar::Initialized { .. })
+                | Abi::Field(..)
         ) {
             span_bug!(
                 self.cur_span(),
