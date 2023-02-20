@@ -133,9 +133,6 @@ fn tag_base_type<'ll, 'tcx>(
                     // the safe side there too.
                     cx.data_layout().ptr_sized_integer()
                 }
-                Primitive::Field(_) => {
-                    todo!()
-                },
             }
             .to_ty(cx.tcx, false)
         }

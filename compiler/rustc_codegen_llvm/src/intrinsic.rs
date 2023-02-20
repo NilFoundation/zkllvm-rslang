@@ -156,9 +156,6 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                             }
                             // `va_arg` should never be used with the return type f32.
                             Primitive::F32 => bug!("the va_arg intrinsic does not work with `f32`"),
-                            Primitive::Field(..) => {
-                                todo!()
-                            },
                         }
                     }
                     _ => bug!("the va_arg intrinsic does not work with non-scalar types"),
@@ -303,7 +300,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let tp_ty = fn_args.type_at(0);
                 let layout = self.layout_of(tp_ty).layout;
                 let use_integer_compare = match layout.abi() {
-                    Scalar(_) | ScalarPair(_, _) => true,
+                    Scalar(_) | ScalarPair(_, _) | Field(_) => true,
                     Uninhabited | Vector { .. } => false,
                     Aggregate { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
