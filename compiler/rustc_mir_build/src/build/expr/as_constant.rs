@@ -167,7 +167,7 @@ fn lit_to_mir_constant<'tcx>(
                     format!("couldn't parse float literal: {:?}", lit_input.lit),
                 ))
             })?,
-        (ast::LitKind::Field(n), ty::Field(fty)) => {
+        (ast::LitKind::Field(n), ty::Field(_)) => {
             // FIXME: (aleasims) remove external crates here
             let s = n.as_str();
             let base = match s.as_bytes() {
@@ -195,7 +195,19 @@ fn lit_to_mir_constant<'tcx>(
             let mut rest = vec![0u8; 48 - bytes_be.len()];
             rest.append(&mut bytes_be);
             debug_assert_eq!(rest.len(), 48);
-            ConstValue::from_field_be_bytes(rest.as_slice().try_into().unwrap(), fty.bit_width())
+
+            let param_ty = ty::ParamEnv::reveal_all().and(ty);
+            let size = tcx
+                .layout_of(param_ty)
+                .map_err(|_| {
+                    LitToConstError::Reported(tcx.sess.delay_span_bug(
+                        DUMMY_SP,
+                        format!("couldn't compute width of literal: {:?}", lit_input.lit),
+                    ))
+                })?
+                .size;
+
+            ConstValue::from_field_be_bytes(rest.as_slice().try_into().unwrap(), size)
         }
         (ast::LitKind::Bool(b), ty::Bool) => ConstValue::Scalar(Scalar::from_bool(*b)),
         (ast::LitKind::Char(c), ty::Char) => ConstValue::Scalar(Scalar::from_char(*c)),

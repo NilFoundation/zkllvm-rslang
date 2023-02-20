@@ -109,8 +109,8 @@ impl<'tcx> ConstValue<'tcx> {
         ConstValue::Scalar(Scalar::from_target_usize(i, cx))
     }
 
-    pub fn from_field_be_bytes(bytes_be: &[u8; 48], bit_width: u64) -> Self {
-        ConstValue::Field(ScalarField::from_be_bytes(bytes_be, bit_width))
+    pub fn from_field_be_bytes(bytes_be: &[u8; 48], size: Size) -> Self {
+        ConstValue::Field(ScalarField::from_be_bytes(bytes_be, size))
     }
 }
 
