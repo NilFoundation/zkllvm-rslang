@@ -13,8 +13,8 @@ use crypto_bigint::{U384, Encoding};
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct ScalarField {
     // FIXME: (aleasims) remove external crate here
+    /// The first `size` bytes of `data` are the value.
     data: U384,
-    /// Size corresponds to bit width of the field value.
     size: NonZeroU16,
 }
 
@@ -33,6 +33,12 @@ impl fmt::Display for ScalarField {
 impl fmt::LowerHex for ScalarField {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:#x}", self.data)
+    }
+}
+
+impl fmt::UpperHex for ScalarField {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:#X}", self.data)
     }
 }
 
@@ -68,30 +74,28 @@ impl<D: Decoder> Decodable<D> for ScalarField {
 }
 
 impl ScalarField {
-    /// Create `ScalarField` from big-endian bytes slice.
-    pub fn from_be_bytes(bytes_be: &[u8; 48], bit_width: u64) -> Self {
+    pub fn from_be_bytes(bytes_be: &[u8; 48], size: Size) -> Self {
         let data = U384::from_be_slice(bytes_be);
-        let Ok(width) = u16::try_from(bit_width) else {
-            bug!("invalid bit width set to field type");
-        };
-        let Ok(size) = NonZeroU16::try_from(width) else {
-            bug!("invalid bit width set to field type (zero)");
+        let Ok(size) = NonZeroU16::try_from(size.bytes() as u16) else {
+            bug!("field type size is zero");
         };
         Self { data, size }
     }
 
-    pub fn from_uint(_i: impl Into<u128>, _size: Size) -> Self {
-        todo!()
+    pub fn from_uint(i: impl Into<u128>, size: Size) -> Self {
+        let i: u128 = i.into();
+        let Ok(size) = NonZeroU16::try_from(size.bytes() as u16) else {
+            bug!("field type size is zero");
+        };
+        Self { data: U384::from(i), size }
     }
 
-    /// Get data as [`U384`]. 
     pub fn data(&self) -> U384 {
         self.data
     }
 
-    /// Get size in bits.
-    pub fn size(&self) -> NonZeroU16 {
-        self.size
+    pub fn size(&self) -> Size {
+        Size::from_bytes(self.size.get())
     }
 
     /// Get limbs as an array of `u64`.
