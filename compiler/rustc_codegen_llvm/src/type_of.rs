@@ -8,7 +8,7 @@ use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty, TypeVisitable};
 use rustc_target::abi::{Abi, AddressSpace, Align, FieldsShape};
-use rustc_target::abi::{Int, Pointer, F32, F64, Field};
+use rustc_target::abi::{Int, Pointer, F32, F64};
 use rustc_target::abi::{PointeeInfo, Scalar, Size, TyAbiInterface, Variants};
 use smallvec::{smallvec, SmallVec};
 
@@ -35,6 +35,7 @@ fn uncached_llvm_type<'a, 'tcx>(
                 false,
             );
         }
+        Abi::Field(_) => bug!("handled elsewhere"),
         Abi::Uninhabited | Abi::Aggregate { .. } => {}
     }
 
@@ -200,7 +201,7 @@ pub trait LayoutLlvmExt<'tcx> {
 impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     fn is_llvm_immediate(&self) -> bool {
         match self.abi {
-            Abi::Scalar(_) | Abi::Vector { .. } => true,
+            Abi::Scalar(_) | Abi::Vector { .. } | Abi::Field(..) => true,
             Abi::ScalarPair(..) => false,
             Abi::Uninhabited | Abi::Aggregate { .. } => self.is_zst(),
         }
@@ -209,7 +210,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     fn is_llvm_scalar_pair(&self) -> bool {
         match self.abi {
             Abi::ScalarPair(..) => true,
-            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } | Abi::Aggregate { .. } => false,
+            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } | Abi::Aggregate { .. } | Abi::Field(..) => false,
         }
     }
 
@@ -244,6 +245,11 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
                 _ => self.scalar_llvm_type_at(cx, scalar, Size::ZERO),
             };
             cx.scalar_lltypes.borrow_mut().insert(self.ty, llty);
+            return llty;
+        }
+        if let Abi::Field(field) = self.abi {
+            // FIXME: (aleasims) cache types
+            let llty = cx.type_from_field(field);
             return llty;
         }
 
@@ -322,7 +328,6 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
                     };
                 cx.type_ptr_to_ext(pointee, address_space)
             }
-            Field(f) => cx.type_from_field(f),
         }
     }
 
