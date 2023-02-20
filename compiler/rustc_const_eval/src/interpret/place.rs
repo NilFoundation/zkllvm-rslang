@@ -702,13 +702,13 @@ where
 
         match value {
             Immediate::Field(sf) => {
-                let Abi::Scalar(s) = layout.abi else { span_bug!(
+                let Abi::Field(f) = layout.abi else { span_bug!(
                         self.cur_span(),
-                        "write_immediate_to_mplace: invalid Scalar layout: {layout:#?}",
+                        "write_immediate_to_mplace: invalid Field layout: {layout:#?}",
                     )
                 };
-                let size = s.size(&tcx);
-                assert_eq!(size, layout.size, "abi::Scalar size does not match layout size");
+                let size = f.size();
+                assert_eq!(size, layout.size, "abi::Field size does not match layout size");
                 alloc.write_field(alloc_range(Size::ZERO, size), sf)
             }
             Immediate::Scalar(scalar) => {
