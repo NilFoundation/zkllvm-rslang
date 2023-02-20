@@ -913,6 +913,20 @@ impl Field {
         }
     }
 
+    /// Return real size of field values.
+    /// This should not be confused with `self.size().bits()`, which will return
+    /// rounded bit size. This size is not byte-aligned.
+    pub fn real_bits(self) -> u64 {
+        match self {
+            Field::Bls12381Base => 381,
+            Field::Bls12381Scalar => 255,
+            Field::Curve25519Base => 255,
+            Field::Curve25519Scalar => 253,
+            Field::PallasBase => 255,
+            Field::PallasScalar => 255,
+        }
+    }
+
     pub fn align() -> AbiAndPrefAlign {
         AbiAndPrefAlign::new(Align::from_bytes(0).unwrap())
     }
@@ -1592,6 +1606,19 @@ impl LayoutS {
             align,
             max_repr_align: None,
             unadjusted_abi_align: align.abi,
+        }
+    }
+
+    pub fn field(field: Field) -> Self {
+        let size = field.size();
+        let align = Field::align();
+        LayoutS {
+            variants: Variants::Single { index: VariantIdx::new(0) },
+            fields: FieldsShape::Primitive,
+            abi: Abi::Field(field),
+            largest_niche: None,
+            size,
+            align,
         }
     }
 }
