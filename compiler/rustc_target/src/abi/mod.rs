@@ -752,7 +752,6 @@ pub enum Primitive {
     F32,
     F64,
     Pointer,
-    Field(Field),
 }
 
 impl Primitive {
@@ -764,7 +763,6 @@ impl Primitive {
             F32 => Size::from_bits(32),
             F64 => Size::from_bits(64),
             Pointer => dl.pointer_size,
-            Field(f) => f.size(),
         }
     }
 
@@ -776,7 +774,6 @@ impl Primitive {
             F32 => dl.f32_align,
             F64 => dl.f64_align,
             Pointer => dl.pointer_align,
-            Field(_) => Field::align(),
         }
     }
 
@@ -1103,6 +1100,7 @@ pub enum Abi {
         /// If true, the size is exact, otherwise it's only a lower bound.
         sized: bool,
     },
+    Field(Field),
 }
 
 impl Abi {
@@ -1110,7 +1108,7 @@ impl Abi {
     #[inline]
     pub fn is_unsized(&self) -> bool {
         match *self {
-            Abi::Uninhabited | Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
+            Abi::Uninhabited | Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } | Abi::Field(_) => false,
             Abi::Aggregate { sized } => !sized,
         }
     }
@@ -1137,6 +1135,12 @@ impl Abi {
     #[inline]
     pub fn is_scalar(&self) -> bool {
         matches!(*self, Abi::Scalar(_))
+    }
+
+    /// Returns `true` is this is a field type
+    #[inline]
+    pub fn is_field(&self) -> bool {
+        matches!(*self, Abi::Field(_))
     }
 }
 
@@ -1198,8 +1202,6 @@ pub struct Niche {
 impl Niche {
     pub fn from_scalar<C: HasDataLayout>(cx: &C, offset: Size, scalar: Scalar) -> Option<Self> {
         let Scalar::Initialized { value, valid_range } = scalar else { return None };
-        // We cannot specify a niche for field values, since they do not fit in u128.
-        if matches!(value, Primitive::Field(..)) { return None };
         let niche = Niche { offset, value, valid_range };
         if niche.available(cx) > 0 { Some(niche) } else { None }
     }
@@ -1527,7 +1529,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// Returns `true` if the type is a ZST and not unsized.
     pub fn is_zst(&self) -> bool {
         match self.abi {
-            Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
+            Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } | Abi::Field(_) => false,
             Abi::Uninhabited => self.size.bytes() == 0,
             Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
         }

@@ -25,6 +25,7 @@ pub fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
                     a.extend_integer_width_to(32);
                 }
             }
+            Abi::Field(..) => {},
         }
     };
 

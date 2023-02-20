@@ -325,7 +325,7 @@ impl HomogeneousAggregate {
 impl<'a, Ty> TyAndLayout<'a, Ty> {
     fn is_aggregate(&self) -> bool {
         match self.abi {
-            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } => false,
+            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } | Abi::Field(_) => false,
             Abi::ScalarPair(..) | Abi::Aggregate { .. } => true,
         }
     }
@@ -350,7 +350,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             // The primitive for this algorithm.
             Abi::Scalar(scalar) => {
                 let kind = match scalar.primitive() {
-                    abi::Int(..) | abi::Pointer | abi::Field(..) => RegKind::Integer,
+                    abi::Int(..) | abi::Pointer => RegKind::Integer,
                     abi::F32 | abi::F64 => RegKind::Float,
                 };
                 Ok(HomogeneousAggregate::Homogeneous(Reg { kind, size: self.size }))
@@ -456,6 +456,13 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                     Ok(result)
                 }
             }
+            Abi::Field(_) => {
+                // Trying to use integer register kind here
+                Ok(HomogeneousAggregate::Homogeneous(Reg {
+                    kind: RegKind::Integer,
+                    size: self.size,
+                }))
+            }
         }
     }
 }
@@ -483,6 +490,8 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             ),
             Abi::Vector { .. } => PassMode::Direct(ArgAttributes::new()),
             Abi::Aggregate { .. } => PassMode::Direct(ArgAttributes::new()),
+            // TODO: (aleasims) Do we need any attrs for fields?
+            Abi::Field(_) => PassMode::Direct(ArgAttributes::new()),
         };
         ArgAbi { layout, mode }
     }
