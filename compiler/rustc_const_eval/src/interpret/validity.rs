@@ -16,7 +16,7 @@ use rustc_middle::mir::interpret::InterpError;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::{Abi, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange};
+use rustc_target::abi::{Abi, Field as FieldAbi, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange};
 
 use std::hash::Hash;
 
@@ -328,6 +328,14 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         Ok(self.read_immediate(op, expected)?.to_scalar())
     }
 
+    fn read_field(
+        &self,
+        op: &OpTy<'tcx, M::Provenance>,
+        expected: impl Display,
+    ) -> InterpResult<'tcx, ty::ScalarField> {
+        Ok(self.read_immediate(op, expected)?.to_field())
+    }
+
     fn check_wide_ptr_meta(
         &mut self,
         meta: MemPlaceMeta<M::Provenance>,
@@ -512,7 +520,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 );
                 Ok(true)
             }
-            ty::Float(_) | ty::Int(_) | ty::Uint(_) | ty::Field(_) => {
+            ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
                 // NOTE: Keep this in sync with the array optimization for int/float
                 // types below!
                 let value = self.read_scalar(
@@ -530,6 +538,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         { "{:x}", value } expected { "plain (non-pointer) bytes" }
                     )
                 }
+                Ok(true)
+            }
+            ty::Field(_) => {
+                let _ = self.read_field(value, "a field")?;
                 Ok(true)
             }
             ty::RawPtr(..) => {
@@ -660,6 +672,15 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 expected { "something {}", wrapping_range_format(valid_range, max_value) }
             )
         }
+    }
+
+    fn visit_scalar_field(
+        &mut self,
+        _field: ty::ScalarField,
+        _field_layout: FieldAbi,
+    ) -> InterpResult<'tcx> {
+        // FIXME: (aleasims) perform some checks here.
+        Ok(())
     }
 }
 
@@ -800,6 +821,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             }
             Abi::Aggregate { .. } => {
                 // Nothing to do.
+            }
+            Abi::Field(f_layout) => {
+                let field = self.read_field(op, "initialized field value")?;
+                self.visit_scalar_field(field, f_layout)?;
             }
         }
 
