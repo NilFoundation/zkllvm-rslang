@@ -5,7 +5,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::{GeneratorLayout, GeneratorSavedLocal};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
-    IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
+    IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES, FieldExt,
 };
 use rustc_middle::ty::{
     self, AdtDef, EarlyBinder, GenericArgsRef, ReprOptions, Ty, TyCtxt, TypeVisitableExt,
@@ -108,7 +108,7 @@ fn layout_of_uncached<'tcx>(
     let dl = cx.data_layout();
     let scalar_unit = |value: Primitive| {
         let size = value.size(dl);
-        assert!(size.bits() <= 384);
+        assert!(size.bits() <= 128);
         Scalar::Initialized { value, valid_range: WrappingRange::full(size) }
     };
     let scalar = |value: Primitive| tcx.mk_layout(LayoutS::scalar(cx, scalar_unit(value)));
@@ -136,23 +136,7 @@ fn layout_of_uncached<'tcx>(
         )),
         ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
         ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
-        ty::Field(fty) => {
-            let value = Field(match fty {
-                ty::FieldTy::Bls12381Base => Field::Bls12381Base,
-                ty::FieldTy::Bls12381Scalar => Field::Bls12381Scalar,
-                ty::FieldTy::Curve25519Base => Field::Curve25519Base,
-                ty::FieldTy::Curve25519Scalar => Field::Curve25519Scalar,
-                ty::FieldTy::PallasBase => Field::PallasBase,
-                ty::FieldTy::PallasScalar => Field::PallasScalar,
-            });
-            tcx.intern_layout(LayoutS::scalar(
-                cx,
-                Scalar::Initialized {
-                    value,
-                    valid_range: WrappingRange { start: 0, end: 0 },
-                },
-            ))
-        }
+        ty::Field(fty) => tcx.intern_layout(LayoutS::field(Field::from_field_ty(fty))),
         ty::Float(fty) => scalar(match fty {
             ty::FloatTy::F32 => F32,
             ty::FloatTy::F64 => F64,
