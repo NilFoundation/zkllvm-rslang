@@ -618,7 +618,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         &self,
         cx: &impl HasDataLayout,
         range: AllocRange,
-    ) -> AllocResult<ty::ScalarField> {
+    ) -> AllocResult<ScalarField> {
         // First and foremost, if anything is uninit, bail.
         if self.is_init(range).is_err() {
             return Err(AllocError::InvalidUninitBytes(None));
@@ -634,7 +634,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
             return Err(AllocError::ReadPointerAsBytes);
         }
         // There is no provenance, we can just return the bits.
-        Ok(ty::ScalarField::from_u384(bits, range.size))
+        Ok(ScalarField::from_u384(bits, range.size))
     }
 
     /// Writes a field.
@@ -643,7 +643,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         &mut self,
         cx: &impl HasDataLayout,
         range: AllocRange,
-        val: ty::ScalarField,
+        val: ScalarField,
     ) -> AllocResult {
         assert!(self.mutability == Mutability::Mut);
 

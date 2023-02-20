@@ -9,7 +9,6 @@ use rustc_hir::def::Namespace;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, Ty, ValTree};
-use rustc_middle::ty::ScalarField;
 use rustc_middle::{mir, ty};
 use rustc_span::Span;
 use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size};
@@ -19,6 +18,7 @@ use super::{
     InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, PlaceTy, Pointer,
     Projectable, Provenance, Scalar,
 };
+use super::ScalarField;
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
 ///

@@ -9,12 +9,14 @@ use rustc_apfloat::{
 use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size};
 
-use crate::ty::{ParamEnv, ScalarField, ScalarInt, Ty, TyCtxt};
+use crate::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
 
 use super::{
     AllocId, AllocRange, ConstAllocation, InterpResult, Pointer, PointerArithmetic, Provenance,
     ScalarSizeMismatch,
 };
+
+pub use crate::ty::ScalarField;
 
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
 #[derive(Copy, Clone, HashStable, TyEncodable, TyDecodable, Debug, Hash, Eq, PartialEq)]

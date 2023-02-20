@@ -504,6 +504,7 @@ TrivialTypeTraversalAndLiftImpls! {
     ::rustc_span::symbol::Ident,
     ::rustc_errors::ErrorGuaranteed,
     interpret::Scalar,
+    interpret::ScalarField,
     rustc_target::abi::Size,
     ty::BoundVar,
     ty::consts::ScalarField,

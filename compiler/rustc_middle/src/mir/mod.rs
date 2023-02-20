@@ -5,6 +5,7 @@
 use crate::mir::interpret::{
     AllocRange, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
 };
+use crate::mir::interpret::ScalarField;
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};

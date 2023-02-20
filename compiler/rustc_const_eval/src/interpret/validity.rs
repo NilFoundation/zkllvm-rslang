@@ -30,6 +30,7 @@ use super::{
     AllocId, CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy,
     Machine, MemPlaceMeta, OpTy, Pointer, Projectable, Scalar, ValueVisitor,
 };
+use super::ScalarField;
 
 // for the validation errors
 use super::InterpError::UndefinedBehavior as Ub;
@@ -321,7 +322,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         &self,
         op: &OpTy<'tcx, M::Provenance>,
         expected: impl Display,
-    ) -> InterpResult<'tcx, ty::ScalarField> {
+    ) -> InterpResult<'tcx, ScalarField> {
         Ok(self.read_immediate(op, expected)?.to_field())
     }
 
@@ -653,7 +654,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
 
     fn visit_scalar_field(
         &mut self,
-        _field: ty::ScalarField,
+        _field: ScalarField,
         _field_layout: FieldAbi,
     ) -> InterpResult<'tcx> {
         // FIXME: (aleasims) perform some checks here.
