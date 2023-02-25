@@ -203,4 +203,10 @@ pub fn initialize_available_targets() {
         LLVMInitializeBPFAsmPrinter,
         LLVMInitializeBPFAsmParser
     );
+    init_target!(
+        llvm_component = "assigner",
+        LLVMInitializeAssignerTargetInfo,
+        LLVMInitializeAssignerTarget,
+        LLVMInitializeAssignerTargetMC
+    );
 }
