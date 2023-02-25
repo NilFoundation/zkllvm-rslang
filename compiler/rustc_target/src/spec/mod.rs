@@ -1242,6 +1242,8 @@ supported_targets! {
     ("x86_64-unknown-none", x86_64_unknown_none),
 
     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
+
+    ("assigner-unknown-unknown", assigner_unknown_unknown),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
