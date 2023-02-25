@@ -1438,6 +1438,16 @@ pub fn build_session(
     let asm_arch =
         if target_cfg.allow_asm { InlineAsmArch::from_str(&target_cfg.arch).ok() } else { None };
 
+    // FIXME: (aleasims) this is actually a dirty hack and may break something badly.
+    let sopts = if &target_cfg.arch == "assigner" {
+        config::Options {
+            output_types: config::OutputTypes::new(&vec![(config::OutputType::LlvmAssembly, None)]),
+            ..sopts
+        }
+    } else {
+        sopts
+    };
+
     let sess = Session {
         target: target_cfg,
         host,
