@@ -1,7 +1,9 @@
 use crate::cgu_reuse_tracker::CguReuseTracker;
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
-use crate::config::{self, CrateType, InstrumentCoverage, OptLevel, OutputType, SwitchWithOptPath};
+use crate::config::{
+    self, CrateType, InstrumentCoverage, OptLevel, OutputType, OutputTypes, SwitchWithOptPath,
+};
 use crate::errors::{
     CannotEnableCrtStaticLinux, CannotMixAndMatchSanitizers, LinkerPluginToWindowsNotSupported,
     NotCircumventFeature, ProfileSampleUseFileDoesNotExist, ProfileUseFileDoesNotExist,
@@ -1410,10 +1412,35 @@ pub fn build_session(
     let asm_arch =
         if target_cfg.allow_asm { InlineAsmArch::from_str(&target_cfg.arch).ok() } else { None };
 
-    // FIXME: (aleasims) this is actually a dirty hack and may break something badly.
+    // FIXME: (aleasims) No replacement should take place, only validation. Cargo is supposed to 
+    // control the right emit kinds for a target. But for now we don't want to patch cargo,
+    // that's why this is here.
     let sopts = if &target_cfg.arch == "assigner" {
+        // Replace assembly, exe or object outputs to llvm assembly.
+        let output_types: Vec<_> = sopts.output_types.keys().zip(sopts.output_types.values().cloned())
+            .map(|(type_, path)| (
+                if !type_.is_compatible_with_assigner() {
+                    let warning = format!(
+                        "for assigner target switching from {:?} output type to {:?}",
+                        type_,
+                        OutputType::LlvmAssembly,
+                    );
+                    early_warn(sopts.error_format, &warning);
+                    OutputType::LlvmAssembly
+                } else {
+                    *type_
+                },
+                path
+            )).collect();
+        // FIXME: (aleasims) for now disable SLP vectorizer pass.
+        early_warn(sopts.error_format, "for assigner target enabled `-C no-vectorize-slp`");
+        let cg = config::CodegenOptions {
+            no_vectorize_slp: true,
+            ..sopts.cg
+        };
         config::Options {
-            output_types: config::OutputTypes::new(&vec![(config::OutputType::LlvmAssembly, None)]),
+            output_types: OutputTypes::new(&output_types),
+            cg,
             ..sopts
         }
     } else {
