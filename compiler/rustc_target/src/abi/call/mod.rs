@@ -749,6 +749,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             }
             "asmjs" => wasm::compute_c_abi_info(cx, self),
             "bpf" => bpf::compute_abi_info(self),
+            "assigner" => {},
             arch => {
                 return Err(AdjustForForeignAbiError::Unsupported {
                     arch: Symbol::intern(arch),
