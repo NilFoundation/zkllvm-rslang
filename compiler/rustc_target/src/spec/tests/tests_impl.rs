@@ -56,7 +56,7 @@ impl Target {
                     LinkerFlavor::Msvc(..) => {
                         assert_matches!(flavor, LinkerFlavor::Msvc(..))
                     }
-                    LinkerFlavor::EmCc | LinkerFlavor::Bpf | LinkerFlavor::Ptx => {
+                    LinkerFlavor::EmCc | LinkerFlavor::Bpf | LinkerFlavor::Ptx | LinkerFlavor::LlvmLink => {
                         assert_eq!(flavor, self.linker_flavor)
                     }
                 }

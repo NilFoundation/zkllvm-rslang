@@ -150,6 +150,8 @@ pub enum LinkerFlavor {
     Bpf,
     /// Linker tool for Nvidia PTX.
     Ptx,
+    /// Linker tool for LLVM IR (for "assigner" target).
+    LlvmLink,
 }
 
 /// Linker flavors available externally through command line (`-Clinker-flavor`)
@@ -165,6 +167,7 @@ pub enum LinkerFlavorCli {
     Em,
     BpfLinker,
     PtxLinker,
+    LlvmIrLinker,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -232,6 +235,7 @@ impl LinkerFlavor {
             LinkerFlavorCli::Em => LinkerFlavor::EmCc,
             LinkerFlavorCli::BpfLinker => LinkerFlavor::Bpf,
             LinkerFlavorCli::PtxLinker => LinkerFlavor::Ptx,
+            LinkerFlavorCli::LlvmIrLinker => LinkerFlavor::LlvmLink,
         }
     }
 
@@ -252,6 +256,7 @@ impl LinkerFlavor {
             LinkerFlavor::EmCc => LinkerFlavorCli::Em,
             LinkerFlavor::Bpf => LinkerFlavorCli::BpfLinker,
             LinkerFlavor::Ptx => LinkerFlavorCli::PtxLinker,
+            LinkerFlavor::LlvmLink => LinkerFlavorCli::LlvmIrLinker,
         }
     }
 
@@ -261,6 +266,7 @@ impl LinkerFlavor {
             | LinkerFlavor::Unix(..)
             | LinkerFlavor::EmCc
             | LinkerFlavor::Bpf
+            | LinkerFlavor::LlvmLink
             | LinkerFlavor::Ptx => LldFlavor::Ld,
             LinkerFlavor::Darwin(..) => LldFlavor::Ld64,
             LinkerFlavor::WasmLld(..) => LldFlavor::Wasm,
@@ -307,6 +313,7 @@ linker_flavor_cli_impls! {
     (LinkerFlavorCli::Em) "em"
     (LinkerFlavorCli::BpfLinker) "bpf-linker"
     (LinkerFlavorCli::PtxLinker) "ptx-linker"
+    (LinkerFlavorCli::LlvmIrLinker) "llvm-link"
 }
 
 impl ToJson for LinkerFlavorCli {
@@ -1747,6 +1754,7 @@ fn add_link_args_iter(
         | LinkerFlavor::Unix(..)
         | LinkerFlavor::EmCc
         | LinkerFlavor::Bpf
+        | LinkerFlavor::LlvmLink
         | LinkerFlavor::Ptx => {}
     }
 }
