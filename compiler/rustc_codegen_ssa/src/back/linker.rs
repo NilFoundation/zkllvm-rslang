@@ -153,6 +153,7 @@ pub fn get_linker<'a>(
         LinkerFlavor::EmCc => Box::new(EmLinker { cmd, sess }) as Box<dyn Linker>,
         LinkerFlavor::Bpf => Box::new(BpfLinker { cmd, sess }) as Box<dyn Linker>,
         LinkerFlavor::Ptx => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
+        LinkerFlavor::LlvmLink => Box::new(LlvmIrLinker { cmd }) as Box<dyn Linker>,
     }
 }
 
@@ -1936,6 +1937,74 @@ impl<'a> Linker for BpfLinker<'a> {
             self.cmd.arg("--export-symbols").arg(&path);
         }
     }
+
+    fn subsystem(&mut self, _subsystem: &str) {}
+
+    fn linker_plugin_lto(&mut self) {}
+}
+
+/// LLVM IR linker. Uses llvm-link to produce .ll files.
+pub struct LlvmIrLinker {
+    cmd: Command,
+}
+
+impl Linker for LlvmIrLinker {
+    fn cmd(&mut self) -> &mut Command {
+        panic!("HERE");
+        // &mut self.cmd
+    }
+
+    fn set_output_kind(&mut self, _output_kind: LinkOutputKind, _out_filename: &Path) {}
+
+    fn link_rlib(&mut self, _path: &Path) {}
+
+    fn link_whole_rlib(&mut self, _path: &Path) {}
+
+    fn include_path(&mut self, _path: &Path) {}
+
+    fn debuginfo(&mut self, _strip: Strip, _: &[PathBuf]) {}
+
+    fn add_object(&mut self, path: &Path) {
+        self.cmd.arg(path);
+    }
+
+    fn optimize(&mut self) {}
+
+    fn output_filename(&mut self, path: &Path) {
+        self.cmd.arg("-o").arg(path);
+    }
+
+    fn link_dylib(&mut self, _lib: &str, _verbatim: bool, _as_needed: bool) {}
+
+    fn link_rust_dylib(&mut self, _lib: &str, _path: &Path) {}
+
+    fn link_staticlib(&mut self, _lib: &str, _verbatim: bool) {}
+
+    fn link_whole_staticlib(&mut self, _lib: &str, _verbatim: bool, _search_path: &[PathBuf]) {}
+
+    fn framework_path(&mut self, _path: &Path) {}
+
+    fn link_framework(&mut self, _framework: &str, _as_needed: bool) {}
+
+    fn full_relro(&mut self) {}
+
+    fn partial_relro(&mut self) {}
+
+    fn no_relro(&mut self) {}
+
+    fn gc_sections(&mut self, _keep_metadata: bool) {}
+
+    fn no_gc_sections(&mut self) {}
+
+    fn pgo_gen(&mut self) {}
+
+    fn no_crt_objects(&mut self) {}
+
+    fn no_default_libraries(&mut self) {}
+
+    fn control_flow_guard(&mut self) {}
+
+    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, _symbols: &[String]) {}
 
     fn subsystem(&mut self, _subsystem: &str) {}
 

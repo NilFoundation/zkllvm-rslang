@@ -200,6 +200,7 @@ impl LinkerFlavorCli {
             | LinkerFlavorCli::Bpf
             | LinkerFlavorCli::Ptx
             | LinkerFlavorCli::BpfLinker
+            | LinkerFlavorCli::LlvmIrLinker
             | LinkerFlavorCli::PtxLinker => true,
             LinkerFlavorCli::Gcc
             | LinkerFlavorCli::Ld
@@ -322,10 +323,14 @@ impl LinkerFlavor {
             LinkerFlavorCli::Lld(_) => (Some(Cc::No), Some(Lld::Yes)),
             LinkerFlavorCli::Em => (Some(Cc::Yes), Some(Lld::Yes)),
             LinkerFlavorCli::BpfLinker | LinkerFlavorCli::PtxLinker => (None, None),
+            LinkerFlavorCli::LlvmIrLinker => (None, None),
         }
     }
 
     fn infer_linker_hints(linker_stem: &str) -> (Option<Cc>, Option<Lld>) {
+        if stem == "llvm-link" {
+            return (Some(Cc::No), Some(Lld::No));
+        }
         // Remove any version postfix.
         let stem = linker_stem
             .rsplit_once('-')
@@ -371,6 +376,7 @@ impl LinkerFlavor {
             LinkerFlavor::Unix(cc) => LinkerFlavor::Unix(cc_hint.unwrap_or(cc)),
             LinkerFlavor::Msvc(lld) => LinkerFlavor::Msvc(lld_hint.unwrap_or(lld)),
             LinkerFlavor::EmCc | LinkerFlavor::Bpf | LinkerFlavor::Ptx => self,
+            LinkerFlavor::LlvmLink => self,
         }
     }
 
@@ -443,6 +449,7 @@ impl LinkerFlavor {
             | LinkerFlavor::Msvc(_)
             | LinkerFlavor::Unix(_)
             | LinkerFlavor::Bpf
+            | LinkerFlavor::LlvmLink
             | LinkerFlavor::Ptx => false,
         }
     }
@@ -462,6 +469,7 @@ impl LinkerFlavor {
             | LinkerFlavor::Msvc(_)
             | LinkerFlavor::Unix(_)
             | LinkerFlavor::Bpf
+            | LinkerFlavor::LlvmLink
             | LinkerFlavor::Ptx => false,
         }
     }

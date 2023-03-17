@@ -1319,6 +1319,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     }
                     LinkerFlavor::Bpf => "bpf-linker",
                     LinkerFlavor::Ptx => "rust-ptx-linker",
+                    LinkerFlavor::LlvmLink => "llvm-link",
                 }),
                 flavor,
             )),
