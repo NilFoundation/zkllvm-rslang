@@ -515,6 +515,19 @@ impl OutputType {
             }
         }
     }
+
+    pub fn is_compatible_with_assigner(&self) -> bool {
+        match *self {
+            OutputType::Bitcode
+            | OutputType::LlvmAssembly
+            | OutputType::DepInfo
+            | OutputType::Mir
+            | OutputType::Metadata => true,
+            OutputType::Assembly
+            | OutputType::Exe
+            | OutputType::Object => false,
+        }
+    }
 }
 
 /// The type of diagnostics output to generate.
