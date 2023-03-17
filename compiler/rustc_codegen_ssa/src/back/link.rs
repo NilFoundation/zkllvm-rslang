@@ -1223,6 +1223,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     }
                     LinkerFlavor::Bpf => "bpf-linker",
                     LinkerFlavor::Ptx => "rust-ptx-linker",
+                    LinkerFlavor::LlvmLink => "llvm-link",
                 }),
                 flavor,
             )),
@@ -1261,7 +1262,10 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                 } else if stem == "lld" || stem == "rust-lld" {
                     let lld_flavor = sess.target.linker_flavor.lld_flavor();
                     LinkerFlavor::from_cli(LinkerFlavorCli::Lld(lld_flavor), &sess.target)
-                } else {
+                } else if stem == "llvm-link" {
+                    LinkerFlavor::LlvmLink
+                }
+                else {
                     // fall back to the value in the target spec
                     sess.target.linker_flavor
                 };
