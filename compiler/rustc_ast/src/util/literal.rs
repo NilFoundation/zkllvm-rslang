@@ -270,7 +270,7 @@ impl fmt::Display for LitKind {
                 }
             }
             LitKind::Field(symbol) => {
-                (token::Field, symbol, None)
+                write!(f, "{symbol}")?;
             }
             LitKind::Bool(b) => write!(f, "{}", if b { "true" } else { "false" })?,
             LitKind::Err => {
@@ -309,6 +309,7 @@ impl MetaItemLit {
             LitKind::Char(_) => token::Char,
             LitKind::Int(..) => token::Integer,
             LitKind::Float(..) => token::Float,
+            LitKind::Field(..) => token::Field,
             LitKind::Err => token::Err,
         };
 

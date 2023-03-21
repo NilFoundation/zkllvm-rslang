@@ -1858,7 +1858,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Tuple(..)
                         // Integers and floats are always Sized, and so have unit type metadata.
                         | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
-                        ty::InferTy::FieldVar(..)) => true,
+                        ty::Infer(ty::InferTy::FieldVar(..)) => true,
 
                         // type parameters, opaques, and unnormalized projections have pointer
                         // metadata if they're known (e.g. by the param_env) to be sized

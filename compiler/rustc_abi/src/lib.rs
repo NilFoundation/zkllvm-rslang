@@ -1613,7 +1613,7 @@ impl LayoutS {
         let size = field.size();
         let align = Field::align();
         LayoutS {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Single { index: V::new(0) },
             fields: FieldsShape::Primitive,
             abi: Abi::Field(field),
             largest_niche: None,

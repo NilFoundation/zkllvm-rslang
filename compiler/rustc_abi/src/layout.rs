@@ -213,6 +213,7 @@ pub trait LayoutCalculator {
                     }
                     Abi::Vector { element, count: _ } => hide_niches(element),
                     Abi::Aggregate { sized: _ } => {}
+                    Abi::Field(_) => { todo!() }
                 }
                 st.largest_niche = None;
                 return Some(st);

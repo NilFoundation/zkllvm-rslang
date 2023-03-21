@@ -620,7 +620,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         range: AllocRange,
     ) -> AllocResult<ScalarField> {
         // First and foremost, if anything is uninit, bail.
-        if self.is_init(range).is_err() {
+        if self.init_mask.is_range_initialized(range).is_err() {
             return Err(AllocError::InvalidUninitBytes(None));
         }
 
@@ -630,7 +630,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
 
         // Fallback path for when we cannot treat provenance bytewise or ignore it.
         assert!(!Prov::OFFSET_IS_ADDR);
-        if self.range_has_provenance(cx, range) {
+        if !self.provenance.range_empty(range, cx) {
             return Err(AllocError::ReadPointerAsBytes);
         }
         // There is no provenance, we can just return the bits.
@@ -650,7 +650,6 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         let bytes = val.data();
 
         let endian = cx.data_layout().endian;
-        info!("endian {:?}, range {:?}", endian, range);
         let dst = self.get_bytes_mut(cx, range)?;
         write_target_field(endian, dst, bytes).unwrap();
 
