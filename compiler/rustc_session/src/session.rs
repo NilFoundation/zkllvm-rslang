@@ -1438,37 +1438,8 @@ pub fn build_session(
     let asm_arch =
         if target_cfg.allow_asm { InlineAsmArch::from_str(&target_cfg.arch).ok() } else { None };
 
-    // FIXME: (aleasims) No replacement should take place, only validation. Cargo is supposed to 
-    // control the right emit kinds for a target. But for now we don't want to patch cargo,
-    // that's why this is here.
     let sopts = if target_cfg.options.is_like_assigner {
-        // Replace assembly, exe or object outputs to llvm assembly.
-        let output_types: Vec<_> = sopts.output_types.keys().zip(sopts.output_types.values().cloned())
-            .map(|(type_, path)| (
-                if !type_.is_compatible_with_assigner() {
-                    let warning = format!(
-                        "for assigner target switching from {:?} output type to {:?}",
-                        type_,
-                        OutputType::LlvmAssembly,
-                    );
-                    early_warn(sopts.error_format, &warning);
-                    OutputType::LlvmAssembly
-                } else {
-                    *type_
-                },
-                path
-            )).collect();
-        // FIXME: (aleasims) for now disable SLP vectorizer pass.
-        early_warn(sopts.error_format, "for assigner target enabled `-C no-vectorize-slp`");
-        let cg = config::CodegenOptions {
-            no_vectorize_slp: true,
-            ..sopts.cg
-        };
-        config::Options {
-            output_types: config::OutputTypes::new(&output_types),
-            cg,
-            ..sopts
-        }
+        patch_options_for_assigner(sopts)
     } else {
         sopts
     };
@@ -1774,4 +1745,36 @@ fn mk_emitter(output: ErrorOutputType) -> Box<dyn Emitter + sync::Send + 'static
         )),
     };
     emitter
+}
+
+/// Patch session options for assigner target.
+fn patch_options_for_assigner(sopts: config::Options) -> config::Options {
+    // FIXME: (aleasims) No replacement should take place, only validation. Cargo is supposed to
+    // control the right emit kinds for a target. But for now we don't want to patch cargo,
+    // that's why this is here.
+    let output_types = replace_outputs_for_assigner(&sopts);
+    // FIXME: (aleasims) for now disable SLP vectorizer pass.
+    early_warn(sopts.error_format, "for assigner target enabled `-C no-vectorize-slp`");
+    let cg = config::CodegenOptions {
+        no_vectorize_slp: true,
+        ..sopts.cg
+    };
+    config::Options {
+        output_types,
+        cg,
+        ..sopts
+    }
+}
+
+/// Replace output types with suitable for Assigner target.
+/// Emits the warning if a replacement took place.
+fn replace_outputs_for_assigner(sopts: &config::Options) -> config::OutputTypes {
+    let (output_types, replaced) = sopts.output_types.clone().replace_for_assigner();
+    for r in replaced {
+        early_warn(
+            sopts.error_format,
+            &format!("for assigner target replaced `{r}` emit kind to `llvm-ir`"),
+        );
+    }
+    output_types
 }

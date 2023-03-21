@@ -516,16 +516,16 @@ impl OutputType {
         }
     }
 
-    pub fn is_compatible_with_assigner(&self) -> bool {
-        match *self {
+    fn replace_for_assigner(&self) -> (Self, Option<&'static str>) {
+        match &self {
             OutputType::Bitcode
             | OutputType::LlvmAssembly
             | OutputType::DepInfo
             | OutputType::Mir
-            | OutputType::Metadata => true,
+            | OutputType::Metadata => (*self, None),
             OutputType::Assembly
             | OutputType::Exe
-            | OutputType::Object => false,
+            | OutputType::Object => (OutputType::LlvmAssembly, Some(self.shorthand())),
         }
     }
 }
@@ -636,6 +636,19 @@ impl OutputTypes {
             | OutputType::DepInfo => false,
             OutputType::Exe => true,
         })
+    }
+
+    /// If replace took place, returns shorthands for replaced entities.
+    pub fn replace_for_assigner(self) -> (Self, Vec<&'static str>) {
+        let mut replaced = Vec::new();
+        let output_types = self.0.into_iter().map(|(ot, path)| {
+            let (new_type, replace) = ot.replace_for_assigner();
+            if let Some(replace) = replace {
+                replaced.push(replace)
+            }
+            (new_type, path)
+        });
+        (OutputTypes(BTreeMap::from_iter(output_types)), replaced)
     }
 }
 
