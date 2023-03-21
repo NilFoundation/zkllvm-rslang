@@ -142,11 +142,7 @@ impl fmt::Display for Lit {
                 delim = "#".repeat(n as usize),
                 string = symbol
             )?,
-<<<<<<< HEAD
-            Integer | Float | Bool | Err => write!(f, "{symbol}")?,
-=======
-            Integer | Field | Float | Bool | Err => write!(f, "{}", symbol)?,
->>>>>>> d4a3bb72ec6 (rustc_ast: add field literals and tokens (build fails))
+            Integer | Float | Field | Bool | Err => write!(f, "{symbol}")?,
         }
 
         if let Some(suffix) = suffix {

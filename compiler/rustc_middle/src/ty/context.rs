@@ -23,7 +23,7 @@ use crate::ty::{
     ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVar, TyVid, TypeAndMut, TypeckResults, UintTy,
     Visibility,
 };
-use crate::ty::{FieldTy, FieldVar};
+use crate::ty::{FieldTy, FieldVar, FieldVid};
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;

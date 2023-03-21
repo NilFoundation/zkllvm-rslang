@@ -299,6 +299,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Float(_)
+            | ty::Field(_)
             | ty::Adt(_, _)
             | ty::Foreign(_)
             | ty::Str
@@ -349,6 +350,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Float(_)
+            | ty::Field(_)
             | ty::Adt(_, _)
             | ty::Foreign(_)
             | ty::Str

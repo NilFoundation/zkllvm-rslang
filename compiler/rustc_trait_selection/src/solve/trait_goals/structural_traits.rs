@@ -16,11 +16,12 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         | ty::Int(_)
         | ty::Bool
         | ty::Float(_)
+        | ty::Field(_)
         | ty::FnDef(..)
         | ty::FnPtr(_)
         | ty::Str
         | ty::Error(_)
-        | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+        | ty::Infer(ty::IntVar(_) | ty::FloatVar(_) | ty::FieldVar(_))
         | ty::Never
         | ty::Char => Ok(vec![]),
 
@@ -32,7 +33,7 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         | ty::Bound(..)
         | ty::Infer(ty::TyVar(_)) => Err(NoSolution),
 
-        ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(),
+        ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) | ty::FreshFieldTy(_)) => bug!(),
 
         ty::RawPtr(ty::TypeAndMut { ty: element_ty, .. }) | ty::Ref(_, element_ty, _) => {
             Ok(vec![element_ty])
@@ -75,11 +76,12 @@ pub(super) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {
     match *ty.kind() {
-        ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+        ty::Infer(ty::IntVar(_) | ty::FloatVar(_) | ty::FieldVar(_))
         | ty::Uint(_)
         | ty::Int(_)
         | ty::Bool
         | ty::Float(_)
+        | ty::Field(_)
         | ty::FnDef(..)
         | ty::FnPtr(_)
         | ty::RawPtr(..)
@@ -103,7 +105,7 @@ pub(super) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
 
         ty::Placeholder(..)
         | ty::Bound(..)
-        | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(),
+        | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) | ty::FreshFieldTy(_)) => bug!(),
 
         ty::Tuple(tys) => Ok(tys.to_vec()),
 
@@ -123,7 +125,7 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {
     match *ty.kind() {
-        ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+        ty::Infer(ty::IntVar(_) | ty::FloatVar(_) | ty::FieldVar(_))
         | ty::FnDef(..)
         | ty::FnPtr(_)
         | ty::Error(_) => Ok(vec![]),
@@ -133,6 +135,7 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         | ty::Int(_)
         | ty::Bool
         | ty::Float(_)
+        | ty::Field(_)
         | ty::Char
         | ty::RawPtr(..)
         | ty::Never
@@ -152,7 +155,7 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
 
         ty::Placeholder(..)
         | ty::Bound(..)
-        | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(),
+        | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) | ty::FreshFieldTy(_)) => bug!(),
 
         ty::Tuple(tys) => Ok(tys.to_vec()),
 
@@ -201,6 +204,7 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         | ty::Int(_)
         | ty::Uint(_)
         | ty::Float(_)
+        | ty::Field(_)
         | ty::Adt(_, _)
         | ty::Foreign(_)
         | ty::Str

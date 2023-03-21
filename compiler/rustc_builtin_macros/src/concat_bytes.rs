@@ -43,6 +43,9 @@ fn invalid_type_err(
         Ok(ast::LitKind::Float(_, _)) => {
             cx.span_err(span, "cannot concatenate float literals");
         }
+        Ok(ast::LitKind::Field(_)) => {
+            todo!()
+        }
         Ok(ast::LitKind::Bool(_)) => {
             cx.span_err(span, "cannot concatenate boolean literals");
         }
