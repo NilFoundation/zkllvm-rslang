@@ -14,6 +14,8 @@ fn options() -> TargetOptions {
         linker_flavor_json: LinkerFlavorCli::LlvmIrLinker,
         linker_is_gnu_json: false,
 
+        is_like_assigner: true,
+
         pre_link_args,
 
         ..Default::default()
