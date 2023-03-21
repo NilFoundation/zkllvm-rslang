@@ -1441,7 +1441,7 @@ pub fn build_session(
     // FIXME: (aleasims) No replacement should take place, only validation. Cargo is supposed to 
     // control the right emit kinds for a target. But for now we don't want to patch cargo,
     // that's why this is here.
-    let sopts = if &target_cfg.arch == "assigner" {
+    let sopts = if target_cfg.options.is_like_assigner {
         // Replace assembly, exe or object outputs to llvm assembly.
         let output_types: Vec<_> = sopts.output_types.keys().zip(sopts.output_types.values().cloned())
             .map(|(type_, path)| (
