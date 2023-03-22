@@ -1753,6 +1753,9 @@ fn options_for_assigner(mut sopts: config::Options) -> config::Options {
     // FIXME: (aleasims) for now disable SLP vectorizer pass.
     early_warn(sopts.error_format, "for assigner target enabled `-C no-vectorize-slp`");
     sopts.cg.no_vectorize_slp = true;
+    // We want emitted LLVM modules to be linked into a single file:
+    sopts.unstable_opts.combine_cgu = true;
+    early_warn(sopts.error_format, "for assigner target enabled `-Z combine-cgu`");
     sopts
 }
 
