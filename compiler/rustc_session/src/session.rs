@@ -1426,11 +1426,8 @@ pub fn build_session(
     let asm_arch =
         if target_cfg.allow_asm { InlineAsmArch::from_str(&target_cfg.arch).ok() } else { None };
 
-    let sopts = if target_cfg.options.is_like_assigner {
-        patch_options_for_assigner(sopts)
-    } else {
-        sopts
-    };
+    let sopts =
+        if target_cfg.options.is_like_assigner { options_for_assigner(sopts) } else { sopts };
 
     let sess = Session {
         target: target_cfg,
@@ -1602,27 +1599,20 @@ pub enum IncrCompSession {
 }
 
 /// Patch session options for assigner target.
-fn patch_options_for_assigner(sopts: config::Options) -> config::Options {
+fn options_for_assigner(mut sopts: config::Options) -> config::Options {
     // FIXME: (aleasims) No replacement should take place, only validation. Cargo is supposed to
     // control the right emit kinds for a target. But for now we don't want to patch cargo,
     // that's why this is here.
-    let output_types = replace_outputs_for_assigner(&sopts);
+    sopts.output_types = output_types_for_assigner(&sopts);
     // FIXME: (aleasims) for now disable SLP vectorizer pass.
     early_warn(sopts.error_format, "for assigner target enabled `-C no-vectorize-slp`");
-    let cg = config::CodegenOptions {
-        no_vectorize_slp: true,
-        ..sopts.cg
-    };
-    config::Options {
-        output_types,
-        cg,
-        ..sopts
-    }
+    sopts.cg.no_vectorize_slp = true;
+    sopts
 }
 
-/// Replace output types with suitable for Assigner target.
+/// Modified output types with suitable for Assigner target.
 /// Emits the warning if a replacement took place.
-fn replace_outputs_for_assigner(sopts: &config::Options) -> config::OutputTypes {
+fn output_types_for_assigner(sopts: &config::Options) -> config::OutputTypes {
     let (output_types, replaced) = sopts.output_types.clone().replace_for_assigner();
     for r in replaced {
         early_warn(
