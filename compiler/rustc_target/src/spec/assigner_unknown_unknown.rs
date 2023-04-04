@@ -8,6 +8,11 @@ fn options() -> TargetOptions {
 
     TargetOptions {
         os: "unknown".into(),
+        dll_prefix: "".into(),
+        dll_suffix: ".ll".into(),
+        staticlib_prefix: "".into(),
+        staticlib_suffix: ".ll".into(),
+        exe_suffix: ".ll".into(),
 
         linker: Some("llvm-link".into()),
         linker_flavor: LinkerFlavor::LlvmLink,
