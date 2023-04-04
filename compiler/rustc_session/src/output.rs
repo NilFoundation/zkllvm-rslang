@@ -139,7 +139,14 @@ pub fn filename_for_input(
     let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
 
     match crate_type {
-        CrateType::Rlib => outputs.out_directory.join(&format!("lib{libname}.rlib")),
+        CrateType::Rlib => {
+            let (prefix, suffix) = if sess.target.arch == "assigner" {
+                ("", ".ll")
+            } else {
+                ("lib", ".rlib")
+            };
+            outputs.out_directory.join(&format!("{prefix}{libname}{suffix}"))
+        },
         CrateType::Cdylib | CrateType::ProcMacro | CrateType::Dylib => {
             let (prefix, suffix) = (&sess.target.dll_prefix, &sess.target.dll_suffix);
             outputs.out_directory.join(&format!("{prefix}{libname}{suffix}"))
