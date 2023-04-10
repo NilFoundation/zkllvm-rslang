@@ -7,6 +7,7 @@ fn options() -> TargetOptions {
     super::add_link_args(&mut pre_link_args, LinkerFlavor::LlvmLink, &["-S"]);
 
     TargetOptions {
+        is_builtin: true,
         os: "unknown".into(),
         dll_prefix: "".into(),
         dll_suffix: ".ll".into(),
