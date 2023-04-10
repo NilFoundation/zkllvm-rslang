@@ -33,7 +33,11 @@ fn main() {
         || target.contains("nintendo-3ds")
     {
         // These platforms don't have any special requirements.
-    } else {
+    } else if target.contains("assigner") {
+        // We require assigner target to have restricted std.
+        println!("cargo:rustc-cfg=feature=\"restricted-std\"");
+    }
+     else {
         // This is for Cargo's build-std support, to mark std as unstable for
         // typically no_std platforms.
         // This covers:
