@@ -34,6 +34,13 @@ pub struct RustcLibRequired<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(metadata_rmeta_required)]
+#[help]
+pub struct RmetaRequired {
+    pub crate_name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(metadata_crate_dep_multiple)]
 #[help]
 pub struct CrateDepMultiple {
