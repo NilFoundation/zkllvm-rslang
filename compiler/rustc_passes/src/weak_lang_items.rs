@@ -51,6 +51,11 @@ fn verify(tcx: TyCtxt<'_>, items: &lang_items::LanguageItems) {
         | CrateType::Staticlib => true,
         CrateType::Rlib => false,
     });
+
+    // We don't need to check items for assigner target.
+    // Probably this is not the best fix and there is more sound solution.
+    let needs_check = if tcx.sess.target.arch == "assigner" { false } else { needs_check };
+
     if !needs_check {
         return;
     }
