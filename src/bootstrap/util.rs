@@ -283,6 +283,7 @@ pub fn use_host_linker(target: TargetSelection) -> bool {
         || target.contains("fortanix")
         || target.contains("fuchsia")
         || target.contains("bpf")
+        || target.contains("assigner")
         || target.contains("switch"))
 }
 
