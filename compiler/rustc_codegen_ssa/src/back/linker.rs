@@ -1950,8 +1950,7 @@ pub struct LlvmIrLinker {
 
 impl Linker for LlvmIrLinker {
     fn cmd(&mut self) -> &mut Command {
-        panic!("HERE");
-        // &mut self.cmd
+        &mut self.cmd
     }
 
     fn set_output_kind(&mut self, _output_kind: LinkOutputKind, _out_filename: &Path) {}
