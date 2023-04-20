@@ -1973,17 +1973,29 @@ impl Linker for LlvmIrLinker {
         self.cmd.arg("-o").arg(path);
     }
 
-    fn link_dylib(&mut self, _lib: &str, _verbatim: bool, _as_needed: bool) {}
+    fn link_dylib(&mut self, _lib: &str, _verbatim: bool, _as_needed: bool) {
+        panic!("external dylibs not supported");
+    }
 
-    fn link_rust_dylib(&mut self, _lib: &str, _path: &Path) {}
+    fn link_rust_dylib(&mut self, _lib: &str, _path: &Path) {
+        panic!("external dylibs not supported");
+    }
 
-    fn link_staticlib(&mut self, _lib: &str, _verbatim: bool) {}
+    fn link_staticlib(&mut self, _lib: &str, _verbatim: bool) {
+        panic!("staticlibs not supported");
+    }
 
-    fn link_whole_staticlib(&mut self, _lib: &str, _verbatim: bool, _search_path: &[PathBuf]) {}
+    fn link_whole_staticlib(&mut self, _lib: &str, _verbatim: bool, _search_path: &[PathBuf]) {
+        panic!("staticlibs not supported");
+    }
 
-    fn framework_path(&mut self, _path: &Path) {}
+    fn framework_path(&mut self, _path: &Path) {
+        panic!("frameworks not supported");
+    }
 
-    fn link_framework(&mut self, _framework: &str, _as_needed: bool) {}
+    fn link_framework(&mut self, _framework: &str, _as_needed: bool) {
+        panic!("frameworks not supported");
+    }
 
     fn full_relro(&mut self) {}
 
