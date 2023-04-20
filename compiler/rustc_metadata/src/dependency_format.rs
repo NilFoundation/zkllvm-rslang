@@ -85,20 +85,22 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
     }
 
     // We can have only static linkage for assigner target.
-    if tcx.sess.target.arch == "assigner" {
+    if tcx.sess.target.is_like_assigner {
         // All crates have to be available as rmeta,
         // since rmeta is the only option for assigner target.
+        let mut ret = Vec::new();
         for &cnum in tcx.crates(()).iter() {
             if tcx.dep_kind(cnum).macros_only() {
                 continue;
             }
             let src = tcx.used_crate_source(cnum);
             if src.rmeta.is_some() {
+                ret.push(Linkage::Static);
                 continue;
             }
             sess.emit_err(RmetaRequired { crate_name: tcx.crate_name(cnum) });
         }
-        return Vec::new();
+        return ret;
     }
 
     let preferred_linkage = match ty {
