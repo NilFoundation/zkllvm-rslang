@@ -826,6 +826,7 @@ pub(crate) unsafe fn codegen(
         config.emit_obj != EmitObj::None,
         dwarf_object_emitted,
         config.emit_bc,
+        config.emit_ir,
         &cgcx.output_filenames,
     ))
 }

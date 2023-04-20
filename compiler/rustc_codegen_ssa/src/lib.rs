@@ -76,13 +76,15 @@ impl<M> ModuleCodegen<M> {
         emit_obj: bool,
         emit_dwarf_obj: bool,
         emit_bc: bool,
+        emit_llvm_ir: bool,
         outputs: &OutputFilenames,
     ) -> CompiledModule {
         let object = emit_obj.then(|| outputs.temp_path(OutputType::Object, Some(&self.name)));
         let dwarf_object = emit_dwarf_obj.then(|| outputs.temp_path_dwo(Some(&self.name)));
         let bytecode = emit_bc.then(|| outputs.temp_path(OutputType::Bitcode, Some(&self.name)));
+        let llvm_ir = emit_llvm_ir.then(|| outputs.temp_path(OutputType::LlvmAssembly, Some(&self.name)));
 
-        CompiledModule { name: self.name.clone(), kind: self.kind, object, dwarf_object, bytecode }
+        CompiledModule { name: self.name.clone(), kind: self.kind, object, dwarf_object, bytecode, llvm_ir }
     }
 }
 
@@ -93,6 +95,7 @@ pub struct CompiledModule {
     pub object: Option<PathBuf>,
     pub dwarf_object: Option<PathBuf>,
     pub bytecode: Option<PathBuf>,
+    pub llvm_ir: Option<PathBuf>,
 }
 
 pub struct CachedModuleCodegen {

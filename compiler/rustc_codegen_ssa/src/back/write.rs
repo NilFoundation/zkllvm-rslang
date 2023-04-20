@@ -924,6 +924,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
         object,
         dwarf_object,
         bytecode: None,
+        llvm_ir: None,
     })
 }
 

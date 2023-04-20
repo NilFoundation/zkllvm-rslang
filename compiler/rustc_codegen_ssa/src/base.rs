@@ -606,6 +606,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 object: Some(file_name),
                 dwarf_object: None,
                 bytecode: None,
+                llvm_ir: None,
             }
         })
     });
