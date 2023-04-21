@@ -1753,6 +1753,9 @@ fn options_for_assigner(mut sopts: config::Options) -> config::Options {
     // FIXME: (aleasims) for now disable SLP vectorizer pass.
     early_warn(sopts.error_format, "for assigner target enabled `-C no-vectorize-slp`");
     sopts.cg.no_vectorize_slp = true;
+    // FIXME: (aleasims) for now disable linking native libs.
+    early_warn(sopts.error_format, "for assigner target enabled `-Z link-native-libraries=false`");
+    sopts.unstable_opts.link_native_libraries = false;
     sopts
 }
 
