@@ -95,7 +95,12 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
             }
             let src = tcx.used_crate_source(cnum);
             if src.rmeta.is_some() {
-                ret.push(Linkage::Static);
+                // FIXME: (aleasims) here will be the check for circuit presence.
+                let linkage = match ty {
+                    CrateType::Executable => Linkage::Static,
+                    _ => Linkage::NotLinked,
+                };
+                ret.push(linkage);
                 continue;
             }
             sess.emit_err(RmetaRequired { crate_name: tcx.crate_name(cnum) });
