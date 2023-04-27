@@ -91,6 +91,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         let mut ret = Vec::new();
         for &cnum in tcx.crates(()).iter() {
             if tcx.dep_kind(cnum).macros_only() {
+                ret.push(Linkage::NotLinked);
                 continue;
             }
             let src = tcx.used_crate_source(cnum);
