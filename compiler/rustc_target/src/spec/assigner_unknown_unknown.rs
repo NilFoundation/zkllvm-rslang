@@ -1,5 +1,7 @@
 use crate::spec::{LinkerFlavor, LinkerFlavorCli, Target, TargetOptions};
 
+use super::cvs;
+
 fn options() -> TargetOptions {
     let mut pre_link_args = TargetOptions::link_args(LinkerFlavor::LlvmLink, &[]);
 
@@ -19,6 +21,8 @@ fn options() -> TargetOptions {
         linker_flavor: LinkerFlavor::LlvmLink,
         linker_flavor_json: LinkerFlavorCli::LlvmIrLinker,
         linker_is_gnu_json: false,
+
+        llvm_args: cvs!["-opaque-pointers=0"],
 
         is_like_assigner: true,
 
