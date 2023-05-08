@@ -89,7 +89,6 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             // Disable LLVM opaque pointers, because assigner does not support them.
             // TODO: (aleasims) probably there is a better place for this code.
             if cx.sess().target.is_like_assigner {
-                eprintln!("DISABLING OPAQUE POINTERS");
                 unsafe {
                     llvm::LLVMRustSetOpaquePointers(cx.llcx, false);
                 }
