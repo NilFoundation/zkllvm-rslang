@@ -23,9 +23,8 @@ backtrace-on-ice = true
 
 [target.'x86_64-unknown-linux-gnu']
 llvm-config = '../../build/libs/circifier/llvm/bin/llvm-config'
-llvm-has-rust-patches = false
 llvm-filecheck = '../../build/libs/circifier/llvm/bin/FileCheck'
-llvm-libunwind = 'no'
+llvm-has-rust-patches = false
 
 [target.'assigner-unknown-unknown']
 linker = "llvm-link"
