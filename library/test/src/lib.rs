@@ -22,10 +22,6 @@
 #![feature(panic_can_unwind)]
 #![feature(test)]
 #![cfg_attr(not(bootstrap), allow(internal_features))]
-// FIXME: (aleasims) this feature should be set only for "assigner" arch.
-// But now I don't see any ways to achive this since stage0 compiler is not aware
-// of "assigner" arch and this results into compilation error of std at stage0.
-#![cfg_attr(not(bootstrap), feature(restricted_std))]
 
 // Public reexports
 pub use self::bench::{black_box, Bencher};
