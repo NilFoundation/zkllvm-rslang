@@ -42,10 +42,27 @@ cfg_if::cfg_if! {
     }
 }
 
+#[cfg(bootstrap)]
 cfg_if::cfg_if! {
     if #[cfg(any(target_os = "l4re",
                  target_os = "hermit",
                  feature = "restricted-std",
+                 all(target_family = "wasm", not(target_os = "emscripten")),
+                 all(target_vendor = "fortanix", target_env = "sgx")))] {
+        pub use crate::sys::net;
+    } else {
+        pub mod net;
+    }
+}
+
+// Because stage0 compiler used at the bootstrap doent't know anything about "assigner",
+// we have to separate this gates.
+#[cfg(not(bootstrap))]
+cfg_if::cfg_if! {
+    if #[cfg(any(target_os = "l4re",
+                 target_os = "hermit",
+                 feature = "restricted-std",
+                 target_arch = "assigner",
                  all(target_family = "wasm", not(target_os = "emscripten")),
                  all(target_vendor = "fortanix", target_env = "sgx")))] {
         pub use crate::sys::net;
