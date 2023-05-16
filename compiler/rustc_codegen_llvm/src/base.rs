@@ -86,14 +86,6 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
         {
             let cx = CodegenCx::new(tcx, cgu, &llvm_module);
 
-            // Disable LLVM opaque pointers, because assigner does not support them.
-            // TODO: (aleasims) probably there is a better place for this code.
-            if cx.sess().target.is_like_assigner {
-                unsafe {
-                    llvm::LLVMRustSetOpaquePointers(cx.llcx, false);
-                }
-            }
-
             let mono_items = cx.codegen_unit.items_in_deterministic_order(cx.tcx);
             for &(mono_item, (linkage, visibility)) in &mono_items {
                 mono_item.predefine::<Builder<'_, '_, '_>>(&cx, linkage, visibility);
