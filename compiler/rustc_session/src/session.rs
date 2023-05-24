@@ -1604,9 +1604,6 @@ fn options_for_assigner(mut sopts: config::Options) -> config::Options {
     // control the right emit kinds for a target. But for now we don't want to patch cargo,
     // that's why this is here.
     sopts.output_types = output_types_for_assigner(&sopts);
-    // FIXME: (aleasims) for now disable SLP vectorizer pass.
-    early_warn(sopts.error_format, "for assigner target enabled `-C no-vectorize-slp`");
-    sopts.cg.no_vectorize_slp = true;
     // FIXME: (aleasims) for now disable linking native libs.
     early_warn(sopts.error_format, "for assigner target enabled `-Z link-native-libraries=false`");
     sopts.unstable_opts.link_native_libraries = false;
