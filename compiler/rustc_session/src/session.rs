@@ -1746,10 +1746,23 @@ fn mk_emitter(output: ErrorOutputType) -> Box<dyn Emitter + sync::Send + 'static
 
 /// Patch session options for assigner target.
 fn options_for_assigner(mut sopts: config::Options) -> config::Options {
-    // FIXME: (aleasims) No replacement should take place, only validation. Cargo is supposed to
-    // control the right emit kinds for a target. But for now we don't want to patch cargo,
-    // that's why this is here.
-    sopts.output_types = output_types_for_assigner(&sopts);
+    let mut output_types = Vec::new();
+    for (output_type, path) in sopts.output_types.keys().zip(sopts.output_types.values()) {
+        if output_type.is_compatible_with_assigner_target() {
+            output_types.push((*output_type, path.clone()));
+        } else {
+            early_warn(
+                sopts.error_format,
+                &format!(
+                    "dropping unsupported emit kind `{}` for target `{}`",
+                    output_type.shorthand(),
+                    sopts.target_triple,
+                ),
+            );
+        }
+    }
+    sopts.output_types = config::OutputTypes::new(&output_types);
+
     sopts.unstable_opts.link_native_libraries = false;
     sopts
 }
