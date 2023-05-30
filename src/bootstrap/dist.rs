@@ -462,6 +462,11 @@ impl Step for Rustc {
                 }
             }
 
+            // FIXME: (aleasims) Should be more precise and elegant way to add llvm-link to package.
+            let src_dir = builder.sysroot_libdir(compiler, host).parent().unwrap().join("bin");
+            let llvm_link = exe("llvm-link", compiler.host);
+            builder.copy(&src_dir.join(&llvm_link), &dst_dir.join(&llvm_link));
+
             // Man pages
             t!(fs::create_dir_all(image.join("share/man/man1")));
             let man_src = builder.src.join("src/doc/man");
