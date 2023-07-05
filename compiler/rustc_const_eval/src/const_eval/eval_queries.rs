@@ -131,6 +131,7 @@ pub(super) fn op_to_const<'tcx>(
             },
             _ => false,
         },
+        Abi::Field(..) => true,
         _ => false,
     };
     let immediate = if try_as_immediate {
