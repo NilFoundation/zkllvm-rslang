@@ -1,6 +1,6 @@
 //! See docs in build/expr/mod.rs
 
-use crate::build::{parse_float_into_constval, Builder};
+use crate::build::{parse_float_into_constval, parse_field_into_constval, Builder};
 use rustc_ast as ast;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{
@@ -13,8 +13,6 @@ use rustc_middle::ty::{
 };
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::Size;
-
-use num::{Num, BigUint};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that
@@ -161,48 +159,13 @@ pub(crate) fn lit_to_mir_constant<'tcx>(
                     format!("couldn't parse float literal: {:?}", lit_input.lit),
                 ))
             })?,
-        (ast::LitKind::Field(n), ty::Field(_)) => {
-            // FIXME: (aleasims) remove external crates here
-            let s = n.as_str();
-            let base = match s.as_bytes() {
-                [b'0', b'x', ..] => 16,
-                [b'0', b'o', ..] => 8,
-                [b'0', b'b', ..] => 2,
-                _ => 10,
-            };
-            let s = &s[if base != 10 { 2 } else { 0 }..];
-            trace!("symbol to big_int {}", &s);
-
-            let big_uint = BigUint::from_str_radix(s, base).map_err(|_| {
+        (ast::LitKind::Field(n), ty::Field(fty)) => parse_field_into_constval(*n, *fty, neg)
+            .ok_or_else(|| {
                 LitToConstError::Reported(tcx.sess.delay_span_bug(
                     DUMMY_SP,
                     format!("couldn't parse field literal: {:?}", lit_input.lit),
                 ))
-            })?;
-            trace!("big_int {}", big_uint);
-
-            // FIXME: (aleasims) handle sign
-            let mut bytes_be = big_uint.to_bytes_be();
-            trace!("bytes_be {:?}", bytes_be);
-            debug_assert!(bytes_be.len() <= 48);
-
-            let mut rest = vec![0u8; 48 - bytes_be.len()];
-            rest.append(&mut bytes_be);
-            debug_assert_eq!(rest.len(), 48);
-
-            let param_ty = ty::ParamEnv::reveal_all().and(ty);
-            let size = tcx
-                .layout_of(param_ty)
-                .map_err(|_| {
-                    LitToConstError::Reported(tcx.sess.delay_span_bug(
-                        DUMMY_SP,
-                        format!("couldn't compute width of literal: {:?}", lit_input.lit),
-                    ))
-                })?
-                .size;
-
-            ConstValue::from_field_be_bytes(rest.as_slice().try_into().unwrap(), size)
-        }
+            })?,
         (ast::LitKind::Bool(b), ty::Bool) => ConstValue::Scalar(Scalar::from_bool(*b)),
         (ast::LitKind::Char(c), ty::Char) => ConstValue::Scalar(Scalar::from_char(*c)),
         (ast::LitKind::Err, _) => {
