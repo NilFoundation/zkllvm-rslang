@@ -74,6 +74,36 @@ impl<D: Decoder> Decodable<D> for ScalarField {
 }
 
 impl ScalarField {
+    pub const BLS12381_BASE_MODULUS: Self = Self {
+        data: U384::from_be_hex("1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"),
+        size: unsafe { NonZeroU16::new_unchecked(48) },
+    };
+
+    pub const BLS12381_SCALAR_MODULUS: Self = Self {
+        data: U384::from_be_hex("0000000000000000000000000000000073eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001"),
+        size: unsafe { NonZeroU16::new_unchecked(32) },
+    };
+
+    pub const CURVE25519_BASE_MODULUS: Self = Self {
+        data: U384::from_be_hex("000000000000000000000000000000007fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed"),
+        size: unsafe { NonZeroU16::new_unchecked(32) },
+    };
+
+    pub const CURVE25519_SCALAR_MODULUS: Self = Self {
+        data: U384::from_be_hex("000000000000000000000000000000001000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed"),
+        size: unsafe { NonZeroU16::new_unchecked(32) },
+    };
+
+    pub const PALLAS_BASE_MODULUS: Self = Self {
+        data: U384::from_be_hex("0000000000000000000000000000000040000000000000000000000000000000224698fc094cf91b992d30ed00000001"),
+        size: unsafe { NonZeroU16::new_unchecked(32) },
+    };
+
+    pub const PALLAS_SCALAR_MODULUS: Self = Self {
+        data: U384::from_be_hex("0000000000000000000000000000000040000000000000000000000000000000224698fc0994a8dd8c46eb2100000001"),
+        size: unsafe { NonZeroU16::new_unchecked(32) },
+    };
+
     pub fn from_be_bytes(bytes_be: &[u8; 48], size: Size) -> Self {
         let data = U384::from_be_slice(bytes_be);
         let Ok(size) = NonZeroU16::try_from(size.bytes() as u16) else {
