@@ -6,13 +6,15 @@ use rustc_target::abi::Size;
 
 use crypto_bigint::{U384, Encoding};
 
+// FIXME: (aleasims) move to self-implemented U384 and get rid of external crate
+// https://github.com/NilFoundation/zkllvm-rslang/issues/12
+
 /// A `ScalarField` represents a field value. It's a lot similar to `Scalar`, but separated,
 /// because it does not fits into 16 bytes.
 ///
 /// It is backed by a [`U384`].
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct ScalarField {
-    // FIXME: (aleasims) remove external crate here
     /// The first `size` bytes of `data` are the value.
     data: U384,
     size: NonZeroU16,
