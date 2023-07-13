@@ -1,5 +1,7 @@
 //! Code related to parsing literals.
 
+use num::{Num, BigUint};
+
 use crate::ast::{self, LitKind, MetaItemLit, StrStyle};
 use crate::token::{self, Token};
 use rustc_lexer::unescape::{byte_from_char, unescape_byte, unescape_char, unescape_literal, Mode};
@@ -35,6 +37,7 @@ pub enum LitError {
     InvalidFloatSuffix,
     NonDecimalFloat(u32),
     IntTooLarge(u32),
+    FieldTooLarge(u32),
 }
 
 impl LitKind {
@@ -349,6 +352,14 @@ fn field_lit(symbol: Symbol, suffix: Symbol) -> Result<LitKind, LitError> {
     debug!("field_lit: {:?}, {:?}", symbol, suffix);
 
     let symbol = strip_underscores(symbol);
+    let s = symbol.as_str();
+
+    let base = match s.as_bytes() {
+        [b'0', b'x', ..] => 16,
+        [b'0', b'o', ..] => 8,
+        [b'0', b'b', ..] => 2,
+        _ => 10,
+    };
 
     match suffix {
         sym::G | sym::g => {}
@@ -357,7 +368,11 @@ fn field_lit(symbol: Symbol, suffix: Symbol) -> Result<LitKind, LitError> {
         }
     }
 
-    // TODO: (aleasims) Check literal size and return LitError::*TooLarge.
-
-    Ok(LitKind::Field(symbol))
+    let s = &s[if base != 10 { 2 } else { 0 }..];
+    let big_uint = BigUint::from_str_radix(s, base).map_err(|_| LitError::LexerError)?;
+    if big_uint.to_bytes_be().len() > 48 {
+        Err(LitError::FieldTooLarge(base))
+    } else {
+        Ok(LitKind::Field(symbol))        
+    }
 }

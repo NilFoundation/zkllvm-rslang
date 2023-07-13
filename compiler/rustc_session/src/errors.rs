@@ -268,6 +268,15 @@ pub(crate) struct IntLiteralTooLarge {
 }
 
 #[derive(Diagnostic)]
+#[diag(session_field_literal_too_large)]
+#[note]
+pub(crate) struct FieldLiteralTooLarge {
+    #[primary_span]
+    pub span: Span,
+    pub limit: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(session_hexadecimal_float_literal_not_supported)]
 pub(crate) struct HexadecimalFloatLiteralNotSupported {
     #[primary_span]
@@ -372,6 +381,16 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
                 _ => format!("{max}"),
             };
             sess.emit_err(IntLiteralTooLarge { span, limit });
+        }
+        LitError::FieldTooLarge(base) => {
+            // Max value for 48 bytes
+            let limit = match base {
+                2 => format!("0b{}", "11111111".repeat(48)),
+                8 => format!("0o{}", "7".repeat(128)),
+                16 => format!("0x{}", "ff".repeat(48)),
+                _ => format!("{}", "39402006196394479212279040100143613805079739270465446667948293404245721771497210611414266254884915640806627990306815"),
+            };
+            sess.emit_err(FieldLiteralTooLarge { span, limit });
         }
     }
 }
