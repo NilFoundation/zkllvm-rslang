@@ -87,5 +87,8 @@ session_invalid_float_literal_suffix = invalid suffix `{$suffix}` for float lite
 session_int_literal_too_large = integer literal is too large
     .note = value exceeds limit of `{$limit}`
 
+session_field_literal_too_large = field literal is too large
+    .note = value exceeds limit of `{$limit}`
+
 session_invalid_int_literal_width = invalid width `{$width}` for integer literal
     .help = valid widths are 8, 16, 32, 64 and 128
