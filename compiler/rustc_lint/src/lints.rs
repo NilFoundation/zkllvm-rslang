@@ -1480,6 +1480,15 @@ pub struct OverflowingUInt<'a> {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_overflowing_field)]
+#[note]
+pub struct OverflowingField<'a> {
+    pub ty: &'a str,
+    pub lit: String,
+    pub modulus: String,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_overflowing_literal)]
 #[note]
 pub struct OverflowingLiteral<'a> {
