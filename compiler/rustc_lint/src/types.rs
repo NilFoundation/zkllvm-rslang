@@ -1,9 +1,12 @@
+use num::{Num, BigUint};
+
 use crate::lints::{
     AtomicOrderingFence, AtomicOrderingLoad, AtomicOrderingStore, ImproperCTypes,
     InvalidAtomicOrderingDiag, OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign,
     OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral, OverflowingUInt,
     RangeEndpointOutOfRange, UnusedComparisons, VariantSizeDifferencesDiag,
 };
+use crate::lints::OverflowingField;
 use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_attr as attr;
@@ -417,6 +420,51 @@ fn lint_uint_literal<'tcx>(
     }
 }
 
+fn lint_field_literal<'tcx>(
+    cx: &LateContext<'tcx>,
+    e: &'tcx hir::Expr<'tcx>,
+    lit: &hir::Lit,
+    t: ty::FieldTy,
+) {
+    match lit.node {
+        ast::LitKind::Field(n) => {
+            let s = n.as_str();
+            let base = match s.as_bytes() {
+                [b'0', b'x', ..] => 16,
+                [b'0', b'o', ..] => 8,
+                [b'0', b'b', ..] => 2,
+                _ => 10,
+            };
+            let s = &s[if base != 10 { 2 } else { 0 }..];
+
+            let big_uint = BigUint::from_str_radix(s, base).unwrap();
+            let modulus = BigUint::from_str_radix(t.modulus_as_hex(), 16).unwrap();
+            if big_uint >= modulus {
+                let modulus = match base {
+                    2 => format!("{modulus:#b}"),
+                    8 => format!("{modulus:#o}"),
+                    16 => format!("{modulus:#x}"),
+                    _ => format!("{modulus}"),
+                };
+                cx.emit_spanned_lint(
+                    OVERFLOWING_LITERALS,
+                    e.span,
+                    OverflowingField {
+                        ty: t.name_str(),
+                        lit: cx
+                            .sess()
+                            .source_map()
+                            .span_to_snippet(lit.span)
+                            .expect("must get snippet from literal"),
+                        modulus,
+                    },
+                );
+            }
+        }
+        _ => bug!(),
+    };
+}
+
 fn lint_literal<'tcx>(
     cx: &LateContext<'tcx>,
     type_limits: &TypeLimits,
@@ -456,6 +504,7 @@ fn lint_literal<'tcx>(
                 );
             }
         }
+        ty::Field(t) => lint_field_literal(cx, e, lit, t),
         _ => {}
     }
 }
