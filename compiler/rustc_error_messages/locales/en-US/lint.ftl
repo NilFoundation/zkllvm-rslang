@@ -207,6 +207,9 @@ lint_only_cast_u8_to_char = only `u8` can be cast into `char`
 lint_overflowing_uint = literal out of range for `{$ty}`
     .note = the literal `{$lit}` does not fit into the type `{$ty}` whose range is `{$min}..={$max}`
 
+lint_overflowing_field = literal out of range for `{$ty}`
+    .note = the literal `{$lit}` does not fit into the type `{$ty}` whose range is -(p-1)..p, where `p={$modulus}` is a field modulus
+
 lint_overflowing_literal = literal out of range for `{$ty}`
     .note = the literal `{$lit}` does not fit into the type `{$ty}` and will be converted to `{$ty}::INFINITY`
 
