@@ -1057,19 +1057,24 @@ fn parse_field_into_scalar_field(
     rest.append(&mut bytes_be);
 
     let size = Size::from_bits(field_ty.bit_width());
-    let scalar = ScalarField::from_be_bytes(rest.as_slice().try_into().unwrap(), size);
+    let mut scalar = ScalarField::from_be_bytes(rest.as_slice().try_into().unwrap(), size);
 
-    Some(if neg {
-        let modulus = match field_ty {
-            ty::FieldTy::Bls12381Base => ScalarField::BLS12381_BASE_MODULUS,
-            ty::FieldTy::Bls12381Scalar => ScalarField::BLS12381_SCALAR_MODULUS,
-            ty::FieldTy::Curve25519Base => ScalarField::CURVE25519_BASE_MODULUS,
-            ty::FieldTy::Curve25519Scalar => ScalarField::CURVE25519_SCALAR_MODULUS,
-            ty::FieldTy::PallasBase => ScalarField::PALLAS_BASE_MODULUS,
-            ty::FieldTy::PallasScalar => ScalarField::PALLAS_SCALAR_MODULUS,
-        };
-        debug_assert!(modulus.data() > scalar.data());
-        ScalarField::from_u384(modulus.data().wrapping_sub(&scalar.data()), size)
+    let modulus = match field_ty {
+        ty::FieldTy::Bls12381Base => ScalarField::BLS12381_BASE_MODULUS,
+        ty::FieldTy::Bls12381Scalar => ScalarField::BLS12381_SCALAR_MODULUS,
+        ty::FieldTy::Curve25519Base => ScalarField::CURVE25519_BASE_MODULUS,
+        ty::FieldTy::Curve25519Scalar => ScalarField::CURVE25519_SCALAR_MODULUS,
+        ty::FieldTy::PallasBase => ScalarField::PALLAS_BASE_MODULUS,
+        ty::FieldTy::PallasScalar => ScalarField::PALLAS_SCALAR_MODULUS,
+    };
+
+    // Deal with overflow
+    if scalar.data() >= modulus.data() {
+        scalar = ScalarField::from_u384(scalar.data().wrapping_rem(&modulus.data()), size);
+    }
+
+    Some(if neg && scalar.data() > 0u32.into() {
+        ScalarField::from_u384(modulus.data().saturating_sub(&scalar.data()), size)
     } else {
         scalar
     })
