@@ -3735,6 +3735,7 @@ name = "rustc_ast"
 version = "0.0.0"
 dependencies = [
  "bitflags",
+ "num",
  "rustc_data_structures",
  "rustc_index",
  "rustc_lexer",
@@ -4316,6 +4317,7 @@ dependencies = [
 name = "rustc_lint"
 version = "0.0.0"
 dependencies = [
+ "num",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
