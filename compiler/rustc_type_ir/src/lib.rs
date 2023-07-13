@@ -506,6 +506,17 @@ impl FieldTy {
             FieldTy::PallasScalar => 256, // actual is 255
         }
     }
+
+    pub fn modulus_as_hex(self) -> &'static str {
+        match self {
+            FieldTy::Bls12381Base => "1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab",
+            FieldTy::Bls12381Scalar => "73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001",
+            FieldTy::Curve25519Base => "7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed",
+            FieldTy::Curve25519Scalar => "1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed",
+            FieldTy::PallasBase => "40000000000000000000000000000000224698fc094cf91b992d30ed00000001",
+            FieldTy::PallasScalar => "40000000000000000000000000000000224698fc0994a8dd8c46eb2100000001",
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
