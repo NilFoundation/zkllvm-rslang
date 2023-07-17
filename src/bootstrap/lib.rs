@@ -760,6 +760,9 @@ impl Build {
         if self.config.profiler_enabled(target) {
             features.push_str(" profiler");
         }
+        if target.starts_with("assigner") {
+            features.push_str(" panic_immediate_abort");
+        }
         features
     }
 
