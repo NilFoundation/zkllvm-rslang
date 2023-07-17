@@ -6,7 +6,7 @@ fn options() -> TargetOptions {
     let mut pre_link_args = TargetOptions::link_args(LinkerFlavor::LlvmLink, &[]);
 
     // We want to emit .ll file
-    super::add_link_args(&mut pre_link_args, LinkerFlavor::LlvmLink, &["-S", "-opaque-pointers=0"]);
+    super::add_link_args(&mut pre_link_args, LinkerFlavor::LlvmLink, &["-S", "-opaque-pointers=0", "--only-needed"]);
 
     TargetOptions {
         is_builtin: true,
