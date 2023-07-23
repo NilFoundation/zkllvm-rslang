@@ -10,6 +10,7 @@ use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, Linkage, Visi
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::ty::print::characteristic_def_id_of_type;
 use rustc_middle::ty::{self, visit::TypeVisitable, DefIdTree, InstanceDef, TyCtxt};
+use rustc_session::config::EntryFnType;
 use rustc_span::symbol::Symbol;
 
 use super::PartitioningCx;
@@ -451,6 +452,17 @@ fn mono_item_visibility<'tcx>(
     if tcx.lang_items().start_fn() == Some(def_id) {
         *can_be_internalized = false;
         return Visibility::Hidden;
+    }
+
+    // We explicitly set circuit function visibility to default, so it won't be eliminated.
+    let entry = tcx.entry_fn(());
+    if tcx.sess.target.is_like_assigner {
+        if let Some((entry_id, entry_type)) = entry {
+            if entry_id == def_id && entry_type == EntryFnType::Circuit {
+                *can_be_internalized = false;
+                return Visibility::Default;
+            }
+        }
     }
 
     let is_generic = instance.substs.non_erasable_generics().next().is_some();
