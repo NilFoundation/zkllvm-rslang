@@ -864,6 +864,7 @@ pub enum EntryFnType {
         sigpipe: u8,
     },
     Start,
+    Circuit,
 }
 
 #[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, Decodable)]
