@@ -184,7 +184,8 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
         // clash with the one we're going to add, but mark it as
         // #[allow(dead_code)] to avoid printing warnings.
         let item = match entry_point_type(self.sess, &item, self.depth) {
-            EntryPointType::MainNamed | EntryPointType::RustcMainAttr | EntryPointType::Start => {
+            EntryPointType::MainNamed | EntryPointType::RustcMainAttr | EntryPointType::Start
+                | EntryPointType::Circuit => {
                 item.map(|ast::Item { id, ident, attrs, kind, vis, span, tokens }| {
                     let allow_dead_code = attr::mk_attr_nested_word(
                         &self.sess.parse_sess.attr_id_generator,
