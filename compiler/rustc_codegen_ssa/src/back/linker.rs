@@ -2003,7 +2003,9 @@ impl Linker for LlvmIrLinker {
 
     fn no_relro(&mut self) {}
 
-    fn gc_sections(&mut self, _keep_metadata: bool) {}
+    fn gc_sections(&mut self, _keep_metadata: bool) {
+        self.cmd.arg("--only-needed");
+    }
 
     fn no_gc_sections(&mut self) {}
 
