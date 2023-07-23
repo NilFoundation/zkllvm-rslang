@@ -1192,6 +1192,17 @@ pub struct MultipleStartFunctions {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_multiple_circuit_functions)]
+pub struct MultipleCircuitFunctions {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub labeled: Span,
+    #[label(previous)]
+    pub previous: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_extern_main)]
 pub struct ExternMain {
     #[primary_span]
