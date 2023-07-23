@@ -521,6 +521,11 @@ passes_multiple_start_functions =
     .label = multiple `start` functions
     .previous = previous `#[start]` function here
 
+passes_multiple_circuit_functions =
+    multiple `circuit` functions
+    .label = multiple `circuit` functions
+    .previous = previous `#[circuit]` function here
+
 passes_extern_main =
     the `main` function cannot be declared in an `extern` block
 
