@@ -1881,6 +1881,36 @@ pub struct FnSig {
     pub span: Span,
 }
 
+/// Represents elliptic curve type.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+pub enum CurveTy {
+    Bls12381,
+    Curve25519,
+    Pallas,
+    Vesta,
+}
+
+impl CurveTy {
+    pub fn name_str(self) -> &'static str {
+        match self {
+            CurveTy::Bls12381 => "__zkllvm_curve_bls12381",
+            CurveTy::Curve25519 => "__zkllvm_curve_curve25519",
+            CurveTy::Pallas => "__zkllvm_curve_pallas",
+            CurveTy::Vesta => "__zkllvm_curve_vesta",
+        }
+    }
+
+    pub fn name(self) -> Symbol {
+        match self {
+            CurveTy::Bls12381 => sym::__zkllvm_curve_bls12381,
+            CurveTy::Curve25519 => sym::__zkllvm_curve_curve25519,
+            CurveTy::Pallas => sym::__zkllvm_curve_pallas,
+            CurveTy::Vesta => sym::__zkllvm_curve_vesta,
+        }
+    }
+}
+
 /// Represents algebraic field type.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
