@@ -893,6 +893,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Int(_)
             | ty::Uint(_)
             | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::Bool
             | ty::Char
@@ -933,6 +934,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Int(_)
             | ty::Uint(_)
             | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::Bool
             | ty::Char
@@ -1052,7 +1054,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Adt(..) => tcx.has_structural_eq_impls(self),
 
             // Primitive types that satisfy `Eq`.
-            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Field(_) | ty::Str | ty::Never => true,
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Field(_) | ty::Curve(_) | ty::Str | ty::Never => true,
 
             // Composite types that satisfy `Eq` when all of their fields do.
             //
@@ -1170,6 +1172,7 @@ pub fn needs_drop_components<'tcx>(
         | ty::Int(_)
         | ty::Uint(_)
         | ty::Field(_)
+        | ty::Curve(_)
         | ty::Float(_)
         | ty::Never
         | ty::FnDef(..)
@@ -1226,6 +1229,7 @@ pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
         | ty::Int(_)
         | ty::Uint(_)
         | ty::Field(_)
+        | ty::Curve(_)
         | ty::Float(_)
         | ty::Infer(ty::IntVar(_))
         | ty::Infer(ty::FloatVar(_))
