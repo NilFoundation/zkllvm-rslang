@@ -5,6 +5,7 @@ use std::{fmt, hash};
 
 use crate::DebruijnIndex;
 use crate::FieldTy;
+use crate::CurveTy;
 use crate::FloatTy;
 use crate::HashStableContext;
 use crate::IntTy;
@@ -64,6 +65,9 @@ pub enum TyKind<I: Interner> {
 
     /// An algebraic field type. For example, `__zkllvm_field_bls12381_base`.
     Field(FieldTy),
+
+    /// An elliptic curve type. For example, `__zkllvm_curve_bls12381`.
+    Curve(CurveTy),
 
     /// A primitive floating-point type. For example, `f64`.
     Float(FloatTy),
@@ -210,7 +214,7 @@ pub enum TyKind<I: Interner> {
 impl<I: Interner> TyKind<I> {
     #[inline]
     pub fn is_primitive(&self) -> bool {
-        matches!(self, Bool | Char | Int(_) | Uint(_) | Field(_) | Float(_))
+        matches!(self, Bool | Char | Int(_) | Uint(_) | Field(_) | Curve(_) | Float(_))
     }
 }
 
@@ -246,6 +250,7 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Infer(_) => 24,
         Error(_) => 25,
         Field(_) => 26,
+        Curve(_) => 27,
     }
 }
 
@@ -259,6 +264,7 @@ impl<I: Interner> Clone for TyKind<I> {
             Uint(u) => Uint(*u),
             Float(f) => Float(*f),
             Field(f) => Field(*f),
+            Curve(c) => Curve(*c),
             Adt(d, s) => Adt(d.clone(), s.clone()),
             Foreign(d) => Foreign(d.clone()),
             Str => Str,
@@ -294,6 +300,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
                 (Uint(a_u), Uint(b_u)) => a_u == b_u,
                 (Float(a_f), Float(b_f)) => a_f == b_f,
                 (Field(a_f), Field(b_f)) => a_f == b_f,
+                (Curve(a_c), Curve(b_c)) => a_c == b_c,
                 (Adt(a_d, a_s), Adt(b_d, b_s)) => a_d == b_d && a_s == b_s,
                 (Foreign(a_d), Foreign(b_d)) => a_d == b_d,
                 (Array(a_t, a_c), Array(b_t, b_c)) => a_t == b_t && a_c == b_c,
@@ -350,6 +357,7 @@ impl<I: Interner> Ord for TyKind<I> {
                 (Uint(a_u), Uint(b_u)) => a_u.cmp(b_u),
                 (Float(a_f), Float(b_f)) => a_f.cmp(b_f),
                 (Field(a_f), Field(b_f)) => a_f.cmp(b_f),
+                (Curve(a_c), Curve(b_c)) => a_c.cmp(b_c),
                 (Adt(a_d, a_s), Adt(b_d, b_s)) => a_d.cmp(b_d).then_with(|| a_s.cmp(b_s)),
                 (Foreign(a_d), Foreign(b_d)) => a_d.cmp(b_d),
                 (Array(a_t, a_c), Array(b_t, b_c)) => a_t.cmp(b_t).then_with(|| a_c.cmp(b_c)),
@@ -394,6 +402,7 @@ impl<I: Interner> hash::Hash for TyKind<I> {
             Uint(u) => u.hash(state),
             Float(f) => f.hash(state),
             Field(f) => f.hash(state),
+            Curve(c) => c.hash(state),
             Adt(d, s) => {
                 d.hash(state);
                 s.hash(state)
@@ -458,6 +467,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Uint(u) => f.debug_tuple_field1_finish("Uint", u),
             Float(float) => f.debug_tuple_field1_finish("Float", float),
             Field(field) => f.debug_tuple_field1_finish("Field", field),
+            Curve(curve) => f.debug_tuple_field1_finish("Curve", curve),
             Adt(d, s) => f.debug_tuple_field2_finish("Adt", d, s),
             Foreign(d) => f.debug_tuple_field1_finish("Foreign", d),
             Str => f.write_str("Str"),
@@ -521,6 +531,9 @@ where
             }),
             Field(f) => e.emit_enum_variant(disc, |e| {
                 f.encode(e);
+            }),
+            Curve(c) => e.emit_enum_variant(disc, |e| {
+                c.encode(e);
             }),
             Float(f) => e.emit_enum_variant(disc, |e| {
                 f.encode(e);
@@ -655,11 +668,12 @@ where
             24 => Infer(Decodable::decode(d)),
             25 => Error(Decodable::decode(d)),
             26 => Field(Decodable::decode(d)),
+            27 => Curve(Decodable::decode(d)),
             _ => panic!(
                 "{}",
                 format!(
                     "invalid enum variant tag while decoding `{}`, expected 0..{}",
-                    "TyKind", 28,
+                    "TyKind", 29,
                 )
             ),
         }
@@ -708,6 +722,9 @@ where
             }
             Field(f) => {
                 f.hash_stable(__hcx, __hasher);
+            }
+            Curve(c) => {
+                c.hash_stable(__hcx, __hasher);
             }
             Float(f) => {
                 f.hash_stable(__hcx, __hasher);
