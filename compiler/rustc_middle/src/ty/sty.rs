@@ -2715,6 +2715,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::Adt(..)
             | ty::Foreign(_)
@@ -2757,6 +2758,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Int(_)
             | ty::Bool
             | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::FnDef(..)
             | ty::FnPtr(_)
@@ -2845,6 +2847,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Int(_)
             | ty::Bool
             | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::FnDef(..)
             | ty::FnPtr(_)
@@ -2898,6 +2901,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Int(..)
             | ty::Uint(..)
             | ty::Field(..)
+            | ty::Curve(..)
             | ty::Float(..) => true,
 
             // The voldemort ZSTs are fine.

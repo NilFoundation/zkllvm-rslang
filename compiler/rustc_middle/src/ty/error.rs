@@ -236,7 +236,7 @@ impl<'tcx> TypeError<'tcx> {
 impl<'tcx> Ty<'tcx> {
     pub fn sort_string(self, tcx: TyCtxt<'tcx>) -> Cow<'static, str> {
         match *self.kind() {
-            ty::Field(_) => format!("`{}`", self).into(),
+            ty::Field(_) | ty::Curve(_) => format!("`{}`", self).into(),
             ty::Foreign(def_id) => format!("extern type `{}`", tcx.def_path_str(def_id)).into(),
             ty::FnDef(def_id, ..) => match tcx.def_kind(def_id) {
                 DefKind::Ctor(CtorOf::Struct, _) => "struct constructor".into(),
@@ -283,6 +283,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::Str
             | ty::Never => "type".into(),

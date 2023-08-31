@@ -93,6 +93,7 @@ impl FlagComputation {
             | &ty::Char
             | &ty::Int(_)
             | &ty::Field(_)
+            | &ty::Curve(_)
             | &ty::Float(_)
             | &ty::Uint(_)
             | &ty::Never

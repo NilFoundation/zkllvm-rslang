@@ -609,6 +609,7 @@ pub trait PrettyPrinter<'tcx>:
                 | ty::Int(_)
                 | ty::Uint(_)
                 | ty::Field(_)
+                | ty::Curve(_)
                 | ty::Float(_) => {
                     return self_ty.print(self);
                 }
@@ -658,6 +659,7 @@ pub trait PrettyPrinter<'tcx>:
             ty::Int(t) => p!(write("{}", t.name_str())),
             ty::Uint(t) => p!(write("{}", t.name_str())),
             ty::Field(t) => p!(write("{}", t.name_str())),
+            ty::Curve(t) => p!(write("{}", t.name_str())),
             ty::Float(t) => p!(write("{}", t.name_str())),
             ty::RawPtr(ref tm) => {
                 p!(write(
@@ -1495,6 +1497,10 @@ pub trait PrettyPrinter<'tcx>:
             }
             // Field
             ty::Field(_) => {
+                unimplemented!()
+            }
+            // Curve
+            ty::Curve(_) => {
                 unimplemented!()
             }
             // Char
