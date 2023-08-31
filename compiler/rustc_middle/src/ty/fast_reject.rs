@@ -16,6 +16,7 @@ pub enum SimplifiedType {
     IntSimplifiedType(ty::IntTy),
     UintSimplifiedType(ty::UintTy),
     FieldSimplifiedType(ty::FieldTy),
+    CurveSimplifiedType(ty::CurveTy),
     FloatSimplifiedType(ty::FloatTy),
     AdtSimplifiedType(DefId),
     ForeignSimplifiedType(DefId),
@@ -94,6 +95,7 @@ pub fn simplify_type<'tcx>(
         ty::Int(int_type) => Some(IntSimplifiedType(int_type)),
         ty::Uint(uint_type) => Some(UintSimplifiedType(uint_type)),
         ty::Field(field_type) => Some(FieldSimplifiedType(field_type)),
+        ty::Curve(curve_type) => Some(CurveSimplifiedType(curve_type)),
         ty::Float(float_type) => Some(FloatSimplifiedType(float_type)),
         ty::Adt(def, _) => Some(AdtSimplifiedType(def.did())),
         ty::Str => Some(StrSimplifiedType),
@@ -196,6 +198,7 @@ impl DeepRejectCtxt {
             | ty::Uint(_)
             | ty::Field(_)
             | ty::Float(_)
+            | ty::Curve(_)
             | ty::Adt(..)
             | ty::Str
             | ty::Array(..)
@@ -224,6 +227,7 @@ impl DeepRejectCtxt {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::Str
             | ty::Never
