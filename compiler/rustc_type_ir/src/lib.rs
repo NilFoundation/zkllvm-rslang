@@ -521,6 +521,35 @@ impl FieldTy {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
+pub enum CurveTy {
+    Bls12381,
+    Curve25519,
+    Pallas,
+    Vesta,
+}
+
+impl CurveTy {
+    pub fn name_str(self) -> &'static str {
+        match self {
+            CurveTy::Bls12381 => "__zkllvm_curve_bls12381",
+            CurveTy::Curve25519 => "__zkllvm_curve_curve25519",
+            CurveTy::Pallas => "__zkllvm_curve_pallas",
+            CurveTy::Vesta => "__zkllvm_curve_vesta",
+        }
+    }
+
+    pub fn bit_width(self) -> u64 {
+        match self {
+            CurveTy::Bls12381 => 640, // actual is 636
+            CurveTy::Curve25519 => 512, // actual is 508
+            CurveTy::Pallas => 512, // actual is 510
+            CurveTy::Vesta => 512, // actual is 510
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum FloatTy {
     F32,
     F64,
