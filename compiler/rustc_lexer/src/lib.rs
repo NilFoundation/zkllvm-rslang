@@ -179,7 +179,7 @@ pub enum LiteralKind {
     Int { base: Base, empty_int: bool },
     /// "12.34f32", "1e3", but not "1f32".
     Float { base: Base, empty_exponent: bool },
-    /// "12F"
+    /// "12G", "12g"
     Field { base: Base, empty_field: bool },
     /// "'a'", "'\\'", "'''", "';"
     Char { terminated: bool },
