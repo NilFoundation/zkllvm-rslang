@@ -193,6 +193,7 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::Str
             | ty::Array(..)

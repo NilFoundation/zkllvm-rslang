@@ -1311,6 +1311,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 unimplemented!();
             }
 
+            ty::Curve(_) => {
+                // we can support FFI for curve types potentially
+                unimplemented!();
+            }
+
             ty::Param(..)
             | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
             | ty::Infer(..)

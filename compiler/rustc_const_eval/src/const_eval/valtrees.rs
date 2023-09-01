@@ -87,7 +87,8 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
             Ok(ty::ValTree::zst())
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Field(_) | ty::Float(_) | ty::Char => {
-            let Ok(val) = ecx.read_immediate(place) else {
+            // FIXME(aleasims): should we really handle fields here like this?
+            let Ok(val) = ecx.read_immediate(&place.into()) else {
                 return Err(ValTreeCreationError::Other);
             };
             let val = val.to_scalar();
@@ -140,6 +141,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
         ty::Never
         | ty::Error(_)
         | ty::Foreign(..)
+        | ty::Curve(_)
         | ty::Infer(ty::FreshIntTy(_))
         | ty::Infer(ty::FreshFloatTy(_))
         // FIXME(oli-obk): we could look behind opaque types
@@ -228,6 +230,7 @@ pub fn valtree_to_const_value<'tcx>(
             ConstValue::ZeroSized
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Field(_) | ty::Float(_) | ty::Char => match valtree {
+            // FIXME(aleasims): fields shouldn't be here.
             ty::ValTree::Leaf(scalar_int) => ConstValue::Scalar(Scalar::Int(scalar_int)),
             ty::ValTree::Branch(_) => bug!(
                 "ValTrees for Bool, Int, Uint, Float or Char should have the form ValTree::Leaf"
@@ -264,6 +267,7 @@ pub fn valtree_to_const_value<'tcx>(
         ty::Never
         | ty::Error(_)
         | ty::Foreign(..)
+        | ty::Curve(_)
         | ty::Infer(ty::FreshIntTy(_))
         | ty::Infer(ty::FreshFloatTy(_))
         | ty::Alias(..)
@@ -378,6 +382,7 @@ fn valtree_into_mplace<'tcx>(
             debug!("dump of place after writing discriminant:");
             dump_place(ecx, place);
         }
+        // FIXME(aleasims): fields shouldn't be here.
         ty::Field(_) => unimplemented!("no field constants yet"),
         _ => bug!("shouldn't have created a ValTree for {:?}", ty),
     }

@@ -592,6 +592,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             // Some types only occur during typechecking, they have no layout.
             // We should not see them here and we could not check them anyway.
             ty::Error(_)
+            | ty::Curve(_)
             | ty::Infer(..)
             | ty::Placeholder(..)
             | ty::Bound(..)

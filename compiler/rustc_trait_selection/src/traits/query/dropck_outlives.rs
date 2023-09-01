@@ -31,6 +31,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::Int(_)
         | ty::Uint(_)
         | ty::Field(_)
+        | ty::Curve(_)
         | ty::Float(_)
         | ty::Never
         | ty::FnDef(..)
