@@ -17,6 +17,7 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         | ty::Bool
         | ty::Float(_)
         | ty::Field(_)
+        | ty::Curve(_)
         | ty::FnDef(..)
         | ty::FnPtr(_)
         | ty::Str
@@ -82,6 +83,7 @@ pub(super) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         | ty::Bool
         | ty::Float(_)
         | ty::Field(_)
+        | ty::Curve(_)
         | ty::FnDef(..)
         | ty::FnPtr(_)
         | ty::RawPtr(..)
@@ -136,6 +138,7 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         | ty::Bool
         | ty::Float(_)
         | ty::Field(_)
+        | ty::Curve(_)
         | ty::Char
         | ty::RawPtr(..)
         | ty::Never
@@ -205,6 +208,7 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         | ty::Uint(_)
         | ty::Float(_)
         | ty::Field(_)
+        | ty::Curve(_)
         | ty::Adt(_, _)
         | ty::Foreign(_)
         | ty::Str

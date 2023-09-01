@@ -520,6 +520,7 @@ impl<'tcx> WfPredicates<'tcx> {
                 | ty::Int(..)
                 | ty::Uint(..)
                 | ty::Field(..)
+                | ty::Curve(..)
                 | ty::Float(..)
                 | ty::Error(_)
                 | ty::Str

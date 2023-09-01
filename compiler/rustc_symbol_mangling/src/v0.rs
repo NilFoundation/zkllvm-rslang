@@ -390,7 +390,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
         match *ty.kind() {
             // Basic types, handled above.
-            ty::Bool | ty::Char | ty::Str | ty::Int(_) | ty::Uint(_) | ty::Field(_) | ty::Float(_) | ty::Never => {
+            ty::Bool | ty::Char | ty::Str | ty::Int(_) | ty::Uint(_) | ty::Field(_) | ty::Curve(_) | ty::Float(_) | ty::Never => {
                 unreachable!()
             }
             ty::Tuple(_) if ty.is_unit() => unreachable!(),
