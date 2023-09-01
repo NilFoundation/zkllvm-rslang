@@ -2546,6 +2546,15 @@ pub fn field_ty(fty: ast::FieldTy) -> FieldTy {
     }
 }
 
+pub fn curve_ty(fty: ast::CurveTy) -> CurveTy {
+    match fty {
+        ast::CurveTy::Bls12381 => CurveTy::Bls12381,
+        ast::CurveTy::Curve25519 => CurveTy::Curve25519,
+        ast::CurveTy::Pallas => CurveTy::Pallas,
+        ast::CurveTy::Vesta => CurveTy::Vesta,
+    }
+}
+
 pub fn float_ty(fty: ast::FloatTy) -> FloatTy {
     match fty {
         ast::FloatTy::F32 => FloatTy::F32,
