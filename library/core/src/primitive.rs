@@ -84,3 +84,16 @@ pub use __zkllvm_field_pallas_base;
 #[cfg(not(bootstrap))]
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use __zkllvm_field_pallas_scalar;
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use __zkllvm_curve_bls12381;
+#[cfg(not(bootstrap))]
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use __zkllvm_curve_curve25519;
+#[cfg(not(bootstrap))]
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use __zkllvm_curve_pallas;
+#[cfg(not(bootstrap))]
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use __zkllvm_curve_vesta;
