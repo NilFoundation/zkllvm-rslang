@@ -204,20 +204,24 @@ debug! {
 }
 
 #[cfg(not(bootstrap))]
-macro_rules! debug_field {
+macro_rules! debug_unimplemented {
     ($($T:ident)*) => {$(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::Debug for $T {
             #[inline]
             fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                unreachable!("field types cannot be used in real machine code")
+                unimplemented!()
             }
         }
     )*};
 }
 
 #[cfg(not(bootstrap))]
-debug_field! {
+debug_unimplemented! {
+    __zkllvm_curve_bls12381
+    __zkllvm_curve_curve25519
+    __zkllvm_curve_pallas
+    __zkllvm_curve_vesta
     __zkllvm_field_bls12381_base
     __zkllvm_field_bls12381_scalar
     __zkllvm_field_curve25519_base
@@ -711,19 +715,23 @@ fn u128_mulhi(x: u128, y: u128) -> u128 {
 }
 
 #[cfg(not(bootstrap))]
-macro_rules! display_field {
+macro_rules! display_unimplemented {
     ($($T:ident)*) => {$(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::Display for $T {
             fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                unreachable!("field types cannot be used in real machine code")
+                unimplemented!()
             }
         }
     )*};
 }
 
 #[cfg(not(bootstrap))]
-display_field! {
+display_unimplemented! {
+    __zkllvm_curve_bls12381
+    __zkllvm_curve_curve25519
+    __zkllvm_curve_pallas
+    __zkllvm_curve_vesta
     __zkllvm_field_bls12381_base
     __zkllvm_field_bls12381_scalar
     __zkllvm_field_curve25519_base

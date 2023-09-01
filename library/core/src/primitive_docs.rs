@@ -1303,6 +1303,34 @@ mod prim_zkllvm_field_pallas_base {}
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_zkllvm_field_pallas_scalar {}
 
+#[doc(primitive = "__zkllvm_curve_bls12381")]
+//
+/// Bls12381 curve.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+mod prim_zkllvm_curve_bls12381 {}
+
+#[doc(primitive = "__zkllvm_curve_curve25519")]
+//
+/// Curve25519 curve.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+mod prim_zkllvm_curve_curve25519 {}
+
+#[doc(primitive = "__zkllvm_curve_pallas")]
+//
+/// Pallas curve.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+mod prim_zkllvm_curve_pallas {}
+
+#[doc(primitive = "__zkllvm_curve_vesta")]
+//
+/// Vesta curve.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+mod prim_zkllvm_curve_vesta {}
+
 #[rustc_doc_primitive = "reference"]
 #[doc(primitive = "reference")]
 #[doc(alias = "&")]
