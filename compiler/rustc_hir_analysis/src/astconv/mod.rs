@@ -2810,6 +2810,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     hir::PrimTy::Int(it) => tcx.mk_mach_int(ty::int_ty(it)),
                     hir::PrimTy::Uint(uit) => tcx.mk_mach_uint(ty::uint_ty(uit)),
                     hir::PrimTy::Field(field) => tcx.mk_mach_field(ty::field_ty(field)),
+                    hir::PrimTy::Curve(curve) => tcx.mk_mach_curve(ty::curve_ty(curve)),
                     hir::PrimTy::Float(ft) => tcx.mk_mach_float(ty::float_ty(ft)),
                     hir::PrimTy::Str => tcx.types.str_,
                 }
