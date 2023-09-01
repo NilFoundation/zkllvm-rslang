@@ -24,7 +24,7 @@ use crate::traits::solve;
 use crate::traits::solve::{
     ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
 };
-use crate::ty::{FieldTy, FieldVar, FieldVid};
+use crate::ty::{CurveTy, FieldTy, FieldVar, FieldVid};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Const, ConstData, GenericParamDefKind,
     ImplPolarity, InferTy, List, ParamConst, ParamTy, PolyExistentialPredicate, PolyFnSig,
@@ -268,6 +268,10 @@ const NUM_PREINTERNED_RE_LATE_BOUNDS_I: u32 = 2;
 const NUM_PREINTERNED_RE_LATE_BOUNDS_V: u32 = 20;
 
 pub struct CommonTypes<'tcx> {
+    pub __zkllvm_curve_bls12381: Ty<'tcx>,
+    pub __zkllvm_curve_curve25519: Ty<'tcx>,
+    pub __zkllvm_curve_pallas: Ty<'tcx>,
+    pub __zkllvm_curve_vesta: Ty<'tcx>,
     pub __zkllvm_field_bls12381_base: Ty<'tcx>,
     pub __zkllvm_field_bls12381_scalar: Ty<'tcx>,
     pub __zkllvm_field_curve25519_base: Ty<'tcx>,
@@ -359,6 +363,10 @@ impl<'tcx> CommonTypes<'tcx> {
             (0..NUM_PREINTERNED_FRESH_FIELD_TYS).map(|n| mk(Infer(ty::FreshFieldTy(n)))).collect();
 
         CommonTypes {
+            __zkllvm_curve_bls12381: mk(Curve(ty::CurveTy::Bls12381)),
+            __zkllvm_curve_curve25519: mk(Curve(ty::CurveTy::Curve25519)),
+            __zkllvm_curve_pallas: mk(Curve(ty::CurveTy::Pallas)),
+            __zkllvm_curve_vesta: mk(Curve(ty::CurveTy::Vesta)),
             __zkllvm_field_bls12381_base: mk(Field(ty::FieldTy::Bls12381Base)),
             __zkllvm_field_bls12381_scalar: mk(Field(ty::FieldTy::Bls12381Scalar)),
             __zkllvm_field_curve25519_base: mk(Field(ty::FieldTy::Curve25519Base)),

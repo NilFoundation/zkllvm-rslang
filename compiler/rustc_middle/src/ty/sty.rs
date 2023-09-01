@@ -2033,6 +2033,17 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn new_curve(tcx: TyCtxt<'tcx>, c: ty::CurveTy) -> Ty<'tcx> {
+        use ty::CurveTy::*;
+        match c {
+            Bls12381 => tcx.types.__zkllvm_curve_bls12381,
+            Curve25519 => tcx.types.__zkllvm_curve_curve25519,
+            Pallas => tcx.types.__zkllvm_curve_pallas,
+            Vesta => tcx.types.__zkllvm_curve_vesta,
+        }
+    }
+
+    #[inline]
     pub fn new_float(tcx: TyCtxt<'tcx>, f: ty::FloatTy) -> Ty<'tcx> {
         use ty::FloatTy::*;
         match f {
