@@ -19,10 +19,11 @@ use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
-    read_target_field, write_target_field, read_target_uint, write_target_uint, AllocId,
-    InterpError, InterpResult, Pointer, Provenance, ResourceExhaustionInfo, Scalar, ScalarField,
-    ScalarSizeMismatch, UndefinedBehaviorInfo, UninitBytesAccess, UnsupportedOpInfo,
+    read_target_uint, write_target_uint, AllocId, InterpError, InterpResult, Pointer, Provenance,
+    ResourceExhaustionInfo, Scalar, ScalarSizeMismatch, UndefinedBehaviorInfo, UninitBytesAccess,
+    UnsupportedOpInfo,
 };
+use super::{read_target_field, write_target_field, ScalarField};
 use crate::ty;
 use init_mask::*;
 use provenance_map::*;
