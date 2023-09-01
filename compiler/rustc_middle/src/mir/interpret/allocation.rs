@@ -22,7 +22,7 @@ use super::{
     Pointer, PointerArithmetic, Provenance, ResourceExhaustionInfo, Scalar, ScalarSizeMismatch,
     UndefinedBehaviorInfo, UnsupportedOpInfo,
 };
-use super::{write_target_field, read_target_field};
+use super::{write_target_field, read_target_field, ScalarField};
 use crate::ty;
 use init_mask::*;
 use provenance_map::*;
