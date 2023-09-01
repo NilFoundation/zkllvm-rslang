@@ -38,6 +38,7 @@ pub fn type_allowed_to_implement_copy<'tcx>(
         | ty::Int(_)
         | ty::Bool
         | ty::Field(_)
+        | ty::Curve(_)
         | ty::Float(_)
         | ty::Char
         | ty::RawPtr(..)
