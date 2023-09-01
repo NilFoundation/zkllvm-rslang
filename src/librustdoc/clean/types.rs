@@ -1715,6 +1715,10 @@ pub(crate) enum PrimitiveType {
     U128,
     F32,
     F64,
+    Bls12381,
+    Curve25519,
+    Pallas,
+    Vesta,
     Bls12381Base,
     Bls12381Scalar,
     Curve25519Base,
@@ -1757,6 +1761,10 @@ impl PrimitiveType {
             hir::PrimTy::Field(FieldTy::Curve25519Scalar) => PrimitiveType::Curve25519Scalar,
             hir::PrimTy::Field(FieldTy::PallasBase) => PrimitiveType::PallasBase,
             hir::PrimTy::Field(FieldTy::PallasScalar) => PrimitiveType::PallasScalar,
+            hir::PrimTy::Curve(CurveTy::Bls12381) => PrimitiveType::Bls12381,
+            hir::PrimTy::Curve(CurveTy::Curve25519) => PrimitiveType::Curve25519,
+            hir::PrimTy::Curve(CurveTy::Pallas) => PrimitiveType::Pallas,
+            hir::PrimTy::Curve(CurveTy::Vesta) => PrimitiveType::Vesta,
             hir::PrimTy::Float(FloatTy::F32) => PrimitiveType::F32,
             hir::PrimTy::Float(FloatTy::F64) => PrimitiveType::F64,
             hir::PrimTy::Str => PrimitiveType::Str,
@@ -1767,6 +1775,10 @@ impl PrimitiveType {
 
     pub(crate) fn from_symbol(s: Symbol) -> Option<PrimitiveType> {
         match s {
+            sym::__zkllvm_curve_bls12381 => Some(PrimitiveType::Bls12381),
+            sym::__zkllvm_curve_curve25519 => Some(PrimitiveType::Curve25519),
+            sym::__zkllvm_curve_pallas => Some(PrimitiveType::Pallas),
+            sym::__zkllvm_curve_vesta => Some(PrimitiveType::Vesta),
             sym::__zkllvm_field_bls12381_base => Some(PrimitiveType::Bls12381Base),
             sym::__zkllvm_field_bls12381_scalar => Some(PrimitiveType::Bls12381Scalar),
             sym::__zkllvm_field_curve25519_base => Some(PrimitiveType::Curve25519Base),
@@ -1804,6 +1816,7 @@ impl PrimitiveType {
 
     pub(crate) fn simplified_types() -> &'static SimplifiedTypes {
         use ty::{FloatTy, IntTy, UintTy};
+        use ty::{FieldTy, CurveTy};
         use PrimitiveType::*;
         static CELL: OnceCell<SimplifiedTypes> = OnceCell::new();
 
@@ -1824,6 +1837,17 @@ impl PrimitiveType {
                 U128 => single(SimplifiedType::Uint(UintTy::U128)),
                 F32 => single(SimplifiedType::Float(FloatTy::F32)),
                 F64 => single(SimplifiedType::Float(FloatTy::F64)),
+                Bls12381 => single(SimplifiedType::Curve(CurveTy::Bls12381)),
+                Curve25519 => single(SimplifiedType::Curve(CurveTy::Curve25519)),
+                Pallas => single(SimplifiedType::Curve(CurveTy::Pallas)),
+                Vesta => single(SimplifiedType::Curve(CurveTy::Vesta)),
+                Bls12381Base => single(SimplifiedType::Field(FieldTy::Bls12381Base)),
+                Bls12381Scalar => single(SimplifiedType::Field(FieldTy::Bls12381Scalar)),
+                Curve25519Base => single(SimplifiedType::Field(FieldTy::Curve25519Base)),
+                Curve25519Scalar => single(SimplifiedType::Field(FieldTy::Curve25519Scalar)),
+                PallasBase => single(SimplifiedType::Field(FieldTy::PallasBase)),
+                PallasScalar => single(SimplifiedType::Field(FieldTy::PallasScalar)),
+
                 Str => single(SimplifiedType::Str),
                 Bool => single(SimplifiedType::Bool),
                 Char => single(SimplifiedType::Char),
@@ -1891,6 +1915,10 @@ impl PrimitiveType {
             Reference => sym::reference,
             Fn => kw::Fn,
             Never => sym::never,
+            Bls12381 => sym::__zkllvm_curve_bls12381,
+            Curve25519 => sym::__zkllvm_curve_curve25519,
+            Pallas => sym::__zkllvm_curve_pallas,
+            Vesta => sym::__zkllvm_curve_vesta,
             Bls12381Base => sym::__zkllvm_field_bls12381_base,
             Bls12381Scalar => sym::__zkllvm_field_bls12381_scalar,
             Curve25519Base => sym::__zkllvm_field_curve25519_base,
@@ -1986,6 +2014,17 @@ impl From<ast::FieldTy> for PrimitiveType {
     }
 }
 
+impl From<ast::CurveTy> for PrimitiveType {
+    fn from(curve_ty: ast::CurveTy) -> PrimitiveType {
+        match curve_ty {
+            ast::CurveTy::Bls12381 => PrimitiveType::Bls12381,
+            ast::CurveTy::Curve25519 => PrimitiveType::Curve25519,
+            ast::CurveTy::Pallas => PrimitiveType::Pallas,
+            ast::CurveTy::Vesta => PrimitiveType::Vesta,
+        }
+    }
+}
+
 impl From<ty::IntTy> for PrimitiveType {
     fn from(int_ty: ty::IntTy) -> PrimitiveType {
         match int_ty {
@@ -2034,6 +2073,17 @@ impl From<ty::FieldTy> for PrimitiveType {
     }
 }
 
+impl From<ty::CurveTy> for PrimitiveType {
+    fn from(curve_ty: ty::CurveTy) -> PrimitiveType {
+        match curve_ty {
+            ty::CurveTy::Bls12381 => PrimitiveType::Bls12381,
+            ty::CurveTy::Curve25519 => PrimitiveType::Curve25519,
+            ty::CurveTy::Pallas => PrimitiveType::Pallas,
+            ty::CurveTy::Vesta => PrimitiveType::Vesta,
+        }
+    }
+}
+
 impl From<hir::PrimTy> for PrimitiveType {
     fn from(prim_ty: hir::PrimTy) -> PrimitiveType {
         match prim_ty {
@@ -2041,6 +2091,7 @@ impl From<hir::PrimTy> for PrimitiveType {
             hir::PrimTy::Uint(uint_ty) => uint_ty.into(),
             hir::PrimTy::Float(float_ty) => float_ty.into(),
             hir::PrimTy::Field(field_ty) => field_ty.into(),
+            hit::PrimTy::Curve(curve_ty) => curve_ty.into(),
             hir::PrimTy::Str => PrimitiveType::Str,
             hir::PrimTy::Bool => PrimitiveType::Bool,
             hir::PrimTy::Char => PrimitiveType::Char,

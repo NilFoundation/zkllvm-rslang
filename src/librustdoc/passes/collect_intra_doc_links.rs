@@ -505,6 +505,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             ty::Uint(uty) => Res::Primitive(uty.into()),
             ty::Float(fty) => Res::Primitive(fty.into()),
             ty::Field(fty) => Res::Primitive(fty.into()),
+            ty::Curve(cty) => Res::Primitive(cty.into()),
             ty::Str => Res::Primitive(Str),
             ty::Tuple(tys) if tys.is_empty() => Res::Primitive(Unit),
             ty::Tuple(_) => Res::Primitive(Tuple),
