@@ -23,7 +23,8 @@ use crate::ty::{
     ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVar, TyVid, TypeAndMut, TypeckResults, UintTy,
     Visibility,
 };
-use crate::ty::{FieldTy, FieldVar, FieldVid};
+use crate::ty::{FieldVar, FieldVid};
+use crate::ty::{CurveTy, FieldTy};
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -236,6 +237,10 @@ impl<'tcx> CtxtInterners<'tcx> {
 }
 
 pub struct CommonTypes<'tcx> {
+    pub __zkllvm_curve_bls12381: Ty<'tcx>,
+    pub __zkllvm_curve_curve25519: Ty<'tcx>,
+    pub __zkllvm_curve_pallas: Ty<'tcx>,
+    pub __zkllvm_curve_vesta: Ty<'tcx>,
     pub __zkllvm_field_bls12381_base: Ty<'tcx>,
     pub __zkllvm_field_bls12381_scalar: Ty<'tcx>,
     pub __zkllvm_field_curve25519_base: Ty<'tcx>,
@@ -290,6 +295,10 @@ impl<'tcx> CommonTypes<'tcx> {
         let mk = |ty| interners.intern_ty(ty, sess, untracked);
 
         CommonTypes {
+            __zkllvm_curve_bls12381: mk(Curve(ty::CurveTy::Bls12381)),
+            __zkllvm_curve_curve25519: mk(Curve(ty::CurveTy::Curve25519)),
+            __zkllvm_curve_pallas: mk(Curve(ty::CurveTy::Pallas)),
+            __zkllvm_curve_vesta: mk(Curve(ty::CurveTy::Vesta)),
             __zkllvm_field_bls12381_base: mk(Field(ty::FieldTy::Bls12381Base)),
             __zkllvm_field_bls12381_scalar: mk(Field(ty::FieldTy::Bls12381Scalar)),
             __zkllvm_field_curve25519_base: mk(Field(ty::FieldTy::Curve25519Base)),
@@ -1776,6 +1785,15 @@ impl<'tcx> TyCtxt<'tcx> {
             FieldTy::Curve25519Scalar => self.types.__zkllvm_field_curve25519_scalar,
             FieldTy::PallasBase => self.types.__zkllvm_field_pallas_base,
             FieldTy::PallasScalar => self.types.__zkllvm_field_pallas_scalar,
+        }
+    }
+
+    pub fn mk_mach_curve(self, tm: CurveTy) -> Ty<'tcx> {
+        match tm {
+            CurveTy::Bls12381 => self.types.__zkllvm_curve_bls12381,
+            CurveTy::Curve25519 => self.types.__zkllvm_curve_curve25519,
+            CurveTy::Pallas => self.types.__zkllvm_curve_pallas,
+            CurveTy::Vesta => self.types.__zkllvm_curve_vesta,
         }
     }
 
