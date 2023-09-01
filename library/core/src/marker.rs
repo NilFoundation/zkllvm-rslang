@@ -851,6 +851,10 @@ mod copy_impls {
 
     #[cfg(not(bootstrap))]
     impl_copy! {
+        __zkllvm_curve_bls12381
+        __zkllvm_curve_curve25519
+        __zkllvm_curve_pallas
+        __zkllvm_curve_vesta
         __zkllvm_field_bls12381_base
         __zkllvm_field_bls12381_scalar
         __zkllvm_field_curve25519_base

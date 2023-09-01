@@ -1375,6 +1375,10 @@ mod impls {
 
     #[cfg(not(bootstrap))]
     partial_eq_impl! {
+        __zkllvm_curve_bls12381
+        __zkllvm_curve_curve25519
+        __zkllvm_curve_pallas
+        __zkllvm_curve_vesta
         __zkllvm_field_bls12381_base
         __zkllvm_field_bls12381_scalar
         __zkllvm_field_curve25519_base
@@ -1394,6 +1398,10 @@ mod impls {
 
     #[cfg(not(bootstrap))]
     eq_impl! {
+        __zkllvm_curve_bls12381
+        __zkllvm_curve_curve25519
+        __zkllvm_curve_pallas
+        __zkllvm_curve_vesta
         __zkllvm_field_bls12381_base
         __zkllvm_field_bls12381_scalar
         __zkllvm_field_curve25519_base
@@ -1510,6 +1518,14 @@ mod impls {
     }
 
     ord_impl! { char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+
+    #[cfg(not(bootstrap))]
+    ord_impl! {
+        __zkllvm_curve_bls12381
+        __zkllvm_curve_curve25519
+        __zkllvm_curve_pallas
+        __zkllvm_curve_vesta
+    }
 
     #[unstable(feature = "never_type", issue = "35121")]
     #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
