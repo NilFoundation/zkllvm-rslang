@@ -1881,6 +1881,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ty::Int(..)
                 | ty::Uint(..)
                 | ty::Field(..)
+                | ty::Curve(..)
                 | ty::Float(..)
                 | ty::Infer(ty::IntVar(..) | ty::FloatVar(..) | ty::FieldVar(..)) => Some(4),
                 ty::Ref(..) | ty::RawPtr(..) => Some(5),
