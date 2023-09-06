@@ -244,15 +244,25 @@ impl<'tcx> BinOp {
         match self {
             &BinOp::Add
             | &BinOp::Sub
-            | &BinOp::Mul
-            | &BinOp::Div
             | &BinOp::Rem
             | &BinOp::BitXor
             | &BinOp::BitAnd
             | &BinOp::BitOr => {
-                // these should be integers or floats of the same size.
+                // these should be integers or floats or fields of the same size.
                 assert_eq!(lhs_ty, rhs_ty);
                 lhs_ty
+            }
+            &BinOp::Mul
+            | &BinOp::Div => {
+                if lhs_ty.is_curve() {
+                    lhs_ty
+                } else if rhs_ty.is_curve() {
+                    rhs_ty
+                } else {
+                    // these should be integers or floats or fields of the same size.
+                    assert_eq!(lhs_ty, rhs_ty);
+                    lhs_ty
+                }
             }
             &BinOp::Shl | &BinOp::Shr | &BinOp::Offset => {
                 lhs_ty // lhs_ty can be != rhs_ty
