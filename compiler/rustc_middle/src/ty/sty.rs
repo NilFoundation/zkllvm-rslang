@@ -2471,6 +2471,7 @@ impl<'tcx> Ty<'tcx> {
             Bool | Char
                 | Int(_)
                 | Field(_)
+                | Curve(_)
                 | Float(_)
                 | Uint(_)
                 | FnDef(..)
@@ -2523,7 +2524,12 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_field(self) -> bool {
-        matches!(self.kind(), Infer(IntVar(_)) | Field(_))
+        matches!(self.kind(), Infer(FieldVar(_)) | Field(_))
+    }
+
+    #[inline]
+    pub fn is_curve(self) -> bool {
+        matches!(self.kind(), Curve(_))
     }
 
     #[inline]
@@ -2614,6 +2620,22 @@ impl<'tcx> Ty<'tcx> {
             Ref(_, ty, mutbl) => Some(TypeAndMut { ty: *ty, mutbl: *mutbl }),
             RawPtr(mt) if explicit => Some(*mt),
             _ => None,
+        }
+    }
+
+    /// Return scalar field type corresponding to given curve type.
+    ///
+    /// **Panics** if `self` is not curve type.
+    pub fn curve_scalar_field(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        if let TyKind::Curve(curve_ty) = self.kind() {
+            match curve_ty {
+                ty::CurveTy::Bls12381 => tcx.types.__zkllvm_field_bls12381_scalar,
+                ty::CurveTy::Curve25519 => tcx.types.__zkllvm_field_curve25519_scalar,
+                ty::CurveTy::Pallas => tcx.types.__zkllvm_field_pallas_scalar,
+                ty::CurveTy::Vesta => tcx.types.__zkllvm_field_pallas_base,
+            }
+        } else {
+            bug!("not a curve type given to Ty::curve_scalar_field")
         }
     }
 
@@ -2958,13 +2980,19 @@ impl<'tcx> Ty<'tcx> {
             ty::Bool => Some(sym::bool),
             ty::Char => Some(sym::char),
             ty::Field(f) => match f {
-                rustc_type_ir::FieldTy::Bls12381Base => Some(sym::__zkllvm_field_bls12381_base),
-                rustc_type_ir::FieldTy::Bls12381Scalar => Some(sym::__zkllvm_field_bls12381_scalar),
-                rustc_type_ir::FieldTy::Curve25519Base => Some(sym::__zkllvm_field_curve25519_base),
-                rustc_type_ir::FieldTy::Curve25519Scalar => Some(sym::__zkllvm_field_curve25519_scalar),
-                rustc_type_ir::FieldTy::PallasBase => Some(sym::__zkllvm_field_pallas_base),
-                rustc_type_ir::FieldTy::PallasScalar => Some(sym::__zkllvm_field_pallas_scalar),
+                ty::FieldTy::Bls12381Base => Some(sym::__zkllvm_field_bls12381_base),
+                ty::FieldTy::Bls12381Scalar => Some(sym::__zkllvm_field_bls12381_scalar),
+                ty::FieldTy::Curve25519Base => Some(sym::__zkllvm_field_curve25519_base),
+                ty::FieldTy::Curve25519Scalar => Some(sym::__zkllvm_field_curve25519_scalar),
+                ty::FieldTy::PallasBase => Some(sym::__zkllvm_field_pallas_base),
+                ty::FieldTy::PallasScalar => Some(sym::__zkllvm_field_pallas_scalar),
             },
+            ty::Curve(c) => match c {
+                ty::CurveTy::Bls12381 => Some(sym::__zkllvm_curve_bls12381),
+                ty::CurveTy::Curve25519 => Some(sym::__zkllvm_curve_curve25519),
+                ty::CurveTy::Pallas => Some(sym::__zkllvm_curve_pallas),
+                ty::CurveTy::Vesta => Some(sym::__zkllvm_curve_vesta),
+            }
             ty::Float(f) => match f {
                 ty::FloatTy::F32 => Some(sym::f32),
                 ty::FloatTy::F64 => Some(sym::f64),
