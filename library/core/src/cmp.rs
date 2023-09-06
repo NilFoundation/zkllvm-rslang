@@ -1460,6 +1460,13 @@ mod impls {
         __zkllvm_curve_curve25519
         __zkllvm_curve_pallas
         __zkllvm_curve_vesta
+        __zkllvm_field_bls12381_base
+        __zkllvm_field_bls12381_scalar
+        __zkllvm_field_curve25519_base
+        __zkllvm_field_curve25519_scalar
+        __zkllvm_field_pallas_base
+        __zkllvm_field_pallas_scalar
+
     }
 
     #[unstable(feature = "never_type", issue = "35121")]
