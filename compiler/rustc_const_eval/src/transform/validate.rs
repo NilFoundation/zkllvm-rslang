@@ -926,6 +926,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 use BinOp::*;
                 let a = vals.0.ty(&self.body.local_decls, self.tcx);
                 let b = vals.1.ty(&self.body.local_decls, self.tcx);
+                if a.is_curve() || b.is_curve() {
+                    // TODO: (aleasims) how we should handle checked operations for curves and fields?
+                    todo!("checked ops for curves");
+                }
                 match op {
                     Add | Sub | Mul => {
                         for x in [a, b] {
