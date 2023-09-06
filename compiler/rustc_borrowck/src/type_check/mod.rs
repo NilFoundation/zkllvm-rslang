@@ -2311,7 +2311,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                     // For types with no regions we can just check that the
                     // both operands have the same type.
-                    ty::Int(_) | ty::Uint(_) | ty::Field(_) | ty::Bool | ty::Char | ty::Float(_)
+                    ty::Int(_) | ty::Uint(_) | ty::Field(_) | ty::Curve(..) | ty::Bool | ty::Char | ty::Float(_)
                         if ty_left == right.ty(body, tcx) => {}
                     // Other types are compared by trait methods, not by
                     // `Rvalue::BinaryOp`.
