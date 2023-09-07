@@ -1741,7 +1741,7 @@ pub(crate) enum PrimitiveType {
 type SimplifiedTypes = FxHashMap<PrimitiveType, ArrayVec<SimplifiedType, 3>>;
 impl PrimitiveType {
     pub(crate) fn from_hir(prim: hir::PrimTy) -> PrimitiveType {
-        use ast::{FloatTy, IntTy, UintTy, FieldTy};
+        use ast::{FloatTy, IntTy, UintTy, FieldTy, CurveTy};
         match prim {
             hir::PrimTy::Int(IntTy::Isize) => PrimitiveType::Isize,
             hir::PrimTy::Int(IntTy::I8) => PrimitiveType::I8,
@@ -2091,7 +2091,7 @@ impl From<hir::PrimTy> for PrimitiveType {
             hir::PrimTy::Uint(uint_ty) => uint_ty.into(),
             hir::PrimTy::Float(float_ty) => float_ty.into(),
             hir::PrimTy::Field(field_ty) => field_ty.into(),
-            hit::PrimTy::Curve(curve_ty) => curve_ty.into(),
+            hir::PrimTy::Curve(curve_ty) => curve_ty.into(),
             hir::PrimTy::Str => PrimitiveType::Str,
             hir::PrimTy::Bool => PrimitiveType::Bool,
             hir::PrimTy::Char => PrimitiveType::Char,
