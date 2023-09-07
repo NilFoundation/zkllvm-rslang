@@ -5,8 +5,9 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::{GeneratorLayout, GeneratorSavedLocal};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
-    IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES, FieldExt,
+    IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
 };
+use rustc_middle::ty::layout::{CurveExt, FieldExt};
 use rustc_middle::ty::{
     self, AdtDef, EarlyBinder, GenericArgsRef, ReprOptions, Ty, TyCtxt, TypeVisitableExt,
 };
@@ -137,7 +138,7 @@ fn layout_of_uncached<'tcx>(
         ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
         ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
         ty::Field(fty) => tcx.intern_layout(LayoutS::field(Field::from_field_ty(fty))),
-        ty::Curve(_) => todo!("curve layout"),
+        ty::Curve(cty) => tcx.intern_layout(LayoutS::curve(Curve::from_curve_ty(cty))),
         ty::Float(fty) => scalar(match fty {
             ty::FloatTy::F32 => F32,
             ty::FloatTy::F64 => F64,
