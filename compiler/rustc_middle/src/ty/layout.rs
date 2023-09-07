@@ -193,6 +193,31 @@ impl FieldExt for Field {
     }
 }
 
+pub trait CurveExt {
+    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
+    fn from_curve_ty(cty: ty::CurveTy) -> Curve;
+}
+
+impl CurveExt for Curve {
+    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        match self {
+            Curve::Bls12381 => tcx.types.__zkllvm_curve_bls12381,
+            Curve::Curve25519 => tcx.types.__zkllvm_curve_curve25519,
+            Curve::Pallas => tcx.types.__zkllvm_curve_pallas,
+            Curve::Vesta => tcx.types.__zkllvm_curve_vesta,
+        }
+    }
+
+    fn from_curve_ty(cty: ty::CurveTy) -> Curve {
+        match cty {
+            ty::CurveTy::Bls12381 => Curve::Bls12381,
+            ty::CurveTy::Curve25519 => Curve::Curve25519,
+            ty::CurveTy::Pallas => Curve::Pallas,
+            ty::CurveTy::Vesta => Curve::Vesta,
+        }
+    }
+}
+
 /// The first half of a fat pointer.
 ///
 /// - For a trait object, this is the address of the box.
