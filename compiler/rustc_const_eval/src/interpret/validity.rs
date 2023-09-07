@@ -899,6 +899,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 let field = self.read_field(op, "initialized field value")?;
                 self.visit_scalar_field(field, f_layout)?;
             }
+            Abi::Curve(_) => {
+                // Do nothing.
+            }
             Abi::Vector { .. } => {
                 // No checks here, we assume layout computation gets this right.
                 // (This is harder to check since Miri does not represent these as `Immediate`. We

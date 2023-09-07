@@ -527,7 +527,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             op.layout().abi,
             Abi::Scalar(abi::Scalar::Initialized { .. })
                 | Abi::ScalarPair(abi::Scalar::Initialized { .. }, abi::Scalar::Initialized { .. })
-                | Abi::Field(..)
+                | Abi::Field(..) | Abi::Curve(..)
         ) {
             span_bug!(
                 self.cur_span(),

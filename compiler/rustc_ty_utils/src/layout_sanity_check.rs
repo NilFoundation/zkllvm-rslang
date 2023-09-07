@@ -252,6 +252,7 @@ pub(super) fn sanity_check_layout<'tcx>(
                     "alignment mismatch between ABI and layout in {layout:#?}"
                 );
             }
+            Abi::Curve(_) => {}
             Abi::Uninhabited | Abi::Aggregate { .. } => {} // Nothing to check.
         }
     }
