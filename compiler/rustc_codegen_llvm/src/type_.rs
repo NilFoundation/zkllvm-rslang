@@ -182,6 +182,22 @@ impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMGaloisFieldPallasscalarTypeInContext(self.llcx) }
     }
 
+    fn type_curve_bls12381(&self) -> Self::Type {
+        unsafe { llvm::LLVMEllipticCurveBLS12381TypeInContext(self.llcx) }
+    }
+
+    fn type_curve_curve25519(&self) -> Self::Type {
+        unsafe { llvm::LLVMEllipticCurveCurve25519TypeInContext(self.llcx) }
+    }
+
+    fn type_curve_pallas(&self) -> Self::Type {
+        unsafe { llvm::LLVMEllipticCurvePallasTypeInContext(self.llcx) }
+    }
+
+    fn type_curve_vesta(&self) -> Self::Type {
+        unsafe { llvm::LLVMEllipticCurveVestaTypeInContext(self.llcx) }
+    }
+
     fn type_f32(&self) -> &'ll Type {
         unsafe { llvm::LLVMFloatTypeInContext(self.llcx) }
     }

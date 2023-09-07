@@ -299,7 +299,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let tp_ty = substs.type_at(0);
                 let layout = self.layout_of(tp_ty).layout;
                 let use_integer_compare = match layout.abi() {
-                    Scalar(_) | ScalarPair(_, _) | Field(_) => true,
+                    Scalar(_) | ScalarPair(_, _) | Field(_) | Curve(_) => true,
                     Uninhabited | Vector { .. } => false,
                     Aggregate { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
