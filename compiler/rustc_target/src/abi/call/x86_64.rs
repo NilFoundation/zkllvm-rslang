@@ -75,7 +75,7 @@ where
                 return Ok(());
             }
 
-            Abi::Field(_) => return Ok(()),
+            Abi::Field(_) | Abi::Curve(_) => return Ok(()),
         };
 
         // Fill in `cls` for scalars (Int/Sse) and vectors (Sse).

@@ -184,7 +184,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// Returns `true` if the type is a ZST and not unsized.
     pub fn is_zst(&self) -> bool {
         match self.abi {
-            Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } | Abi::Field(_) => false,
+            Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } | Abi::Field(_) | Abi::Curve(_) => false,
             Abi::Uninhabited => self.size.bytes() == 0,
             Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
         }
