@@ -847,7 +847,7 @@ impl Integer {
     }
 }
 
-/// Fields.
+/// Galois fields.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, HashStable_Generic)]
 pub enum Field {
     Bls12381Base,
@@ -882,6 +882,43 @@ impl Field {
             Field::Curve25519Scalar => 253,
             Field::PallasBase => 255,
             Field::PallasScalar => 255,
+        }
+    }
+
+    pub fn align() -> AbiAndPrefAlign {
+        AbiAndPrefAlign::new(Align::from_bytes(0).unwrap())
+    }
+}
+
+/// Elliptic curves.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, HashStable_Generic)]
+pub enum Curve {
+    Bls12381,
+    Curve25519,
+    Pallas,
+    Vesta,
+}
+
+impl Curve {
+    #[inline]
+    pub fn size(self) -> Size {
+        match self {
+            Curve::Bls12381 => Field::Bls12381Base.size() * 2,
+            Curve::Curve25519 => Field::Curve25519Base.size() * 2,
+            Curve::Pallas => Field::PallasBase.size() * 2,
+            Curve::Vesta => Field::PallasScalar.size() * 2,
+        }
+    }
+
+    /// Return real size of field values.
+    /// This should not be confused with `self.size().bits()`, which will return
+    /// rounded bit size. This size is not byte-aligned.
+    pub fn real_bits(self) -> u64 {
+        match self {
+            Curve::Bls12381 => Field::Bls12381Base.real_bits() * 2,
+            Curve::Curve25519 => Field::Curve25519Base.real_bits() * 2,
+            Curve::Pallas => Field::PallasBase.real_bits() * 2,
+            Curve::Vesta => Field::PallasScalar.real_bits() * 2,
         }
     }
 
@@ -1257,6 +1294,7 @@ pub enum Abi {
         sized: bool,
     },
     Field(Field),
+    Curve(Curve),
 }
 
 impl Abi {
@@ -1266,6 +1304,7 @@ impl Abi {
         match *self {
             Abi::Uninhabited | Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
             Abi::Field(_) => false,
+            Abi::Curve(_) => false,
             Abi::Aggregate { sized } => !sized,
         }
     }
@@ -1303,6 +1342,12 @@ impl Abi {
     #[inline]
     pub fn is_field(&self) -> bool {
         matches!(*self, Abi::Field(_))
+    }
+
+    /// Returns `true` is this is a curve type
+    #[inline]
+    pub fn is_curve(&self) -> bool {
+        matches!(*self, Abi::Curve(_))
     }
 }
 
@@ -1489,6 +1534,19 @@ impl<V: Idx> LayoutS<V> {
             align,
         }
     }
+
+    pub fn curve(curve: Curve) -> Self {
+        let size = curve.size();
+        let align = Curve::align();
+        LayoutS {
+            variants: Variants::Single { index: V::new(0) },
+            fields: FieldsShape::Primitive,
+            abi: Abi::Curve(curve),
+            largest_niche: None,
+            size,
+            align,
+        }
+    }
 }
 
 impl<V: Idx> fmt::Debug for LayoutS<V> {
@@ -1558,6 +1616,7 @@ impl<V: Idx> LayoutS<V> {
         match self.abi {
             Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
             Abi::Field(_) => false,
+            Abi::Curve(_) => false,
             Abi::Uninhabited => self.size.bytes() == 0,
             Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
         }
