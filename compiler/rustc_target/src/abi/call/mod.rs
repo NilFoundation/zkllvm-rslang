@@ -321,7 +321,7 @@ impl HomogeneousAggregate {
 impl<'a, Ty> TyAndLayout<'a, Ty> {
     fn is_aggregate(&self) -> bool {
         match self.abi {
-            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } | Abi::Field(_) => false,
+            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } | Abi::Field(_) | Abi::Curve(_) => false,
             Abi::ScalarPair(..) | Abi::Aggregate { .. } => true,
         }
     }
@@ -452,7 +452,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                     Ok(result)
                 }
             }
-            Abi::Field(_) => {
+            Abi::Field(_) | Abi::Curve(_) => {
                 // Trying to use integer register kind here
                 Ok(HomogeneousAggregate::Homogeneous(Reg {
                     kind: RegKind::Integer,
@@ -488,6 +488,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             Abi::Aggregate { .. } => PassMode::Direct(ArgAttributes::new()),
             // TODO: (aleasims) Do we need any attrs for fields?
             Abi::Field(_) => PassMode::Direct(ArgAttributes::new()),
+            Abi::Curve(_) => PassMode::Direct(ArgAttributes::new()),
         };
         ArgAbi { layout, mode }
     }
