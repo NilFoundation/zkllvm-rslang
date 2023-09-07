@@ -36,7 +36,7 @@ fn uncached_llvm_type<'a, 'tcx>(
                 false,
             );
         }
-        Abi::Field(_) => bug!("handled elsewhere"),
+        Abi::Field(_) | Abi::Curve(_) => bug!("handled elsewhere"),
         Abi::Uninhabited | Abi::Aggregate { .. } => {}
     }
 
@@ -194,7 +194,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     fn is_llvm_immediate(&self) -> bool {
         match self.abi {
             Abi::Scalar(_) | Abi::Vector { .. } => true,
-            Abi::Field(_) => true,
+            Abi::Field(_) | Abi::Curve(_) => true,
             Abi::ScalarPair(..) | Abi::Uninhabited | Abi::Aggregate { .. } => false,
         }
     }
@@ -202,7 +202,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     fn is_llvm_scalar_pair(&self) -> bool {
         match self.abi {
             Abi::ScalarPair(..) => true,
-            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } | Abi::Aggregate { .. } | Abi::Field(..) => false,
+            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } | Abi::Aggregate { .. } | Abi::Field(..) | Abi::Curve(..) => false,
         }
     }
 
@@ -239,6 +239,11 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         if let Abi::Field(field) = self.abi {
             // FIXME: (aleasims) cache types
             let llty = cx.type_from_field(field);
+            return llty;
+        }
+        if let Abi::Curve(curve) = self.abi {
+            // FIXME: (aleasims) cache types
+            let llty = cx.type_from_curve(curve);
             return llty;
         }
 

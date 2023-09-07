@@ -870,6 +870,12 @@ extern "C" {
     pub fn LLVMGaloisFieldCurve25519baseTypeInContext(C: &Context) -> &Type;
     pub fn LLVMGaloisFieldCurve25519scalarTypeInContext(C: &Context) -> &Type;
 
+    // Operations of elliptic curve types
+    pub fn LLVMEllipticCurveBLS12381TypeInContext(C: &Context) -> &Type;
+    pub fn LLVMEllipticCurveCurve25519TypeInContext(C: &Context) -> &Type;
+    pub fn LLVMEllipticCurvePallasTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMEllipticCurveVestaTypeInContext(C: &Context) -> &Type;
+
     // Operations on function types
     pub fn LLVMFunctionType<'a>(
         ReturnType: &'a Type,
