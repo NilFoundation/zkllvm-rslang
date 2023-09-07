@@ -6,7 +6,8 @@ use crate::mir::place::PlaceRef;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
-use rustc_target::abi::{AddressSpace, Field, Integer};
+use rustc_target::abi::{AddressSpace, Integer};
+use rustc_target::abi::{Curve, Field};
 
 // This depends on `Backend` and not `BackendTypes`, because consumers will probably want to use
 // `LayoutOf` or `HasTyCtxt`. This way, they don't have to add a constraint on it themselves.
@@ -25,6 +26,11 @@ pub trait BaseTypeMethods<'tcx>: Backend<'tcx> {
     fn type_field_curve25519_scalar(&self) -> Self::Type;
     fn type_field_pallas_base(&self) -> Self::Type;
     fn type_field_pallas_scalar(&self) -> Self::Type;
+
+    fn type_curve_bls12381(&self) -> Self::Type;
+    fn type_curve_curve25519(&self) -> Self::Type;
+    fn type_curve_pallas(&self) -> Self::Type;
+    fn type_curve_vesta(&self) -> Self::Type;
 
     fn type_f32(&self) -> Self::Type;
     fn type_f64(&self) -> Self::Type;
@@ -86,6 +92,16 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
             Curve25519Scalar => self.type_field_curve25519_scalar(),
             PallasBase => self.type_field_pallas_base(),
             PallasScalar => self.type_field_pallas_scalar(),
+        }
+    }
+
+    fn type_from_curve(&self, c: Curve) -> Self::Type {
+        use Curve::*;
+        match c {
+            Bls12381 => self.type_curve_bls12381(),
+            Curve25519 => self.type_curve_curve25519(),
+            Pallas => self.type_curve_pallas(),
+            Vesta => self.type_curve_vesta(),
         }
     }
 
