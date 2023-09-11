@@ -1,12 +1,10 @@
 use crate::spec::{LinkerFlavor, LinkerFlavorCli, Target, TargetOptions};
 
-use super::cvs;
-
 fn options() -> TargetOptions {
     let mut pre_link_args = TargetOptions::link_args(LinkerFlavor::LlvmLink, &[]);
 
     // We want to emit .ll file
-    super::add_link_args(&mut pre_link_args, LinkerFlavor::LlvmLink, &["-S", "-opaque-pointers=0"]);
+    super::add_link_args(&mut pre_link_args, LinkerFlavor::LlvmLink, &["-S"]);
 
     TargetOptions {
         is_builtin: true,
@@ -21,8 +19,6 @@ fn options() -> TargetOptions {
         linker_flavor: LinkerFlavor::LlvmLink,
         linker_flavor_json: LinkerFlavorCli::LlvmIrLinker,
         linker_is_gnu_json: false,
-
-        llvm_args: cvs!["-opaque-pointers=0"],
 
         is_like_assigner: true,
 
