@@ -310,6 +310,7 @@ pub mod f32;
 #[path = "num/f64.rs"]
 pub mod f64;
 
+#[cfg(not(bootstrap))]
 #[path = "num/curves.rs"]
 pub mod curves;
 
