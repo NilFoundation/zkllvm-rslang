@@ -293,6 +293,12 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     }
                 }
             }
+            sym::curve_init => {
+                let x = args[0].immediate();
+                let y = args[1].immediate();
+                let llvm_name = &format!("llvm.assigner.curve.init.{}", ret_ty);
+                self.call_intrinsic(llvm_name, &[x, y])
+            }
 
             sym::raw_eq => {
                 use abi::Abi::*;
