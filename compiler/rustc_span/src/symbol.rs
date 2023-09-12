@@ -596,6 +596,7 @@ symbols! {
         ctpop,
         cttz,
         cttz_nonzero,
+        curve_init,
         custom_attribute,
         custom_derive,
         custom_inner_attributes,
