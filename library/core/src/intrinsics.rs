@@ -2489,6 +2489,10 @@ extern "rust-intrinsic" {
     /// constructing an empty slice) is returned.
     #[rustc_nounwind]
     pub fn option_payload_ptr<T>(arg: *const Option<T>) -> *const T;
+
+    /// Initialize curve element with two base field elements.
+    #[cfg(not(bootstrap))]
+    pub fn curve_init<BaseField: Copy, Curve: Copy>(x: BaseField, y: BaseField) -> Curve;
 }
 
 // Some functions are defined here because they accidentally got made
