@@ -187,3 +187,25 @@ default_impl! { __zkllvm_field_curve25519_scalar, 0g, "Returns the default value
 default_impl! { __zkllvm_field_pallas_base, 0g, "Returns the default value of `0`" }
 #[cfg(not(bootstrap))]
 default_impl! { __zkllvm_field_pallas_scalar, 0g, "Returns the default value of `0`" }
+
+#[cfg(not(bootstrap))]
+macro_rules! curve_default_impl {
+    ($($t:ty)*) => ($(
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl Default for $t {
+            /// Returns the default value of neutral curve element
+            #[inline]
+            fn default() -> $t {
+                <$t>::zero()
+            }
+        }
+    )*)
+}
+
+#[cfg(not(bootstrap))]
+curve_default_impl! {
+    __zkllvm_curve_bls12381
+    __zkllvm_curve_curve25519
+    __zkllvm_curve_pallas
+    __zkllvm_curve_vesta
+}
