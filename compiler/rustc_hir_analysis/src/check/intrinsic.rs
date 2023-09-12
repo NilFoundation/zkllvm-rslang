@@ -356,6 +356,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 (1, vec![param(0), param(0)], param(0))
             }
             sym::float_to_int_unchecked => (2, vec![param(0)], param(1)),
+            sym::curve_init => (2, vec![param(0), param(0)], param(1)),
 
             sym::assume => (0, vec![tcx.types.bool], tcx.mk_unit()),
             sym::likely => (0, vec![tcx.types.bool], tcx.types.bool),
