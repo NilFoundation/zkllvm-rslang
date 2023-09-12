@@ -2183,6 +2183,10 @@ extern "rust-intrinsic" {
     where
         G: FnOnce<ARG, Output = RET>,
         F: FnOnce<ARG, Output = RET>;
+
+    /// Initialize curve element with two base field elements.
+    #[cfg(not(bootstrap))]
+    pub fn curve_init<BaseField: Copy, Curve: Copy>(x: BaseField, y: BaseField) -> Curve;
 }
 
 // Some functions are defined here because they accidentally got made
