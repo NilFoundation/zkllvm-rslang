@@ -2623,6 +2623,22 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Return base field type corresponding to given curve type.
+    ///
+    /// **Panics** if `self` is not curve type.
+    pub fn curve_base_field(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        if let TyKind::Curve(curve_ty) = self.kind() {
+            match curve_ty {
+                ty::CurveTy::Bls12381 => tcx.types.__zkllvm_field_bls12381_base,
+                ty::CurveTy::Curve25519 => tcx.types.__zkllvm_field_curve25519_base,
+                ty::CurveTy::Pallas => tcx.types.__zkllvm_field_pallas_base,
+                ty::CurveTy::Vesta => tcx.types.__zkllvm_field_pallas_scalar,
+            }
+        } else {
+            bug!("not a curve type given to Ty::curve_scalar_field")
+        }
+    }
+
     /// Return scalar field type corresponding to given curve type.
     ///
     /// **Panics** if `self` is not curve type.
