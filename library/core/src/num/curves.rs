@@ -7,7 +7,6 @@ use crate::intrinsics;
 macro_rules! impl_from_coordinates {
     ($($t:ty, $f:ty)*) => {
         $(
-            #[stable(feature = "rust1", since = "1.0.0")]
             impl $t {
                 /// Create curve element from its base field coordinates.
                 #[inline(always)]
@@ -58,7 +57,6 @@ use consts::*;
 macro_rules! impl_zero_one {
     ($($t:ty, $f:ty, $zero_x:expr, $zero_y:expr, $one_x:expr, $one_y:expr)*) => {
         $(
-            #[stable(feature = "rust1", since = "1.0.0")]
             impl $t {
                 /// Returns curve neutral element.
                 #[inline(always)]
