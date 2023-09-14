@@ -71,6 +71,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
             ExprKind::Binary { op, lhs, rhs } => {
+                // We want to generate curve multiplications only with curve as LHS, because it
+                // will simplify the rest of the processing.
+                // Thus we change expression `field * curve` into `curve * field`.
+                let inv_cmul = expr.ty.is_curve()
+                    && op == BinOp::Mul
+                    && this.thir[lhs].ty.is_field();
+
                 let lhs = unpack!(
                     block =
                         this.as_operand(block, scope, &this.thir[lhs], None, NeedsTemporary::Maybe)
@@ -79,6 +86,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block =
                         this.as_operand(block, scope, &this.thir[rhs], None, NeedsTemporary::No)
                 );
+                if inv_cmul {
+                    return this.build_binary_op(block, op, expr_span, expr.ty, rhs, lhs);
+                }
                 this.build_binary_op(block, op, expr_span, expr.ty, lhs, rhs)
             }
             ExprKind::Unary { op, arg } => {
