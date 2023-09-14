@@ -1394,6 +1394,12 @@ extern "C" {
         RHS: &'a Value,
         Name: *const c_char,
     ) -> &'a Value;
+    pub fn LLVMBuildCMul<'a>(
+        B: &Builder<'a>,
+        LHS: &'a Value,
+        RHS: &'a Value,
+        Name: *const c_char,
+    ) -> &'a Value;
     pub fn LLVMBuildUDiv<'a>(
         B: &Builder<'a>,
         LHS: &'a Value,
@@ -1419,6 +1425,12 @@ extern "C" {
         Name: *const c_char,
     ) -> &'a Value;
     pub fn LLVMBuildFDiv<'a>(
+        B: &Builder<'a>,
+        LHS: &'a Value,
+        RHS: &'a Value,
+        Name: *const c_char,
+    ) -> &'a Value;
+    pub fn LLVMBuildCDiv<'a>(
         B: &Builder<'a>,
         LHS: &'a Value,
         RHS: &'a Value,
