@@ -780,6 +780,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Bx::Value {
         let is_float = input_ty.is_floating_point();
         let is_signed = input_ty.is_signed();
+        let is_curve = input_ty.is_curve();
         match op {
             mir::BinOp::Add => {
                 if is_float {
@@ -812,6 +813,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::BinOp::Mul => {
                 if is_float {
                     bx.fmul(lhs, rhs)
+                } else if is_curve {
+                    bx.cmul(lhs, rhs)
                 } else {
                     bx.mul(lhs, rhs)
                 }
@@ -826,6 +829,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::BinOp::Div => {
                 if is_float {
                     bx.fdiv(lhs, rhs)
+                } else if is_curve {
+                    bx.cdiv(lhs, rhs)
                 } else if is_signed {
                     bx.sdiv(lhs, rhs)
                 } else {
