@@ -85,7 +85,6 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
         let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
         {
             let cx = CodegenCx::new(tcx, cgu, &llvm_module);
-
             let mono_items = cx.codegen_unit.items_in_deterministic_order(cx.tcx);
             for &(mono_item, (linkage, visibility)) in &mono_items {
                 mono_item.predefine::<Builder<'_, '_, '_>>(&cx, linkage, visibility);
