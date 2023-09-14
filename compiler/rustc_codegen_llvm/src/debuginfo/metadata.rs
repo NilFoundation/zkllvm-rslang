@@ -434,7 +434,7 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
     debug!("type_di_node: {:?} kind: {:?}", t, t.kind());
 
     let DINodeCreationResult { di_node, already_stored_in_typemap } = match *t.kind() {
-        ty::Never | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Field(_) => {
+        ty::Never | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Field(_) | ty::Curve(_) => {
             build_basic_type_di_node(cx, t)
         }
         ty::Tuple(elements) if elements.is_empty() => build_basic_type_di_node(cx, t),
@@ -691,6 +691,7 @@ fn build_basic_type_di_node<'ll, 'tcx>(
         ty::Uint(uint_ty) => (uint_ty.name_str(), DW_ATE_unsigned),
         ty::Float(float_ty) => (float_ty.name_str(), DW_ATE_float),
         ty::Field(field_ty) => (field_ty.name_str(), DW_ATE_unsigned),
+        ty::Curve(curve_ty) => (curve_ty.name_str(), DW_ATE_unsigned),
         _ => bug!("debuginfo::build_basic_type_di_node - `t` is invalid type"),
     };
 
@@ -713,6 +714,7 @@ fn build_basic_type_di_node<'ll, 'tcx>(
         ty::Uint(uint_ty) => uint_ty.name_str(),
         ty::Float(float_ty) => float_ty.name_str(),
         ty::Field(field_ty) => field_ty.name_str(),
+        ty::Curve(curve_ty) => curve_ty.name_str(),
         _ => return DINodeCreationResult::new(ty_di_node, false),
     };
 
