@@ -89,6 +89,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn fsub_fast(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn mul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn fmul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn cmul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn fmul_fast(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn udiv(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn exactudiv(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
@@ -96,6 +97,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn exactsdiv(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn fdiv(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn fdiv_fast(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn cdiv(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn urem(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn srem(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn frem(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
