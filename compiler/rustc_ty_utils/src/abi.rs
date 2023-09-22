@@ -1,5 +1,6 @@
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::{
     fn_can_unwind, FnAbiError, HasParamEnv, HasTyCtxt, LayoutCx, LayoutOf, TyAndLayout,
 };
@@ -508,9 +509,24 @@ fn fn_abi_adjust_for_abi<'tcx>(
             }
         };
 
+        let fn_is_circuit = fn_def_id
+            .map(|def_id| {
+                cx.tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::CIRCUIT)
+            })
+            .unwrap_or(false);
+
+        let circuit_args_byval = |arg: &mut ArgAbi<'tcx, Ty<'tcx>>| {
+            if arg.is_indirect() {
+                arg.make_indirect_byval();
+            }
+        };
+
         fixup(&mut fn_abi.ret, None);
         for (arg_idx, arg) in fn_abi.args.iter_mut().enumerate() {
             fixup(arg, Some(arg_idx));
+            if fn_is_circuit && cx.tcx.sess.target.is_like_assigner {
+                circuit_args_byval(arg);                
+            }
         }
     } else {
         fn_abi.adjust_for_foreign_abi(cx, abi)?;
