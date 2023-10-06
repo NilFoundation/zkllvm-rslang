@@ -294,12 +294,6 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     }
                 }
             }
-            sym::curve_init => {
-                let x = args[0].immediate();
-                let y = args[1].immediate();
-                let llvm_name = &format!("llvm.assigner.curve.init.{}", ret_ty);
-                self.call_intrinsic(llvm_name, &[x, y])
-            }
 
             sym::raw_eq => {
                 use abi::Abi::*;
@@ -386,6 +380,10 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     Ok(llval) => llval,
                     Err(()) => return,
                 }
+            }
+
+            _ if name.as_str().starts_with("assigner_") => {
+                assigner_intrinsic(self, name, args, ret_ty)
             }
 
             _ => bug!("unknown intrinsic '{}' -- should it have been lowered earlier?", name),
@@ -2120,5 +2118,46 @@ fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, boo
             Some((t.bit_width().unwrap_or(u64::from(cx.tcx.sess.target.pointer_width)), false))
         }
         _ => None,
+    }
+}
+
+fn assigner_intrinsic<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    name: Symbol,
+    args: &[OperandRef<'tcx, &'ll Value>],
+    ret_ty: Ty<'tcx>,
+) -> &'ll Value {
+    if let Some(truncated_name) = name.as_str().strip_prefix("assigner_") {
+        match truncated_name {
+            _ if truncated_name.starts_with("curve_init_") => {
+                let x = args[0].immediate();
+                let y = args[1].immediate();
+                let llvm_name = &format!("llvm.assigner.curve.init.{}", ret_ty);
+                bx.call_intrinsic(llvm_name, &[x, y])
+            },
+            "sha2_256" => {
+                let type_ = bx.type_field_pallas_base();
+                let mut pack = |v0: OperandRef<'tcx, &'ll Value>, v1: OperandRef<'tcx, &'ll Value>| {
+                    let v = bx.const_vector(&[bx.const_undef(type_), bx.const_undef(type_)]);
+                    let v_init = bx.insert_element(v, v0.immediate(), bx.const_i32(0));
+                    bx.insert_element(v_init, v1.immediate(), bx.const_i32(1))
+                };
+
+                let x = pack(args[0], args[1]);
+                let y = pack(args[2], args[3]);
+
+                let name = "llvm.assigner.sha2.256.v2__zkllvm_field_pallas_base";
+                let res = bx.call_intrinsic(&name, &[x, y]);
+
+                let ret = bx.const_array(type_, &[bx.const_undef(type_), bx.const_undef(type_)]);
+                let res_0 = bx.extract_element(res, bx.const_i32(0));
+                let res_1 = bx.extract_element(res, bx.const_i32(1));
+                let ret_init = bx.insert_value(ret, res_0, 0);
+                bx.insert_value(ret_init, res_1, 1)
+            },
+            _ => bug!("unknown assigner intrinsic name: '{}'", name),
+        }
+    } else {
+        bug!("unknown assigner intrinsic name: '{}'", name)
     }
 }
