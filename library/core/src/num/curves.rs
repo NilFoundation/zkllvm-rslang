@@ -4,26 +4,52 @@
 
 use crate::intrinsics;
 
-macro_rules! impl_from_coordinates {
-    ($($t:ty, $f:ty)*) => {
-        $(
-            impl $t {
-                /// Create curve element from its base field coordinates.
-                #[inline(always)]
-                #[stable(feature = "rust1", since = "1.0.0")]
-                pub unsafe fn from_coordinates(x: $f, y: $f) -> Self {
-                    unsafe { intrinsics::curve_init::<$f, $t>(x, y) }
-                }
-            }
-        )*
+impl __zkllvm_curve_bls12381 {
+    /// Create curve element from its base field coordinates.
+    #[inline(always)]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub unsafe fn from_coordinates(
+        x: __zkllvm_field_bls12381_base,
+        y: __zkllvm_field_bls12381_base,
+    ) -> Self {
+        unsafe { intrinsics::assigner_curve_init_bls12381(x, y) }
     }
 }
 
-impl_from_coordinates! {
-    __zkllvm_curve_bls12381, __zkllvm_field_bls12381_base
-    __zkllvm_curve_curve25519, __zkllvm_field_curve25519_base
-    __zkllvm_curve_pallas, __zkllvm_field_pallas_base
-    __zkllvm_curve_vesta, __zkllvm_field_pallas_scalar
+impl __zkllvm_curve_curve25519 {
+    /// Create curve element from its base field coordinates.
+    #[inline(always)]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub unsafe fn from_coordinates(
+        x: __zkllvm_field_curve25519_base,
+        y: __zkllvm_field_curve25519_base,
+    ) -> Self {
+        unsafe { intrinsics::assigner_curve_init_curve25519(x, y) }
+    }
+}
+
+impl __zkllvm_curve_pallas {
+    /// Create curve element from its base field coordinates.
+    #[inline(always)]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub unsafe fn from_coordinates(
+        x: __zkllvm_field_pallas_base,
+        y: __zkllvm_field_pallas_base,
+    ) -> Self {
+        unsafe { intrinsics::assigner_curve_init_pallas(x, y) }
+    }
+}
+
+impl __zkllvm_curve_vesta {
+    /// Create curve element from its base field coordinates.
+    #[inline(always)]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub unsafe fn from_coordinates(
+        x: __zkllvm_field_pallas_scalar,
+        y: __zkllvm_field_pallas_scalar,
+    ) -> Self {
+        unsafe { intrinsics::assigner_curve_init_vesta(x, y) }
+    }
 }
 
 /// Definitions of base curve element coordinates.
