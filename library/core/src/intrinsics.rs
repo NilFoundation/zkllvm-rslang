@@ -2495,6 +2495,33 @@ extern "rust-intrinsic" {
     pub fn curve_init<BaseField: Copy, Curve: Copy>(x: BaseField, y: BaseField) -> Curve;
 }
 
+#[cfg(not(bootstrap))]
+extern "rust-intrinsic" {
+    /// Initialize Bls12381 element with two base field elements.
+    pub fn assigner_curve_init_bls12381(
+        x: __zkllvm_field_bls12381_base,
+        y: __zkllvm_field_bls12381_base,
+    ) -> __zkllvm_curve_bls12381;
+
+    /// Initialize Curve25519 element with two base field elements.
+    pub fn assigner_curve_init_curve25519(
+        x: __zkllvm_field_curve25519_base,
+        y: __zkllvm_field_curve25519_base,
+    ) -> __zkllvm_curve_curve25519;
+
+    /// Initialize Pallas element with two base field elements.
+    pub fn assigner_curve_init_pallas(
+        x: __zkllvm_field_pallas_base,
+        y: __zkllvm_field_pallas_base,
+    ) -> __zkllvm_curve_pallas;
+
+    /// Initialize Vesta element with two base field elements.
+    pub fn assigner_curve_init_vesta(
+        x: __zkllvm_field_pallas_scalar,
+        y: __zkllvm_field_pallas_scalar,
+    ) -> __zkllvm_curve_vesta;
+}
+
 /// Compute SHA2-256 hash.
 #[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
