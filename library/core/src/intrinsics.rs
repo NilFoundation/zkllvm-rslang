@@ -2189,6 +2189,27 @@ extern "rust-intrinsic" {
     pub fn curve_init<BaseField: Copy, Curve: Copy>(x: BaseField, y: BaseField) -> Curve;
 }
 
+/// Compute SHA2-256 hash.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_allowed_through_unstable_modules]
+#[inline]
+pub fn assigner_sha2_256(
+    x: [__zkllvm_field_pallas_base; 2],
+    y: [__zkllvm_field_pallas_base; 2],
+) -> [__zkllvm_field_pallas_base; 2] {
+    extern "rust-intrinsic" {
+        pub fn assigner_sha2_256(
+            x1: __zkllvm_field_pallas_base,
+            y1: __zkllvm_field_pallas_base,
+            x2: __zkllvm_field_pallas_base,
+            y2: __zkllvm_field_pallas_base,
+        ) -> [__zkllvm_field_pallas_base; 2];
+    }
+
+    unsafe { assigner_sha2_256(x[0], x[1], y[0], y[1]) }
+}
+
 // Some functions are defined here because they accidentally got made
 // available in this module on stable. See <https://github.com/rust-lang/rust/issues/15702>.
 // (`transmute` also falls into this category, but it cannot be wrapped due to the
