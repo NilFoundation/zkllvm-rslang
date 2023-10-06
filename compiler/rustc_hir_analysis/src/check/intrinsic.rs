@@ -186,23 +186,11 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     } else if let Some(name) = name_str.strip_prefix("assigner_") {
         let (n_tps, inputs, output) = match name {
             _ if let Some(curve_name) = name.strip_prefix("curve_init_") => {
-                let (base_type, curve_type) = match curve_name {
-                    "bls12381" => (
-                        tcx.types.__zkllvm_field_bls12381_base,
-                        tcx.types.__zkllvm_curve_bls12381,
-                    ),
-                    "curve25519" => (
-                        tcx.types.__zkllvm_field_curve25519_base,
-                        tcx.types.__zkllvm_curve_curve25519,
-                    ),
-                    "pallas" => (
-                        tcx.types.__zkllvm_field_pallas_base,
-                        tcx.types.__zkllvm_curve_pallas,
-                    ),
-                    "vesta" => (
-                        tcx.types.__zkllvm_field_pallas_scalar,
-                        tcx.types.__zkllvm_curve_vesta,
-                    ),
+                let curve_type = match curve_name {
+                    "bls12381" => tcx.types.__zkllvm_curve_bls12381,
+                    "curve25519" => tcx.types.__zkllvm_curve_curve25519,
+                    "pallas" => tcx.types.__zkllvm_curve_pallas,
+                    "vesta" => tcx.types.__zkllvm_curve_vesta,
                     _ => {
                         tcx.sess.emit_err(UnrecognizedIntrinsicFunction {
                             span: it.span,
@@ -211,6 +199,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                         return;
                     }
                 };
+                let base_type = curve_type.curve_base_field(tcx);
                 (0, vec![base_type, base_type], curve_type)
             }
             "sha2_256" => (
