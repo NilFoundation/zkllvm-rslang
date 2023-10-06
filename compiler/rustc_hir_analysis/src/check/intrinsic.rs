@@ -179,6 +179,55 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             }
         };
         (n_tps, 0, inputs, output, hir::Unsafety::Unsafe)
+    } else if let Some(name) = name_str.strip_prefix("assigner_") {
+        let (n_tps, inputs, output) = match name {
+            _ if let Some(curve_name) = name.strip_prefix("curve_init_") => {
+                let (base_type, curve_type) = match curve_name {
+                    "bls12381" => (
+                        tcx.types.__zkllvm_field_bls12381_base,
+                        tcx.types.__zkllvm_curve_bls12381,
+                    ),
+                    "curve25519" => (
+                        tcx.types.__zkllvm_field_curve25519_base,
+                        tcx.types.__zkllvm_curve_curve25519,
+                    ),
+                    "pallas" => (
+                        tcx.types.__zkllvm_field_pallas_base,
+                        tcx.types.__zkllvm_curve_pallas,
+                    ),
+                    "vesta" => (
+                        tcx.types.__zkllvm_field_pallas_scalar,
+                        tcx.types.__zkllvm_curve_vesta,
+                    ),
+                    _ => {
+                        tcx.sess.emit_err(UnrecognizedIntrinsicFunction {
+                            span: it.span,
+                            name: intrinsic_name,
+                        });
+                        return;
+                    }
+                };
+                (0, vec![base_type, base_type], curve_type)
+            }
+            "sha2_256" => (
+                0,
+                vec![
+                    tcx.types.__zkllvm_field_pallas_base,
+                    tcx.types.__zkllvm_field_pallas_base,
+                    tcx.types.__zkllvm_field_pallas_base,
+                    tcx.types.__zkllvm_field_pallas_base,
+                ],
+                tcx.mk_array(tcx.types.__zkllvm_field_pallas_base, 2),
+            ),
+            _ => {
+                tcx.sess.emit_err(UnrecognizedIntrinsicFunction {
+                    span: it.span,
+                    name: intrinsic_name,
+                });
+                return;
+            }
+        };
+        (n_tps, 0, inputs, output, hir::Unsafety::Unsafe)
     } else {
         let unsafety = intrinsic_operation_unsafety(tcx, intrinsic_id);
         let (n_tps, inputs, output) = match intrinsic_name {
@@ -356,7 +405,6 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 (1, vec![param(0), param(0)], param(0))
             }
             sym::float_to_int_unchecked => (2, vec![param(0)], param(1)),
-            sym::curve_init => (2, vec![param(0), param(0)], param(1)),
 
             sym::assume => (0, vec![tcx.types.bool], tcx.mk_unit()),
             sym::likely => (0, vec![tcx.types.bool], tcx.types.bool),
