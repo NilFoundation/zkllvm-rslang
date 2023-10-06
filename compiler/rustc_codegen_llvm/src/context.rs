@@ -694,6 +694,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         let t_curve_curve25519 = self.type_curve_curve25519();
         let t_curve_pallas = self.type_curve_pallas();
         let t_curve_vesta = self.type_curve_vesta();
+        let t_fpb_v2 = self.type_vector(self.type_field_pallas_base(), 2);
 
         ifn!("llvm.wasm.get.exception", fn(t_token) -> ptr);
         ifn!("llvm.wasm.get.ehselector", fn(t_token) -> t_i32);
@@ -913,6 +914,8 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.assigner.curve.init.__zkllvm_curve_curve25519", fn(t_field_curve25519_base, t_field_curve25519_base) -> t_curve_curve25519);
         ifn!("llvm.assigner.curve.init.__zkllvm_curve_pallas", fn(t_field_pallas_base, t_field_pallas_base) -> t_curve_pallas);
         ifn!("llvm.assigner.curve.init.__zkllvm_curve_vesta", fn(t_field_pallas_scalar, t_field_pallas_scalar) -> t_curve_vesta);
+
+        ifn!("llvm.assigner.sha2.256.v2__zkllvm_field_pallas_base", fn(t_fpb_v2, t_fpb_v2) -> t_fpb_v2);
 
         // This isn't an "LLVM intrinsic", but LLVM's optimization passes
         // recognize it like one (including turning it into `bcmp` sometimes)
