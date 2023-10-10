@@ -2155,6 +2155,27 @@ fn assigner_intrinsic<'ll, 'tcx>(
                 let ret_init = bx.insert_value(ret, res_0, 0);
                 bx.insert_value(ret_init, res_1, 1)
             },
+            "sha2_512" => {
+                let x = args[0].immediate();
+                let y = args[1].immediate();
+
+                let type_ = bx.type_field_pallas_base();
+                let mut pack = |v0: OperandRef<'tcx, &'ll Value>,
+                                v1: OperandRef<'tcx, &'ll Value>,
+                                v2: OperandRef<'tcx, &'ll Value>,
+                                v3: OperandRef<'tcx, &'ll Value>| {
+                    let v = bx.const_vector(&[bx.const_undef(type_), bx.const_undef(type_), bx.const_undef(type_), bx.const_undef(type_)]);
+                    let v = bx.insert_element(v, v0.immediate(), bx.const_i32(0));
+                    let v = bx.insert_element(v, v1.immediate(), bx.const_i32(1));
+                    let v = bx.insert_element(v, v2.immediate(), bx.const_i32(2));
+                    bx.insert_element(v, v3.immediate(), bx.const_i32(3))
+                };
+
+                let z = pack(args[2], args[3], args[4], args[5]);
+
+                let name = "llvm.assigner.sha2.512.__zkllvm_field_curve25519_scalar.__zkllvm_curve_curve25519.v4__zkllvm_field_pallas_base";
+                bx.call_intrinsic(&name, &[x, y, z])
+            },
             _ => bug!("unknown assigner intrinsic name: '{}'", name),
         }
     } else {
