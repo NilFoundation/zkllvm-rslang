@@ -2233,6 +2233,30 @@ pub fn assigner_sha2_256(
     unsafe { assigner_sha2_256(x[0], x[1], y[0], y[1]) }
 }
 
+/// Compute SHA2-512 hash.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_allowed_through_unstable_modules]
+#[inline]
+pub fn assigner_sha2_512(
+    x: __zkllvm_curve_curve25519,
+    y: __zkllvm_curve_curve25519,
+    z: [__zkllvm_field_pallas_base; 4],
+) -> __zkllvm_field_curve25519_scalar {
+    extern "rust-intrinsic" {
+        pub fn assigner_sha2_512(
+            x: __zkllvm_curve_curve25519,
+            y: __zkllvm_curve_curve25519,
+            z1: __zkllvm_field_pallas_base,
+            z2: __zkllvm_field_pallas_base,
+            z3: __zkllvm_field_pallas_base,
+            z4: __zkllvm_field_pallas_base,
+        ) -> __zkllvm_field_curve25519_scalar;
+    }
+
+    unsafe { assigner_sha2_512(x, y, z[0], z[1], z[2], z[3]) }
+}
+
 // Some functions are defined here because they accidentally got made
 // available in this module on stable. See <https://github.com/rust-lang/rust/issues/15702>.
 // (`transmute` also falls into this category, but it cannot be wrapped due to the
