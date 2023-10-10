@@ -212,6 +212,18 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 ],
                 tcx.mk_array(tcx.types.__zkllvm_field_pallas_base, 2),
             ),
+            "sha2_512" => (
+                0,
+                vec![
+                    tcx.types.__zkllvm_curve_curve25519,
+                    tcx.types.__zkllvm_curve_curve25519,
+                    tcx.types.__zkllvm_field_pallas_base,
+                    tcx.types.__zkllvm_field_pallas_base,
+                    tcx.types.__zkllvm_field_pallas_base,
+                    tcx.types.__zkllvm_field_pallas_base,
+                ],
+                tcx.types.__zkllvm_field_curve25519_scalar,
+            ),
             _ => {
                 tcx.sess.emit_err(UnrecognizedIntrinsicFunction {
                     span: it.span,
