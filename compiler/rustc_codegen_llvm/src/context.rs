@@ -667,6 +667,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         let t_metadata = self.type_metadata();
         let t_field_bls12381_base = self.type_field_bls12381_base();
         let t_field_curve25519_base = self.type_field_curve25519_base();
+        let t_field_curve25519_scalar = self.type_field_curve25519_scalar();
         let t_field_pallas_base = self.type_field_pallas_base();
         let t_field_pallas_scalar = self.type_field_pallas_scalar();
         let t_curve_bls12381 = self.type_curve_bls12381();
@@ -674,6 +675,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         let t_curve_pallas = self.type_curve_pallas();
         let t_curve_vesta = self.type_curve_vesta();
         let t_fpb_v2 = self.type_vector(self.type_field_pallas_base(), 2);
+        let t_fpb_v4 = self.type_vector(self.type_field_pallas_base(), 4);
 
         ifn!("llvm.wasm.trunc.unsigned.i32.f32", fn(t_f32) -> t_i32);
         ifn!("llvm.wasm.trunc.unsigned.i32.f64", fn(t_f64) -> t_i32);
@@ -889,6 +891,8 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.assigner.curve.init.__zkllvm_curve_vesta", fn(t_field_pallas_scalar, t_field_pallas_scalar) -> t_curve_vesta);
 
         ifn!("llvm.assigner.sha2.256.v2__zkllvm_field_pallas_base", fn(t_fpb_v2, t_fpb_v2) -> t_fpb_v2);
+        ifn!("llvm.assigner.sha2.512.__zkllvm_field_curve25519_scalar.__zkllvm_curve_curve25519.v4__zkllvm_field_pallas_base",
+            fn(t_curve_curve25519, t_curve_curve25519, t_fpb_v4) -> t_field_curve25519_scalar);
 
         // This isn't an "LLVM intrinsic", but LLVM's optimization passes
         // recognize it like one and we assume it exists in `core::slice::cmp`
