@@ -748,7 +748,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                     .note(
                         "we would appreciate a bug report: \
-                        https://github.com/rust-lang/rust/issues/new",
+                        https://github.com/NilFoundation/zkllvm-rslang/issues/new",
                     )
                     .emit();
             }
