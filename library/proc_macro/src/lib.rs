@@ -1357,6 +1357,12 @@ impl Literal {
         Literal::new(bridge::LitKind::ByteStr, &string, None)
     }
 
+    /// Galois field literal (e.g. `1g`).
+    #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
+    pub fn field(value: &str) -> Literal {
+        Literal::new(bridge::LitKind::Field, value, Some("g"))
+    }
+
     /// Returns the span encompassing this literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn span(&self) -> Span {
