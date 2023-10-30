@@ -57,7 +57,7 @@ impl FromInternal<token::LitKind> for LitKind {
             token::Char => LitKind::Char,
             token::Integer => LitKind::Integer,
             token::Float => LitKind::Float,
-            token::Field => todo!("field constants in macros"),
+            token::Field => LitKind::Field,
             token::Str => LitKind::Str,
             token::StrRaw(n) => LitKind::StrRaw(n),
             token::ByteStr => LitKind::ByteStr,
@@ -74,6 +74,7 @@ impl ToInternal<token::LitKind> for LitKind {
             LitKind::Byte => token::Byte,
             LitKind::Char => token::Char,
             LitKind::Integer => token::Integer,
+            LitKind::Field => token::Field,
             LitKind::Float => token::Float,
             LitKind::Str => token::Str,
             LitKind::StrRaw(n) => token::StrRaw(n),
@@ -332,6 +333,19 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                 let b = tokenstream::TokenTree::token_alone(float, span);
                 smallvec![a, b]
             }
+            TokenTree::Literal(self::Literal {
+                kind: self::LitKind::Field,
+                symbol,
+                suffix,
+                span,
+            }) if symbol.as_str().starts_with('-') => {
+                let minus = BinOp(BinOpToken::Minus);
+                let symbol = Symbol::intern(&symbol.as_str()[1..]);
+                let float = TokenKind::lit(token::Field, symbol, suffix);
+                let a = tokenstream::TokenTree::token_alone(minus, span);
+                let b = tokenstream::TokenTree::token_alone(float, span);
+                smallvec![a, b]
+            }
             TokenTree::Literal(self::Literal { kind, symbol, suffix, span }) => {
                 smallvec![tokenstream::TokenTree::token_alone(
                     TokenKind::lit(kind.to_internal(), symbol, suffix),
@@ -438,8 +452,7 @@ impl server::FreeFunctions for Rustc<'_, '_> {
                 | token::LitKind::ByteStr
                 | token::LitKind::ByteStrRaw(_)
                 | token::LitKind::Err => return Err(()),
-                token::LitKind::Integer | token::LitKind::Float => {}
-                token::LitKind::Field => todo!("field constants in macros"),
+                token::LitKind::Integer | token::LitKind::Float | token::LitKind::Field => {}
             }
 
             // Synthesize a new symbol that includes the minus sign.
@@ -534,7 +547,7 @@ impl server::TokenStream for Rustc<'_, '_> {
             }
             ast::ExprKind::Unary(ast::UnOp::Neg, e) => match &e.kind {
                 ast::ExprKind::Lit(token_lit) => match token_lit {
-                    token::Lit { kind: token::Integer | token::Float, .. } => {
+                    token::Lit { kind: token::Integer | token::Float | token::Field, .. } => {
                         Ok(Self::TokenStream::from_iter([
                             // FIXME: The span of the `-` token is lost when
                             // parsing, so we cannot faithfully recover it here.
