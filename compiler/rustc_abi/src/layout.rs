@@ -1099,6 +1099,12 @@ fn univariant(
                         Abi::ScalarPair(..) => {
                             abi = field.abi();
                         }
+                        // Plain fields and curves are unpacked always.
+                        // We don't care about C ABI.
+                        // See issue: https://github.com/NilFoundation/zkllvm-rslang/issues/67
+                        Abi::Field(_) | Abi::Curve(_) => {
+                            abi = field.abi;
+                        }
                         _ => {}
                     }
                 }
