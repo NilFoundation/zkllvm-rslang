@@ -109,6 +109,8 @@ where
                 assert!(match (base.layout.abi, field_layout.abi) {
                     (Abi::Scalar(..), Abi::Scalar(..)) => true,
                     (Abi::ScalarPair(..), Abi::ScalarPair(..)) => true,
+                    (Abi::Field(..), Abi::Field(..)) => true,
+                    (Abi::Curve(..), Abi::Curve(..)) => true,
                     _ => false,
                 });
                 assert!(offset.bytes() == 0);
