@@ -697,6 +697,8 @@ impl<'ll> CodegenCx<'ll, '_> {
         let t_curve_vesta = self.type_curve_vesta();
         let t_fpb_v2 = self.type_vector(self.type_field_pallas_base(), 2);
         let t_fpb_v4 = self.type_vector(self.type_field_pallas_base(), 4);
+        let t_fblsb_v12 = self.type_vector(self.type_field_bls12381_base(), 12);
+        let t_fblsb_v4 = self.type_vector(self.type_field_bls12381_base(), 4);
 
         ifn!("llvm.wasm.get.exception", fn(t_token) -> ptr);
         ifn!("llvm.wasm.get.ehselector", fn(t_token) -> t_i32);
@@ -920,6 +922,17 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.assigner.sha2.256.v2__zkllvm_field_pallas_base", fn(t_fpb_v2, t_fpb_v2) -> t_fpb_v2);
         ifn!("llvm.assigner.sha2.512.__zkllvm_field_curve25519_scalar.__zkllvm_curve_curve25519.v4__zkllvm_field_pallas_base",
             fn(t_curve_curve25519, t_curve_curve25519, t_fpb_v4) -> t_field_curve25519_scalar);
+
+        ifn!("llvm.assigner.sha2.256.bls12381.__zkllvm_field_bls12381_base",
+            fn(t_field_bls12381_base) -> t_field_bls12381_base);
+        ifn!("llvm.assigner.optimal.ate.pairing.v12__zkllvm_field_bls12381_base.__zkllvm_curve_bls12381.v4__zkllvm_field_bls12381_base",
+            fn(t_curve_bls12381, t_fblsb_v4) -> t_fblsb_v12);
+        ifn!("llvm.assigner.hash.to.curve.__zkllvm_curve_bls12381.__zkllvm_field_bls12381_base",
+            fn(t_field_bls12381_base) -> t_curve_bls12381);
+        ifn!("llvm.assigner.is.in.g1.check.__zkllvm_curve_bls12381", fn(t_curve_bls12381) -> i1);
+        ifn!("llvm.assigner.is.in.g2.check.v4__zkllvm_field_bls12381_base", fn(t_fblsb_v4) -> i1);
+        ifn!("llvm.assigner.gt.multiplication.v12__zkllvm_field_bls12381_base",
+            fn(t_fblsb_v12, t_fblsb_v12) -> t_fblsb_v12);
 
         // This isn't an "LLVM intrinsic", but LLVM's optimization passes
         // recognize it like one (including turning it into `bcmp` sometimes)
