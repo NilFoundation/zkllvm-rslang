@@ -2063,6 +2063,42 @@ fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, boo
     }
 }
 
+/// Pack all LLVM values from `inputs` into `<N x T>`.
+fn pack_vector<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    type_: &'ll Type,
+    inputs: &[OperandRef<'tcx, &'ll Value>],
+) -> &'ll Value {
+    let mut vector_init = Vec::new();
+    for _ in 0..inputs.len() {
+        vector_init.push(bx.const_undef(type_));
+    }
+    let mut vector = bx.const_vector(&vector_init);
+    for (idx, input) in inputs.iter().enumerate() {
+        vector = bx.insert_element(vector, input.immediate(), bx.const_i32(idx as i32));
+    }
+    vector
+}
+
+/// Convert LLVM value `<N x T>` into `[N x T]`.
+fn unpack_vector_into_array<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    type_: &'ll Type,
+    input: &'ll Value,
+    n: i32,
+) -> &'ll Value {
+    let mut array_init = Vec::new();
+    for _ in 0..n {
+        array_init.push(bx.const_undef(type_));
+    }
+    let mut array = bx.const_array(type_, &array_init);
+    for i in 0..n {
+        let ret_i = bx.extract_element(input, bx.const_i32(i));
+        array = bx.insert_value(array, ret_i, i as u64);
+    }
+    array
+}
+
 fn assigner_intrinsic<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     name: Symbol,
@@ -2074,49 +2110,69 @@ fn assigner_intrinsic<'ll, 'tcx>(
             _ if truncated_name.starts_with("curve_init_") => {
                 let x = args[0].immediate();
                 let y = args[1].immediate();
-                let llvm_name = &format!("llvm.assigner.curve.init.{}", ret_ty);
-                bx.call_intrinsic(llvm_name, &[x, y])
+                let intr_name = format!("llvm.assigner.curve.init.{}", ret_ty);
+                bx.call_intrinsic(&intr_name, &[x, y])
             },
             "sha2_256" => {
                 let type_ = bx.type_field_pallas_base();
-                let mut pack = |v0: OperandRef<'tcx, &'ll Value>, v1: OperandRef<'tcx, &'ll Value>| {
-                    let v = bx.const_vector(&[bx.const_undef(type_), bx.const_undef(type_)]);
-                    let v_init = bx.insert_element(v, v0.immediate(), bx.const_i32(0));
-                    bx.insert_element(v_init, v1.immediate(), bx.const_i32(1))
-                };
-
-                let x = pack(args[0], args[1]);
-                let y = pack(args[2], args[3]);
-
-                let name = "llvm.assigner.sha2.256.v2__zkllvm_field_pallas_base";
-                let res = bx.call_intrinsic(&name, &[x, y]);
-
-                let ret = bx.const_array(type_, &[bx.const_undef(type_), bx.const_undef(type_)]);
-                let res_0 = bx.extract_element(res, bx.const_i32(0));
-                let res_1 = bx.extract_element(res, bx.const_i32(1));
-                let ret_init = bx.insert_value(ret, res_0, 0);
-                bx.insert_value(ret_init, res_1, 1)
+                let x = pack_vector(bx, type_, &args[..2]);
+                let y = pack_vector(bx, type_, &args[2..]);
+                let ret_vector = bx.call_intrinsic(
+                    "llvm.assigner.sha2.256.v2__zkllvm_field_pallas_base",
+                    &[x, y],
+                );
+                unpack_vector_into_array(bx, type_, ret_vector, 2)
             },
             "sha2_512" => {
+                let type_ = bx.type_field_pallas_base();
                 let x = args[0].immediate();
                 let y = args[1].immediate();
-
+                let z = pack_vector(bx, type_, &args[2..6]);
+                bx.call_intrinsic(
+                    "llvm.assigner.sha2.512.__zkllvm_field_curve25519_scalar.__zkllvm_curve_curve25519.v4__zkllvm_field_pallas_base",
+                    &[x, y, z],
+                )
+            },
+            "sha2_256_bls12381" => bx.call_intrinsic(
+                "llvm.assigner.sha2.256.bls12381.__zkllvm_field_bls12381_base",
+                &[args[0].immediate()],
+            ),
+            "bls12_optimal_ate_pairing" => {
                 let type_ = bx.type_field_pallas_base();
-                let mut pack = |v0: OperandRef<'tcx, &'ll Value>,
-                                v1: OperandRef<'tcx, &'ll Value>,
-                                v2: OperandRef<'tcx, &'ll Value>,
-                                v3: OperandRef<'tcx, &'ll Value>| {
-                    let v = bx.const_vector(&[bx.const_undef(type_), bx.const_undef(type_), bx.const_undef(type_), bx.const_undef(type_)]);
-                    let v = bx.insert_element(v, v0.immediate(), bx.const_i32(0));
-                    let v = bx.insert_element(v, v1.immediate(), bx.const_i32(1));
-                    let v = bx.insert_element(v, v2.immediate(), bx.const_i32(2));
-                    bx.insert_element(v, v3.immediate(), bx.const_i32(3))
-                };
+                let x = args[0].immediate();
+                let y = pack_vector(bx, type_, &args[1..5]);
 
-                let z = pack(args[2], args[3], args[4], args[5]);
-
-                let name = "llvm.assigner.sha2.512.__zkllvm_field_curve25519_scalar.__zkllvm_curve_curve25519.v4__zkllvm_field_pallas_base";
-                bx.call_intrinsic(&name, &[x, y, z])
+                let ret_vector = bx.call_intrinsic(
+                    "llvm.assigner.optimal.ate.pairing.v12__zkllvm_field_bls12381_base.__zkllvm_curve_bls12381.v4__zkllvm_field_bls12381_base",
+                    &[x, y],
+                );
+                unpack_vector_into_array(bx, type_, ret_vector, 12)
+            },
+            "hash_to_curve" => bx.call_intrinsic(
+                "llvm.assigner.hash.to.curve.__zkllvm_curve_bls12381.__zkllvm_field_bls12381_base",
+                &[args[0].immediate()],
+            ),
+            "is_in_g1_check" => bx.call_intrinsic(
+                "llvm.assigner.is.in.g1.check.__zkllvm_curve_bls12381",
+                &[args[0].immediate()],
+            ),
+            "is_in_g2_check" => {
+                let type_ = bx.type_field_bls12381_base();
+                let x = pack_vector(bx, type_, &args[0..4]);
+                bx.call_intrinsic(
+                    "llvm.assigner.is.in.g2.check.v4__zkllvm_field_bls12381_base",
+                    &[x],
+                )
+            },
+            "gt_multiplication" => {
+                let type_ = bx.type_field_bls12381_base();
+                let x = pack_vector(bx, type_, &args[0..12]);
+                let y = pack_vector(bx, type_, &args[12..24]);
+                let ret_vector = bx.call_intrinsic(
+                    "llvm.assigner.gt.multiplication.v12__zkllvm_field_bls12381_base",
+                    &[x, y],
+                );
+                unpack_vector_into_array(bx, type_, ret_vector, 12)
             },
             _ => bug!("unknown assigner intrinsic name: '{}'", name),
         }
