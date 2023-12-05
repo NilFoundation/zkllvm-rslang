@@ -220,6 +220,78 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 ],
                 tcx.types.__zkllvm_field_curve25519_scalar,
             ),
+            "sha2_256_bls12381" => (
+                0,
+                vec![
+                    tcx.types.__zkllvm_field_bls12381_base,
+                ],
+                tcx.types.__zkllvm_field_bls12381_base,
+            ),
+            "bls12_optimal_ate_pairing" => (
+                0,
+                vec![
+                    tcx.types.__zkllvm_curve_bls12381,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                ],
+                tcx.mk_array(tcx.types.__zkllvm_field_bls12381_base, 12),
+            ),
+            "hash_to_curve" => (
+                0,
+                vec![
+                    tcx.types.__zkllvm_field_bls12381_base,
+                ],
+                tcx.types.__zkllvm_curve_bls12381,
+            ),
+            "is_in_g1_check" => (
+                0,
+                vec![
+                    tcx.types.__zkllvm_curve_bls12381,
+                ],
+                tcx.types.bool,
+            ),
+            "is_in_g2_check" => (
+                0,
+                vec![
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                ],
+                tcx.types.bool,
+            ),
+            "gt_multiplication" => (
+                0,
+                vec![
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                ],
+                tcx.mk_array(tcx.types.__zkllvm_field_bls12381_base, 12),
+            ),
             _ => {
                 tcx.sess.emit_err(UnrecognizedIntrinsicFunction {
                     span: it.span,
