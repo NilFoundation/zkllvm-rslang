@@ -240,9 +240,7 @@ impl<'tcx> BinOp {
             | &BinOp::AddUnchecked
             | &BinOp::Sub
             | &BinOp::SubUnchecked
-            | &BinOp::Mul
             | &BinOp::MulUnchecked
-            | &BinOp::Div
             | &BinOp::Rem
             | &BinOp::BitXor
             | &BinOp::BitAnd
@@ -269,9 +267,6 @@ impl<'tcx> BinOp {
             | &BinOp::ShrUnchecked
             | &BinOp::Offset => {
                 lhs_ty
-            }
-            &BinOp::Shl | &BinOp::Shr | &BinOp::Offset => {
-                lhs_ty // lhs_ty can be != rhs_ty
             }
             &BinOp::Eq | &BinOp::Lt | &BinOp::Le | &BinOp::Ne | &BinOp::Ge | &BinOp::Gt => {
                 tcx.types.bool

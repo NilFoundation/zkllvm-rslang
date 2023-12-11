@@ -321,7 +321,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     fn read_field(
         &self,
         op: &OpTy<'tcx, M::Provenance>,
-        expected: impl Display,
+        expected: ExpectedKind,
     ) -> InterpResult<'tcx, ScalarField> {
         Ok(self.read_immediate(op, expected)?.to_field())
     }
@@ -528,7 +528,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 Ok(true)
             }
             ty::Field(_) => {
-                let _ = self.read_field(value, "a field")?;
+                self.read_field(value, ExpectedKind::Field)?;
                 Ok(true)
             }
             ty::RawPtr(..) => {
@@ -896,7 +896,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 }
             }
             Abi::Field(f_layout) => {
-                let field = self.read_field(op, "initialized field value")?;
+                let field = self.read_field(op, ExpectedKind::Field)?;
                 self.visit_scalar_field(field, f_layout)?;
             }
             Abi::Curve(_) => {

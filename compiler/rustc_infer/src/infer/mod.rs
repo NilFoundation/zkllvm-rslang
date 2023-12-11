@@ -1096,7 +1096,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn next_field_var(&self) -> Ty<'tcx> {
-        self.tcx.mk_field_var(self.next_field_var_id())
+        Ty::new_field_var(self.tcx, self.next_field_var_id())
     }
 
     /// Creates a fresh region variable with the next available index.
@@ -1342,6 +1342,17 @@ impl<'tcx> InferCtxt<'tcx> {
             value.to_type(self.tcx)
         } else {
             Ty::new_float_var(self.tcx, inner.float_unification_table().find(vid))
+        }
+    }
+
+    /// Resolves a field var to a rigid field type, if it was constrained to one,
+    /// or else the root field var in the unification table.
+    pub fn opportunistic_resolve_field_var(&self, vid: ty::FieldVid) -> Ty<'tcx> {
+        let mut inner = self.inner.borrow_mut();
+        if let Some(value) = inner.field_unification_table().probe_value(vid) {
+            value.to_type(self.tcx)
+        } else {
+            Ty::new_field_var(self.tcx, inner.field_unification_table().find(vid))
         }
     }
 

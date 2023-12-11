@@ -582,7 +582,7 @@ impl FieldTy {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum CurveTy {
     Bls12381,
@@ -611,7 +611,7 @@ impl CurveTy {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum FloatTy {
     F32,

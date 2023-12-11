@@ -427,6 +427,7 @@ const_eval_validation_expected_int = expected an integer
 const_eval_validation_expected_raw_ptr = expected a raw pointer
 const_eval_validation_expected_ref = expected a reference
 const_eval_validation_expected_str = expected a string
+const_eval_validation_expected_field = expected a field
 
 const_eval_validation_front_matter_invalid_value = constructing invalid value
 const_eval_validation_front_matter_invalid_value_with_path = constructing invalid value at {$path}

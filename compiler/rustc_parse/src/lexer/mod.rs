@@ -520,26 +520,20 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::Field { base, empty_field } => {
                 if empty_field {
-                    self.sess
-                        .span_diagnostic
-                        .struct_span_err_with_code(
-                            self.mk_sp(start, end),
-                            "no valid digits found for field",
-                            error_code!(E0768),
-                        )
-                        .emit();
+                    let span = self.mk_sp(start, end);
+                    self.sess.emit_err(errors::NoDigitsLiteral { span });
                     (token::Field, sym::integer(0))
                 } else {
                     if matches!(base, Base::Binary | Base::Octal) {
                         let base = base as u32;
                         let s = self.str_from_to(start + BytePos(2), end);
                         for (idx, c) in s.char_indices() {
+                            let span = self.mk_sp(
+                                start + BytePos::from_usize(2 + idx),
+                                start + BytePos::from_usize(2 + idx + c.len_utf8()),
+                            );
                             if c != '_' && c.to_digit(base).is_none() {
-                                self.err_span_(
-                                    start + BytePos::from_usize(2 + idx),
-                                    start + BytePos::from_usize(2 + idx + c.len_utf8()),
-                                    &format!("invalid digit for a base {} literal", base),
-                                );
+                                self.sess.emit_err(errors::InvalidDigitLiteral { span, base });
                             }
                         }
                     }

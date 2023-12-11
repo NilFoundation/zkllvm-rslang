@@ -88,7 +88,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Field(_) | ty::Float(_) | ty::Char => {
             // FIXME(aleasims): should we really handle fields here like this?
-            let Ok(val) = ecx.read_immediate(&place.into()) else {
+            let Ok(val) = ecx.read_immediate(place) else {
                 return Err(ValTreeCreationError::Other);
             };
             let val = val.to_scalar();

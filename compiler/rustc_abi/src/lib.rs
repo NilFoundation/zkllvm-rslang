@@ -1444,8 +1444,8 @@ impl Abi {
         match *self {
             Abi::Scalar(s) => Abi::Scalar(s.to_union()),
             Abi::ScalarPair(s1, s2) => Abi::ScalarPair(s1.to_union(), s2.to_union()),
-            Abi::Field(_) => bug!("cannot convert field ABI to union"),
-            Abi::Curve(_) => bug!("cannot convert curve ABI to union"),
+            Abi::Field(_) => unreachable!("cannot convert field ABI to union"),
+            Abi::Curve(_) => unreachable!("cannot convert curve ABI to union"),
             Abi::Vector { element, count } => Abi::Vector { element: element.to_union(), count },
             Abi::Uninhabited | Abi::Aggregate { .. } => Abi::Aggregate { sized: true },
         }
@@ -1661,12 +1661,14 @@ impl LayoutS {
         let size = field.size();
         let align = Field::align();
         LayoutS {
-            variants: Variants::Single { index: V::new(0) },
+            variants: Variants::Single { index: FIRST_VARIANT },
             fields: FieldsShape::Primitive,
             abi: Abi::Field(field),
             largest_niche: None,
             size,
             align,
+            max_repr_align: None,
+            unadjusted_abi_align: align.abi,
         }
     }
 
@@ -1674,12 +1676,14 @@ impl LayoutS {
         let size = curve.size();
         let align = Curve::align();
         LayoutS {
-            variants: Variants::Single { index: V::new(0) },
+            variants: Variants::Single { index: FIRST_VARIANT },
             fields: FieldsShape::Primitive,
             abi: Abi::Curve(curve),
             largest_niche: None,
             size,
             align,
+            max_repr_align: None,
+            unadjusted_abi_align: align.abi,
         }
     }
 }

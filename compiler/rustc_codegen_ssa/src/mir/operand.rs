@@ -338,6 +338,9 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             (OperandValue::Immediate(_), Abi::Uninhabited | Abi::Aggregate { sized: false }) => {
                 bug!()
             }
+            (OperandValue::Immediate(_), Abi::Curve(_) | Abi::Field(_)) => {
+                bug!()
+            }
             (OperandValue::Pair(..), _) => bug!(),
             (OperandValue::Ref(..), _) => bug!(),
         }

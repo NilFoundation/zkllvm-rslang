@@ -1103,7 +1103,7 @@ fn univariant(
                         // We don't care about C ABI.
                         // See issue: https://github.com/NilFoundation/zkllvm-rslang/issues/67
                         Abi::Field(_) | Abi::Curve(_) => {
-                            abi = field.abi;
+                            abi = field.abi();
                         }
                         _ => {}
                     }

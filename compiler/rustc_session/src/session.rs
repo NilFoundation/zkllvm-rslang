@@ -1438,8 +1438,11 @@ pub fn build_session(
     let asm_arch =
         if target_cfg.allow_asm { InlineAsmArch::from_str(&target_cfg.arch).ok() } else { None };
 
-    let sopts =
-        if target_cfg.options.is_like_assigner { options_for_assigner(sopts) } else { sopts };
+    let sopts = if target_cfg.options.is_like_assigner {
+        options_for_assigner(handler, sopts)
+    } else {
+        sopts
+    };
 
     let sess = Session {
         target: target_cfg,
@@ -1745,15 +1748,17 @@ fn mk_emitter(output: ErrorOutputType) -> Box<dyn Emitter + sync::Send + 'static
 }
 
 /// Patch session options for assigner target.
-fn options_for_assigner(mut sopts: config::Options) -> config::Options {
+fn options_for_assigner(
+    handler: &EarlyErrorHandler,
+    mut sopts: config::Options,
+) -> config::Options {
     let mut output_types = Vec::new();
     for (output_type, path) in sopts.output_types.keys().zip(sopts.output_types.values()) {
         if output_type.is_compatible_with_assigner_target() {
             output_types.push((*output_type, path.clone()));
         } else {
-            early_warn(
-                sopts.error_format,
-                &format!(
+            handler.early_warn(
+                format!(
                     "dropping unsupported emit kind `{}` for target `{}`",
                     output_type.shorthand(),
                     sopts.target_triple,
@@ -1765,17 +1770,4 @@ fn options_for_assigner(mut sopts: config::Options) -> config::Options {
 
     sopts.unstable_opts.link_native_libraries = false;
     sopts
-}
-
-/// Modified output types with suitable for Assigner target.
-/// Emits the warning if a replacement took place.
-fn output_types_for_assigner(sopts: &config::Options) -> config::OutputTypes {
-    let (output_types, replaced) = sopts.output_types.clone().replace_for_assigner();
-    for r in replaced {
-        early_warn(
-            sopts.error_format,
-            &format!("for assigner target replaced `{r}` emit kind to `llvm-ir`"),
-        );
-    }
-    output_types
 }

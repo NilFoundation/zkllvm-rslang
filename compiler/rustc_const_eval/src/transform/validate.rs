@@ -806,7 +806,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 use BinOp::*;
                 let a = vals.0.ty(&self.body.local_decls, self.tcx);
                 let b = vals.1.ty(&self.body.local_decls, self.tcx);
-                if crate::util::binop_right_homogeneous(*op) {
+                let mut right_homogeneous = crate::util::binop_right_homogeneous(*op);
+                let is_algebraic = a.is_field() || b.is_field() || a.is_curve() || b.is_curve();
+                if is_algebraic && matches!(op, Mul | Div) {
+                    // mul and div are not homogeneous operations for algebraic types
+                    right_homogeneous = false;
+                }
+                if right_homogeneous {
                     if let Eq | Lt | Le | Ne | Ge | Gt = op {
                         // The function pointer types can have lifetimes
                         if !self.mir_assign_valid_types(a, b) {
@@ -830,6 +836,22 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         check_kinds!(a, "Cannot offset non-pointer type {:?}", ty::RawPtr(..));
                         if b != self.tcx.types.isize && b != self.tcx.types.usize {
                             self.fail(location, format!("Cannot offset by non-isize type {b:?}"));
+                        }
+                    }
+                    Lt | Le | Ge | Gt  => {
+                        for x in [a, b] {
+                            check_kinds!(
+                                x,
+                                "Cannot {op:?} compare type {:?}",
+                                ty::Bool
+                                    | ty::Char
+                                    | ty::Int(..)
+                                    | ty::Uint(..)
+                                    | ty::Float(..)
+                                    | ty::Field(..)
+                                    | ty::RawPtr(..)
+                                    | ty::FnPtr(..)
+                            )
                         }
                     }
                     Eq | Ne  => {

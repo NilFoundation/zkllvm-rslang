@@ -134,16 +134,6 @@ impl PrimitiveExt for Primitive {
             F64 => tcx.types.f64,
             // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
             Pointer(_) => Ty::new_mut_ptr(tcx, Ty::new_unit(tcx)),
-            Field(f) => {
-                match f {
-                    Field::Bls12381Base => tcx.types.__zkllvm_field_bls12381_base,
-                    Field::Bls12381Scalar => tcx.types.__zkllvm_field_bls12381_scalar,
-                    Field::Curve25519Base => tcx.types.__zkllvm_field_curve25519_base,
-                    Field::Curve25519Scalar => tcx.types.__zkllvm_field_curve25519_scalar,
-                    Field::PallasBase => tcx.types.__zkllvm_field_pallas_base,
-                    Field::PallasScalar => tcx.types.__zkllvm_field_pallas_scalar,
-                }
-            },
         }
     }
 
@@ -159,7 +149,6 @@ impl PrimitiveExt for Primitive {
                 tcx.data_layout().ptr_sized_integer().to_ty(tcx, signed)
             }
             F32 | F64 => bug!("floats do not have an int type"),
-            Field(..) => bug!("fields do not have an int type"),
         }
     }
 }

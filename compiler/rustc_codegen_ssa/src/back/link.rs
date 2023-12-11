@@ -98,6 +98,7 @@ pub fn link_binary<'a>(
                 .tempdir()
                 .unwrap_or_else(|error| sess.emit_fatal(errors::CreateTempDir { error }));
             let path = MaybeTempDir::new(tmpdir, sess.opts.cg.save_temps);
+            // TODO: (aleasims) deal with out filename properly here
             let out_filename = out_filename(
                 sess,
                 crate_type,
@@ -108,7 +109,7 @@ pub fn link_binary<'a>(
                 sess,
                 archive_builder_builder,
                 crate_type,
-                &out_filename,
+                out_filename.as_path(),
                 codegen_results,
                 path.as_ref(),
             )?;

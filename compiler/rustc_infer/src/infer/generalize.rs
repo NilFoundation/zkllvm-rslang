@@ -232,6 +232,11 @@ where
             {
                 bug!("unexpected inference variable encountered in NLL generalization: {t}");
             }
+            ty::Infer(ty::FieldVar(_))
+                if D::forbid_inference_vars() =>
+            {
+                bug!("unexpected inference variable encountered in NLL generalization: {t}");
+            }
 
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("unexpected infer type: {t}")
@@ -294,6 +299,9 @@ where
                 // No matter what mode we are in,
                 // integer/floating-point types must be equal to be
                 // relatable.
+                Ok(t)
+            }
+            ty::Infer(ty::FieldVar(_)) => {
                 Ok(t)
             }
 

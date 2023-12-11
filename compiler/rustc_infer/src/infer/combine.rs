@@ -368,7 +368,7 @@ impl<'tcx> InferCtxt<'tcx> {
             .field_unification_table()
             .unify_var_value(vid, Some(ty::FieldVarValue(val)))
             .map_err(|e| field_unification_error(vid_is_expected, e))?;
-        Ok(self.tcx.mk_mach_field(val))
+        Ok(Ty::new_field(self.tcx, val))
     }
 }
 

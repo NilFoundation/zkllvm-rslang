@@ -12,6 +12,7 @@ use crate::stable_mir::mir::{CopyNonOverlapping, UserTypeProjection, VariantIdx}
 use crate::stable_mir::ty::{
     allocation_filter, new_allocation, Const, FloatTy, IntTy, Movability, RigidTy, TyKind, UintTy,
 };
+use crate::stable_mir::ty::{CurveTy, FieldTy};
 use crate::stable_mir::{self, Context};
 use rustc_hir as hir;
 use rustc_middle::mir::coverage::CodeRegion;
@@ -1017,6 +1018,34 @@ impl<'tcx> Stable<'tcx> for ty::FloatTy {
     }
 }
 
+impl<'tcx> Stable<'tcx> for ty::FieldTy {
+    type T = FieldTy;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            ty::FieldTy::Bls12381Base => FieldTy::Bls12381Base,
+            ty::FieldTy::Bls12381Scalar => FieldTy::Bls12381Scalar,
+            ty::FieldTy::Curve25519Base => FieldTy::Curve25519Base,
+            ty::FieldTy::Curve25519Scalar => FieldTy::Curve25519Scalar,
+            ty::FieldTy::PallasBase => FieldTy::PallasBase,
+            ty::FieldTy::PallasScalar => FieldTy::PallasScalar,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for ty::CurveTy {
+    type T = CurveTy;
+
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            ty::CurveTy::Bls12381 => CurveTy::Bls12381,
+            ty::CurveTy::Curve25519 => CurveTy::Curve25519,
+            ty::CurveTy::Pallas => CurveTy::Pallas,
+            ty::CurveTy::Vesta => CurveTy::Vesta,
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for hir::Movability {
     type T = Movability;
 
@@ -1037,6 +1066,8 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
             ty::Int(int_ty) => TyKind::RigidTy(RigidTy::Int(int_ty.stable(tables))),
             ty::Uint(uint_ty) => TyKind::RigidTy(RigidTy::Uint(uint_ty.stable(tables))),
             ty::Float(float_ty) => TyKind::RigidTy(RigidTy::Float(float_ty.stable(tables))),
+            ty::Field(field_ty) => TyKind::RigidTy(RigidTy::Field(field_ty.stable(tables))),
+            ty::Curve(curve_ty) => TyKind::RigidTy(RigidTy::Curve(curve_ty.stable(tables))),
             ty::Adt(adt_def, generic_args) => TyKind::RigidTy(RigidTy::Adt(
                 rustc_internal::adt_def(adt_def.did()),
                 generic_args.stable(tables),

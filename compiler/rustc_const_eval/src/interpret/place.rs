@@ -652,6 +652,9 @@ where
                                         assert_eq!(a_val.size(), a.size(self));
                                         assert_eq!(b_val.size(), b.size(self));
                                     }
+                                    (Immediate::Field(field), Abi::Field(f)) => {
+                                        assert_eq!(field.size(), f.size())
+                                    }
                                     (Immediate::Uninit, _) => {}
                                     (src, abi) => {
                                         bug!(

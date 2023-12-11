@@ -5,7 +5,6 @@
 use crate::mir::interpret::{
     AllocRange, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
 };
-use crate::mir::interpret::ScalarField;
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
@@ -3049,6 +3048,6 @@ mod size_asserts {
     static_assert_size!(StatementKind<'_>, 16);
     static_assert_size!(Terminator<'_>, 104);
     static_assert_size!(TerminatorKind<'_>, 88);
-    static_assert_size!(VarDebugInfo<'_>, 80);
+    static_assert_size!(VarDebugInfo<'_>, 112);
     // tidy-alphabetical-end
 }

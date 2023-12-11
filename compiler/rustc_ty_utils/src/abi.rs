@@ -557,7 +557,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
 
         let circuit_args_byval = |arg: &mut ArgAbi<'tcx, Ty<'tcx>>| {
             if arg.is_indirect() {
-                arg.make_indirect_byval();
+                arg.make_indirect_byval(None);
             }
         };
 

@@ -107,6 +107,7 @@ where
                         }
                         false
                     }
+                    Abi::Field(_) | Abi::Curve(_) => false,
                 }
             }
 

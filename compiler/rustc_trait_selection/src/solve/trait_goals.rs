@@ -832,6 +832,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
                 Some(self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS))
             }
+            ty::Infer(ty::FieldVar(_)) => {
+                Some(self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS))
+            }
 
             // These types cannot be structurally decomposed into constituent
             // types, and therefore have no built-in auto impl.
@@ -870,6 +873,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Float(_)
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Str
             | ty::Array(_, _)
             | ty::Slice(_)

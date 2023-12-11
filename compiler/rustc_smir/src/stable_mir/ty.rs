@@ -39,6 +39,8 @@ pub enum RigidTy {
     Int(IntTy),
     Uint(UintTy),
     Float(FloatTy),
+    Field(FieldTy),
+    Curve(CurveTy),
     Adt(AdtDef, GenericArgs),
     Foreign(ForeignDef),
     Str,
@@ -79,6 +81,24 @@ pub enum UintTy {
 pub enum FloatTy {
     F32,
     F64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FieldTy {
+    Bls12381Base,
+    Bls12381Scalar,
+    Curve25519Base,
+    Curve25519Scalar,
+    PallasBase,
+    PallasScalar,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CurveTy {
+    Bls12381,
+    Curve25519,
+    Pallas,
+    Vesta,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -374,6 +394,19 @@ pub fn new_allocation<'tcx>(
                 .unwrap()
                 .size;
             allocation_filter(&alloc.0, alloc_range(offset, ty_size), tables)
+        }
+        ConstValue::Field(field) => {
+            let size = field.size();
+            let align = tables
+                .tcx
+                .layout_of(rustc_middle::ty::ParamEnv::reveal_all().and(const_kind.ty()))
+                .unwrap()
+                .align;
+            let mut allocation = rustc_middle::mir::interpret::Allocation::uninit(size, align.abi);
+            allocation
+                .write_field(&tables.tcx, alloc_range(rustc_target::abi::Size::ZERO, size), field)
+                .unwrap();
+            allocation.stable(tables)
         }
     }
 }

@@ -178,6 +178,8 @@ fn entry_point_type(item: &ast::Item, depth: usize) -> EntryPointType {
                 EntryPointType::Start
             } else if attr::contains_name(&item.attrs, sym::rustc_main) {
                 EntryPointType::RustcMainAttr
+            } else if attr::contains_name(&item.attrs, sym::circuit) {
+                EntryPointType::Circuit
             } else if item.ident.name == sym::main {
                 if depth == 0 {
                     // This is a top-level function so can be 'main'

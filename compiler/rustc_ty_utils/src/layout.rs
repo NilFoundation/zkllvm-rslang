@@ -137,8 +137,8 @@ fn layout_of_uncached<'tcx>(
         )),
         ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
         ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
-        ty::Field(fty) => tcx.intern_layout(LayoutS::field(Field::from_field_ty(fty))),
-        ty::Curve(cty) => tcx.intern_layout(LayoutS::curve(Curve::from_curve_ty(cty))),
+        ty::Field(fty) => tcx.mk_layout(LayoutS::field(Field::from_field_ty(fty))),
+        ty::Curve(cty) => tcx.mk_layout(LayoutS::curve(Curve::from_curve_ty(cty))),
         ty::Float(fty) => scalar(match fty {
             ty::FloatTy::F32 => F32,
             ty::FloatTy::F64 => F64,

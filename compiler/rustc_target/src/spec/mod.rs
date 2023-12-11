@@ -328,7 +328,7 @@ impl LinkerFlavor {
     }
 
     fn infer_linker_hints(linker_stem: &str) -> (Option<Cc>, Option<Lld>) {
-        if stem == "llvm-link" {
+        if linker_stem == "llvm-link" {
             return (Some(Cc::No), Some(Lld::No));
         }
         // Remove any version postfix.

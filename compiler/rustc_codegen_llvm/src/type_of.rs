@@ -9,7 +9,6 @@ use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_target::abi::HasDataLayout;
 use rustc_target::abi::{Abi, Align, FieldsShape};
 use rustc_target::abi::{Int, Pointer, F32, F64};
-use rustc_target::abi::Field;
 use rustc_target::abi::{PointeeInfo, Scalar, Size, TyAbiInterface, Variants};
 use smallvec::{smallvec, SmallVec};
 
@@ -230,7 +229,6 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
                 ty::FnPtr(sig) => {
                     cx.fn_ptr_backend_type(cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
                 }
-                ty::Field(ty) => cx.type_field_from_ty(ty),
                 _ => self.scalar_llvm_type_at(cx, scalar),
             };
             cx.scalar_lltypes.borrow_mut().insert(self.ty, llty);

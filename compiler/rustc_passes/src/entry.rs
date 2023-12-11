@@ -74,7 +74,7 @@ fn entry_point_type(ctxt: &EntryContext<'_>, id: ItemId, at_root: bool) -> Entry
     let attrs = ctxt.tcx.hir().attrs(id.hir_id());
     if attr::contains_name(attrs, sym::start) {
         EntryPointType::Start
-    } else if ctxt.tcx.sess.contains_name(attrs, sym::circuit) {
+    } else if attr::contains_name(attrs, sym::circuit) {
         EntryPointType::Circuit
     } else if attr::contains_name(attrs, sym::rustc_main) {
         EntryPointType::RustcMainAttr

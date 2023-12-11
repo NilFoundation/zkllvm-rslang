@@ -748,6 +748,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                     ExpectedKind::FnPtr => fluent::const_eval_validation_expected_fn_ptr,
                     ExpectedKind::EnumTag => fluent::const_eval_validation_expected_enum_tag,
                     ExpectedKind::Str => fluent::const_eval_validation_expected_str,
+                    ExpectedKind::Field => fluent::const_eval_validation_expected_field,
                 };
                 let msg = handler.eagerly_translate_to_string(msg, [].into_iter());
                 err.set_arg("expected", msg);

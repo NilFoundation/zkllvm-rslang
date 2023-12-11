@@ -206,6 +206,8 @@ where
                     | ty::Int(_)
                     | ty::Uint(_)
                     | ty::Float(_)
+                    | ty::Field(_)
+                    | ty::Curve(_)
                     | ty::Str
                     | ty::Slice(_)
                     | ty::Ref(..)

@@ -213,6 +213,8 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
         | ty::Int(_)
         | ty::Uint(_)
         | ty::Float(_)
+        | ty::Field(_)
+        | ty::Curve(_)
         | ty::Str
         | ty::Never
         | ty::Foreign(..)

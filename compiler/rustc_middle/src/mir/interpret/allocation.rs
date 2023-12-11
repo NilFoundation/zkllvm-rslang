@@ -631,7 +631,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         // Fallback path for when we cannot treat provenance bytewise or ignore it.
         assert!(!Prov::OFFSET_IS_ADDR);
         if !self.provenance.range_empty(range, cx) {
-            return Err(AllocError::ReadPointerAsBytes);
+            return Err(AllocError::ReadPartialPointer(range.start));
         }
         // There is no provenance, we can just return the bits.
         Ok(ScalarField::from_u384(bits, range.size))

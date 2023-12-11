@@ -1198,7 +1198,7 @@ pub struct MultipleCircuitFunctions {
     pub span: Span,
     #[label]
     pub labeled: Span,
-    #[label(previous)]
+    #[label(passes_previous)]
     pub previous: Span,
 }
 

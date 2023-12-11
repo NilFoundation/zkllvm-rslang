@@ -24,7 +24,6 @@ use crate::traits::solve;
 use crate::traits::solve::{
     ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
 };
-use crate::ty::{CurveTy, FieldTy, FieldVar, FieldVid};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Const, ConstData, GenericParamDefKind,
     ImplPolarity, InferTy, List, ParamConst, ParamTy, PolyExistentialPredicate, PolyFnSig,

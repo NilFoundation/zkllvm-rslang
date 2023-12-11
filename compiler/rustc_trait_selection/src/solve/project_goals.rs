@@ -362,6 +362,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 | ty::Int(..)
                 | ty::Uint(..)
                 | ty::Float(..)
+                | ty::Field(..)
+                | ty::Curve(..)
                 | ty::Array(..)
                 | ty::RawPtr(..)
                 | ty::Ref(..)
@@ -369,6 +371,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 | ty::FnPtr(..)
                 | ty::Closure(..)
                 | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
+                | ty::Infer(ty::FieldVar(..))
                 | ty::Generator(..)
                 | ty::GeneratorWitness(..)
                 | ty::GeneratorWitnessMIR(..)
@@ -416,6 +419,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                             .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                     }
                 },
+
+                ty::Infer(ty::FreshFieldTy(_)) => bug!(
+                    "unexpected self ty `{:?}` when normalizing `<T as Pointee>::Metadata`",
+                    goal.predicate.self_ty()
+                ),
 
                 ty::Infer(
                     ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_),
@@ -530,6 +538,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             | ty::Int(..)
             | ty::Uint(..)
             | ty::Float(..)
+            | ty::Field(..)
+            | ty::Curve(..)
             | ty::Array(..)
             | ty::RawPtr(..)
             | ty::Ref(..)
@@ -537,6 +547,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             | ty::FnPtr(..)
             | ty::Closure(..)
             | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
+            | ty::Infer(ty::FieldVar(..))
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
             | ty::GeneratorWitnessMIR(..)
@@ -559,6 +570,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
 
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
             | ty::Bound(..) => bug!(
+                "unexpected self ty `{:?}` when normalizing `<T as DiscriminantKind>::Discriminant`",
+                goal.predicate.self_ty()
+            ),
+            ty::Infer(ty::FreshFieldTy(_)) => bug!(
                 "unexpected self ty `{:?}` when normalizing `<T as DiscriminantKind>::Discriminant`",
                 goal.predicate.self_ty()
             ),

@@ -257,6 +257,10 @@ impl<'tcx> CanonicalVarKind<'tcx> {
                     assert_eq!(ui, ty::UniverseIndex::ROOT);
                     CanonicalVarKind::Ty(kind)
                 }
+                CanonicalTyVarKind::Field => {
+                    assert_eq!(ui, ty::UniverseIndex::ROOT);
+                    CanonicalVarKind::Ty(kind)
+                }
             },
             CanonicalVarKind::PlaceholderTy(placeholder) => {
                 CanonicalVarKind::PlaceholderTy(ty::Placeholder { universe: ui, ..placeholder })

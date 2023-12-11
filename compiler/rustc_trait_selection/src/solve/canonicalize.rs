@@ -290,7 +290,14 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                 assert_eq!(self.infcx.opportunistic_resolve_float_var(vid), t);
                 CanonicalVarKind::Ty(CanonicalTyVarKind::Float)
             }
+            ty::Infer(ty::FieldVar(vid)) => {
+                assert_eq!(self.infcx.opportunistic_resolve_field_var(vid), t);
+                CanonicalVarKind::Ty(CanonicalTyVarKind::Field)
+            }
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                bug!("fresh var during canonicalization: {t:?}")
+            }
+            ty::Infer(ty::FreshFieldTy(_)) => {
                 bug!("fresh var during canonicalization: {t:?}")
             }
             ty::Placeholder(placeholder) => match self.canonicalize_mode {
@@ -318,6 +325,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Float(_)
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Adt(_, _)
             | ty::Foreign(_)
             | ty::Str

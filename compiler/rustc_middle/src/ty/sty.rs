@@ -1922,7 +1922,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn new_fresh_float(tcx: TyCtxt<'tcx>, n: u32) -> Ty<'tcx> {
+    pub fn new_fresh_field(tcx: TyCtxt<'tcx>, n: u32) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
         tcx.types
             .fresh_field_tys
