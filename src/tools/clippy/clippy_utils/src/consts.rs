@@ -227,6 +227,8 @@ pub fn lit_to_mir_constant<'tcx>(lit: &LitKind, ty: Option<Ty<'tcx>>) -> Constan
             ty::Float(FloatTy::F64) => Constant::F64(is.as_str().parse().unwrap()),
             _ => bug!(),
         },
+        // TODO: (aleasims) handle field literals
+        LitKind::Field(_) => todo!("support field literals in clippy"),
         LitKind::Bool(b) => Constant::Bool(b),
         LitKind::Err => Constant::Err,
     }

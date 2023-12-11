@@ -68,6 +68,8 @@ impl VisitTags for Immediate<Provenance> {
                 s2.visit_tags(visit);
             }
             Immediate::Uninit => {}
+            // TODO: (aleasims) handle field types
+            Immediate::Field(_) => todo!("support field immediates in miri"),
         }
     }
 }
