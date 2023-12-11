@@ -105,7 +105,6 @@ pub fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>) -> ! {
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
-#[cfg(bootstrap)]
 #[rustc_const_unstable(feature = "core_panic", issue = "none")]
 #[lang = "panic"] // needed by codegen for panic on overflow and other `Assert` MIR terminators
 pub const fn panic(expr: &'static str) -> ! {
@@ -116,22 +115,6 @@ pub const fn panic(expr: &'static str) -> ! {
     // Arguments::new_v1 may allow the compiler to omit Formatter::pad from the
     // output binary, saving up to a few kilobytes.
     panic_fmt(fmt::Arguments::new_const(&[expr]));
-}
-
-// This is simply mirroring the above definition in case when assigner target is already known
-// to the compiler.
-#[cfg(not(bootstrap))]
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[track_caller]
-#[rustc_do_not_const_check]
-#[rustc_const_unstable(feature = "core_panic", issue = "none")]
-#[lang = "panic"]
-pub const fn panic(expr: &'static str) -> ! {
-    if cfg!(target_arch = "assigner") {
-        super::intrinsics::abort()
-    }
-    panic_fmt(fmt::Arguments::new_v1(&[expr], &[]));
 }
 
 /// Like `panic`, but without unwinding and track_caller to reduce the impact on codesize.

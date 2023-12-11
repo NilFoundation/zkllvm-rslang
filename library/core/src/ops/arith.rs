@@ -387,8 +387,7 @@ mul_impl! {
 macro_rules! mul_curve_impl {
     ($($t:ty, $s:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl const Mul<$s> for $t {
+        impl Mul<$s> for $t {
             type Output = $t;
 
             #[inline]
@@ -396,11 +395,10 @@ macro_rules! mul_curve_impl {
             fn mul(self, other: $s) -> $t { self * other }
         }
 
-        forward_ref_binop! { impl const Mul, mul for $t, $s }
+        forward_ref_binop! { impl Mul, mul for $t, $s }
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl const Mul<$t> for $s {
+        impl Mul<$t> for $s {
             type Output = $t;
 
             #[inline]
@@ -408,7 +406,7 @@ macro_rules! mul_curve_impl {
             fn mul(self, other: $t) -> $t { self * other }
         }
 
-        forward_ref_binop! { impl const Mul, mul for $s, $t }
+        forward_ref_binop! { impl Mul, mul for $s, $t }
     )*)
 }
 
@@ -587,15 +585,14 @@ macro_rules! div_impl_field {
         ///
         /// This operation will panic if `other == 0`.
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl const Div for $t {
+        impl Div for $t {
             type Output = $t;
 
             #[inline]
             fn div(self, other: $t) -> $t { self / other }
         }
 
-        forward_ref_binop! { impl const Div, div for $t, $t }
+        forward_ref_binop! { impl Div, div for $t, $t }
     )*)
 }
 
@@ -613,15 +610,14 @@ div_impl_field! {
 macro_rules! div_curve_impl {
     ($($t:ty, $s:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl const Div<$s> for $t {
+        impl Div<$s> for $t {
             type Output = $t;
 
             #[inline]
             fn div(self, other: $s) -> $t { self / other }
         }
 
-        forward_ref_binop! { impl const Div, div for $t, $s }
+        forward_ref_binop! { impl Div, div for $t, $s }
     )*)
 }
 
@@ -759,15 +755,14 @@ macro_rules! rem_impl_field {
         ///
         /// This operation will panic if `other == 0`.
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl const Rem for $t {
+        impl Rem for $t {
             type Output = $t;
 
             #[inline]
             fn rem(self, other: $t) -> $t { self % other }
         }
 
-        forward_ref_binop! { impl const Rem, rem for $t, $t }
+        forward_ref_binop! { impl Rem, rem for $t, $t }
     )*)
 }
 
@@ -861,8 +856,7 @@ macro_rules! neg_impl_field {
     ($($t:ty)*) => ($(
         /// This operations returns the inverse element by addition in the field.
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl const Neg for $t {
+        impl Neg for $t {
             type Output = $t;
 
             #[inline]
@@ -870,7 +864,7 @@ macro_rules! neg_impl_field {
             fn neg(self) -> $t { -self }
         }
 
-        forward_ref_unop! { impl const Neg, neg for $t }
+        forward_ref_unop! { impl Neg, neg for $t }
     )*)
 }
 
@@ -1119,14 +1113,13 @@ mul_assign_impl! {
 macro_rules! mul_assign_curve_impl {
     ($($t:ty, $s:ty)+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl const MulAssign<$s> for $t {
+        impl MulAssign<$s> for $t {
             #[inline]
             #[rustc_inherit_overflow_checks]
             fn mul_assign(&mut self, other: $s) { *self *= other }
         }
 
-        forward_ref_op_assign! { impl const MulAssign, mul_assign for $t, $s }
+        forward_ref_op_assign! { impl MulAssign, mul_assign for $t, $s }
     )+)
 }
 
@@ -1208,13 +1201,12 @@ div_assign_impl! {
 macro_rules! div_assign_curve_impl {
     ($($t:ty, $s:ty)+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
-        #[rustc_const_unstable(feature = "const_ops", issue = "90080")]
-        impl const DivAssign<$s> for $t {
+        impl DivAssign<$s> for $t {
             #[inline]
             fn div_assign(&mut self, other: $s) { *self /= other }
         }
 
-        forward_ref_op_assign! { impl const DivAssign, div_assign for $t, $s }
+        forward_ref_op_assign! { impl DivAssign, div_assign for $t, $s }
     )+)
 }
 

@@ -287,6 +287,22 @@ marker_impls! {
         {T: ?Sized} &T,
 }
 
+#[cfg(not(bootstrap))]
+marker_impls! {
+    #[unstable(feature = "structural_match", issue = "31434")]
+    StructuralEq for
+        __zkllvm_curve_bls12381,
+        __zkllvm_curve_curve25519,
+        __zkllvm_curve_pallas,
+        __zkllvm_curve_vesta,
+        __zkllvm_field_bls12381_base,
+        __zkllvm_field_bls12381_scalar,
+        __zkllvm_field_curve25519_base,
+        __zkllvm_field_curve25519_scalar,
+        __zkllvm_field_pallas_base,
+        __zkllvm_field_pallas_scalar,
+}
+
 /// Types whose values can be duplicated simply by copying bits.
 ///
 /// By default, variable bindings have 'move semantics.' In other
@@ -489,6 +505,22 @@ marker_impls! {
         {T: ?Sized} *const T,
         {T: ?Sized} *mut T,
 
+}
+
+#[cfg(not(bootstrap))]
+marker_impls! {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    Copy for
+        __zkllvm_curve_bls12381,
+        __zkllvm_curve_curve25519,
+        __zkllvm_curve_pallas,
+        __zkllvm_curve_vesta,
+        __zkllvm_field_bls12381_base,
+        __zkllvm_field_bls12381_scalar,
+        __zkllvm_field_curve25519_base,
+        __zkllvm_field_curve25519_scalar,
+        __zkllvm_field_pallas_base,
+        __zkllvm_field_pallas_scalar,
 }
 
 #[unstable(feature = "never_type", issue = "35121")]
@@ -1005,16 +1037,6 @@ marker_impls! {
     ConstParamTy for
         usize, u8, u16, u32, u64, u128,
         isize, i8, i16, i32, i64, i128,
-        __zkllvm_curve_bls12381,
-        __zkllvm_curve_curve25519,
-        __zkllvm_curve_pallas,
-        __zkllvm_curve_vesta,
-        __zkllvm_field_bls12381_base,
-        __zkllvm_field_bls12381_scalar,
-        __zkllvm_field_curve25519_base,
-        __zkllvm_field_curve25519_scalar,
-        __zkllvm_field_pallas_base,
-        __zkllvm_field_pallas_scalar,
         bool,
         char,
         str /* Technically requires `[u8]: ConstParamTy` */,

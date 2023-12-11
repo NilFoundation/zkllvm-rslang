@@ -1261,77 +1261,76 @@ mod prim_isize {}
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_usize {}
 
-#[doc(primitive = "__zkllvm_field_bls12381_base")]
+#[rustc_doc_primitive = "__zkllvm_field_bls12381_base"]
 //
 /// Bls12381 base field.
 #[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_zkllvm_field_bls12381_base {}
 
-#[doc(primitive = "__zkllvm_field_bls12381_scalar")]
+#[rustc_doc_primitive = "__zkllvm_field_bls12381_scalar"]
 //
 /// Bls12381 scalar field.
 #[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_zkllvm_field_bls12381_scalar {}
 
-#[doc(primitive = "__zkllvm_field_curve25519_base")]
+#[rustc_doc_primitive = "__zkllvm_field_curve25519_base"]
 //
 /// Curve25519 base field.
 #[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_zkllvm_field_curve25519_base {}
 
-#[doc(primitive = "__zkllvm_field_curve25519_scalar")]
+#[rustc_doc_primitive = "__zkllvm_field_curve25519_scalar"]
 //
 /// Curve25519 scalar field.
 #[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_zkllvm_field_curve25519_scalar {}
 
-#[doc(primitive = "__zkllvm_field_pallas_base")]
+#[rustc_doc_primitive = "__zkllvm_field_pallas_base"]
 //
 /// Pallas base field.
 #[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_zkllvm_field_pallas_base {}
 
-#[doc(primitive = "__zkllvm_field_pallas_scalar")]
+#[rustc_doc_primitive = "__zkllvm_field_pallas_scalar"]
 //
 /// Pallas scalar field.
 #[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_zkllvm_field_pallas_scalar {}
 
-#[doc(primitive = "__zkllvm_curve_bls12381")]
+#[rustc_doc_primitive = "__zkllvm_curve_bls12381"]
 //
 /// Bls12381 curve.
 #[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_zkllvm_curve_bls12381 {}
 
-#[doc(primitive = "__zkllvm_curve_curve25519")]
+#[rustc_doc_primitive = "__zkllvm_curve_curve25519"]
 //
 /// Curve25519 curve.
 #[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_zkllvm_curve_curve25519 {}
 
-#[doc(primitive = "__zkllvm_curve_pallas")]
+#[rustc_doc_primitive = "__zkllvm_curve_pallas"]
 //
 /// Pallas curve.
 #[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_zkllvm_curve_pallas {}
 
-#[doc(primitive = "__zkllvm_curve_vesta")]
+#[rustc_doc_primitive = "__zkllvm_curve_vesta"]
 //
 /// Vesta curve.
 #[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_zkllvm_curve_vesta {}
 
-#[doc(primitive = "reference")]
 #[rustc_doc_primitive = "reference"]
 #[doc(alias = "&")]
 #[doc(alias = "&mut")]
