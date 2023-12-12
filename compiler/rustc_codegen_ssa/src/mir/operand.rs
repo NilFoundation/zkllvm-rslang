@@ -283,6 +283,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             _ if field.is_zst() => OperandValue::ZeroSized,
 
             // Newtype of a scalar, scalar pair or vector.
+            // Also field and curve types.
             (OperandValue::Immediate(_) | OperandValue::Pair(..), _)
                 if field.size == self.layout.size =>
             {
@@ -338,8 +339,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             (OperandValue::Immediate(_), Abi::Uninhabited | Abi::Aggregate { sized: false }) => {
                 bug!()
             }
-            (OperandValue::Immediate(_), Abi::Curve(_) | Abi::Field(_)) => {
-                bug!()
+            (OperandValue::Immediate(llval), Abi::Curve(_) | Abi::Field(_)) => {
+                *llval = bx.to_immediate(*llval, field);
             }
             (OperandValue::Pair(..), _) => bug!(),
             (OperandValue::Ref(..), _) => bug!(),
