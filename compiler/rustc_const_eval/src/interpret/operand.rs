@@ -280,6 +280,8 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
                     match (self.layout.abi, layout.abi) {
                         (Abi::Scalar(..), Abi::Scalar(..)) => true,
                         (Abi::ScalarPair(..), Abi::ScalarPair(..)) => true,
+                        (Abi::Field(..), Abi::Field(..)) => true,
+                        (Abi::Curve(..), Abi::Curve(..)) => true,
                         _ => false,
                     },
                     "cannot project into {} immediate with equally-sized field {}\nouter ABI: {:#?}\nfield ABI: {:#?}",
