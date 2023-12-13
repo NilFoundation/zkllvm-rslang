@@ -185,6 +185,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
         (n_tps, 0, inputs, output, hir::Unsafety::Unsafe)
     } else if let Some(name) = name_str.strip_prefix("assigner_") {
         let (n_tps, inputs, output) = match name {
+            "exit_check" => (0, vec![tcx.types.bool], Ty::new_unit(tcx)),
             _ if let Some(curve_name) = name.strip_prefix("curve_init_") => {
                 let curve_type = match curve_name {
                     "bls12381" => tcx.types.__zkllvm_curve_bls12381,

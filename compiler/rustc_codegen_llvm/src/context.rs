@@ -914,6 +914,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.assume", fn(i1) -> void);
         ifn!("llvm.prefetch", fn(ptr, t_i32, t_i32, t_i32) -> void);
 
+        ifn!("llvm.assigner.exit.check", fn(i1) -> void);
         ifn!("llvm.assigner.curve.init.__zkllvm_curve_bls12381", fn(t_field_bls12381_base, t_field_bls12381_base) -> t_curve_bls12381);
         ifn!("llvm.assigner.curve.init.__zkllvm_curve_curve25519", fn(t_field_curve25519_base, t_field_curve25519_base) -> t_curve_curve25519);
         ifn!("llvm.assigner.curve.init.__zkllvm_curve_pallas", fn(t_field_pallas_base, t_field_pallas_base) -> t_curve_pallas);
