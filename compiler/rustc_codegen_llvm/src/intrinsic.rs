@@ -2165,6 +2165,7 @@ fn assigner_intrinsic<'ll, 'tcx>(
 ) -> &'ll Value {
     if let Some(truncated_name) = name.as_str().strip_prefix("assigner_") {
         match truncated_name {
+            "exit_check" => bx.call_intrinsic("llvm.assigner.exit.check", &[args[0].immediate()]),
             _ if truncated_name.starts_with("curve_init_") => {
                 let x = args[0].immediate();
                 let y = args[1].immediate();
