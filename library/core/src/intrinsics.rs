@@ -2493,6 +2493,14 @@ extern "rust-intrinsic" {
 
 #[cfg(not(bootstrap))]
 extern "rust-intrinsic" {
+    /// Fail proof in `value` is `true`.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_allowed_through_unstable_modules]
+    pub fn assigner_exit_check(value: bool);
+}
+
+#[cfg(not(bootstrap))]
+extern "rust-intrinsic" {
     /// Initialize Bls12381 element with two base field elements.
     pub fn assigner_curve_init_bls12381(
         x: __zkllvm_field_bls12381_base,
