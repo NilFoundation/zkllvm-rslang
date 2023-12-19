@@ -15,6 +15,18 @@ pub mod raw;
 // so just omit them with an empty module and add the "unstable" attribute.
 
 // Unix, linux, wasi and windows are handled a bit differently.
+#[cfg(not(bootstrap))]
+#[cfg(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx"),
+        target_arch = "assigner"
+    )
+))]
+#[unstable(issue = "none", feature = "std_internals")]
+pub mod unix {}
+#[cfg(bootstrap)]
 #[cfg(all(
     doc,
     any(
@@ -24,6 +36,18 @@ pub mod raw;
 ))]
 #[unstable(issue = "none", feature = "std_internals")]
 pub mod unix {}
+#[cfg(not(bootstrap))]
+#[cfg(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx"),
+        target_arch = "assigner"
+    )
+))]
+#[unstable(issue = "none", feature = "std_internals")]
+pub mod linux {}
+#[cfg(bootstrap)]
 #[cfg(all(
     doc,
     any(
@@ -33,6 +57,18 @@ pub mod unix {}
 ))]
 #[unstable(issue = "none", feature = "std_internals")]
 pub mod linux {}
+#[cfg(not(bootstrap))]
+#[cfg(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx"),
+        target_arch = "assigner"
+    )
+))]
+#[unstable(issue = "none", feature = "std_internals")]
+pub mod wasi {}
+#[cfg(bootstrap)]
 #[cfg(all(
     doc,
     any(
@@ -42,6 +78,18 @@ pub mod linux {}
 ))]
 #[unstable(issue = "none", feature = "std_internals")]
 pub mod wasi {}
+#[cfg(not(bootstrap))]
+#[cfg(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx"),
+        target_arch = "assigner"
+    )
+))]
+#[unstable(issue = "none", feature = "std_internals")]
+pub mod windows {}
+#[cfg(bootstrap)]
 #[cfg(all(
     doc,
     any(
@@ -53,6 +101,18 @@ pub mod wasi {}
 pub mod windows {}
 
 // unix
+#[cfg(not(bootstrap))]
+#[cfg(not(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx"),
+        target_arch = "assigner"
+    )
+)))]
+#[cfg(all(not(target_os = "hermit"), any(unix, doc)))]
+pub mod unix;
+#[cfg(bootstrap)]
 #[cfg(not(all(
     doc,
     any(
@@ -64,6 +124,18 @@ pub mod windows {}
 pub mod unix;
 
 // linux
+#[cfg(not(bootstrap))]
+#[cfg(not(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx"),
+        target_arch = "assigner"
+    )
+)))]
+#[cfg(any(target_os = "linux", doc))]
+pub mod linux;
+#[cfg(bootstrap)]
 #[cfg(not(all(
     doc,
     any(
@@ -75,6 +147,18 @@ pub mod unix;
 pub mod linux;
 
 // wasi
+#[cfg(not(bootstrap))]
+#[cfg(not(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx"),
+        target_arch = "assigner"
+    )
+)))]
+#[cfg(any(target_os = "wasi", doc))]
+pub mod wasi;
+#[cfg(bootstrap)]
 #[cfg(not(all(
     doc,
     any(
@@ -86,6 +170,18 @@ pub mod linux;
 pub mod wasi;
 
 // windows
+#[cfg(not(bootstrap))]
+#[cfg(not(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx"),
+        target_arch = "assigner"
+    )
+)))]
+#[cfg(any(windows, doc))]
+pub mod windows;
+#[cfg(bootstrap)]
 #[cfg(not(all(
     doc,
     any(
