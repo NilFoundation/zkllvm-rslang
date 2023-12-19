@@ -55,6 +55,7 @@ use crate::creader::CStore;
 use crate::errors::{
     BadPanicStrategy, CrateDepMultiple, IncompatiblePanicInDropStrategy, LibRequired,
     RequiredPanicStrategy, RlibRequired, RustcLibRequired, TwoPanicRuntimes,
+    RmetaRequired,
 };
 
 use rustc_data_structures::fx::FxHashMap;
@@ -81,6 +82,31 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
 
     if !sess.opts.output_types.should_codegen() {
         return Vec::new();
+    }
+
+    // We can have only static linkage for assigner target.
+    if tcx.sess.target.is_like_assigner {
+        // All crates have to be available as rmeta,
+        // since rmeta is the only option for assigner target.
+        let mut ret = Vec::new();
+        for &cnum in tcx.crates(()).iter() {
+            if tcx.dep_kind(cnum).macros_only() {
+                ret.push(Linkage::NotLinked);
+                continue;
+            }
+            let src = tcx.used_crate_source(cnum);
+            if src.rmeta.is_some() {
+                // FIXME: (aleasims) here will be the check for circuit presence.
+                let linkage = match ty {
+                    CrateType::Executable => Linkage::Static,
+                    _ => Linkage::NotLinked,
+                };
+                ret.push(linkage);
+                continue;
+            }
+            sess.emit_err(RmetaRequired { crate_name: tcx.crate_name(cnum) });
+        }
+        return ret;
     }
 
     let preferred_linkage = match ty {

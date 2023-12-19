@@ -75,6 +75,8 @@ fn push_debuginfo_type_name<'tcx>(
         }
         ty::Int(int_ty) => output.push_str(int_ty.name_str()),
         ty::Uint(uint_ty) => output.push_str(uint_ty.name_str()),
+        ty::Field(field_ty) => output.push_str(field_ty.name_str()),
+        ty::Curve(curve_ty) => output.push_str(curve_ty.name_str()),
         ty::Float(float_ty) => output.push_str(float_ty.name_str()),
         ty::Foreign(def_id) => push_item_name(tcx, def_id, qualified, output),
         ty::Adt(def, args) => {

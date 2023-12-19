@@ -118,6 +118,13 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             ConstValue::ByRef { alloc, offset } => {
                 return Self::from_const_alloc(bx, layout, alloc, offset);
             }
+            ConstValue::Field(f) => {
+                let Abi::Field(field) = layout.abi else {
+                    bug!("from_const: invalid ByVal layout: {:#?}", layout);
+                };
+                let llval = bx.field_to_backend(f, field, bx.immediate_backend_type(layout));
+                OperandValue::Immediate(llval)
+            }
         };
 
         OperandRef { val, layout }
@@ -276,6 +283,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             _ if field.is_zst() => OperandValue::ZeroSized,
 
             // Newtype of a scalar, scalar pair or vector.
+            // Also field and curve types.
             (OperandValue::Immediate(_) | OperandValue::Pair(..), _)
                 if field.size == self.layout.size =>
             {
@@ -330,6 +338,9 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             }
             (OperandValue::Immediate(_), Abi::Uninhabited | Abi::Aggregate { sized: false }) => {
                 bug!()
+            }
+            (OperandValue::Immediate(llval), Abi::Curve(_) | Abi::Field(_)) => {
+                *llval = bx.to_immediate(*llval, field);
             }
             (OperandValue::Pair(..), _) => bug!(),
             (OperandValue::Ref(..), _) => bug!(),

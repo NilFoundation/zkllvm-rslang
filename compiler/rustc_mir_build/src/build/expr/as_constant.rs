@@ -1,6 +1,6 @@
 //! See docs in build/expr/mod.rs
 
-use crate::build::{parse_float_into_constval, Builder};
+use crate::build::{parse_float_into_constval, parse_field_into_constval, Builder};
 use rustc_ast as ast;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{
@@ -163,6 +163,13 @@ fn lit_to_mir_constant<'tcx>(
                 LitToConstError::Reported(tcx.sess.delay_span_bug(
                     DUMMY_SP,
                     format!("couldn't parse float literal: {:?}", lit_input.lit),
+                ))
+            })?,
+        (ast::LitKind::Field(n), ty::Field(fty)) => parse_field_into_constval(*n, *fty, neg)
+            .ok_or_else(|| {
+                LitToConstError::Reported(tcx.sess.delay_span_bug(
+                    DUMMY_SP,
+                    format!("couldn't parse field literal: {:?}", lit_input.lit),
                 ))
             })?,
         (ast::LitKind::Bool(b), ty::Bool) => ConstValue::Scalar(Scalar::from_bool(*b)),

@@ -1826,8 +1826,10 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().string() => Some(2),
                 ty::Int(..)
                 | ty::Uint(..)
+                | ty::Field(..)
+                | ty::Curve(..)
                 | ty::Float(..)
-                | ty::Infer(ty::IntVar(..) | ty::FloatVar(..)) => Some(4),
+                | ty::Infer(ty::IntVar(..) | ty::FloatVar(..) | ty::FieldVar(..)) => Some(4),
                 ty::Ref(..) | ty::RawPtr(..) => Some(5),
                 ty::Array(..) | ty::Slice(..) => Some(6),
                 ty::FnDef(..) | ty::FnPtr(..) => Some(7),
@@ -3508,7 +3510,7 @@ impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for HasNumericInferVisitor {
     type BreakTy = ();
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if matches!(ty.kind(), ty::Infer(ty::FloatVar(_) | ty::IntVar(_))) {
+        if matches!(ty.kind(), ty::Infer(ty::FloatVar(_) | ty::IntVar(_) | ty::FieldVar(_))) {
             ControlFlow::Break(())
         } else {
             ControlFlow::Continue(())

@@ -414,6 +414,8 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
                 StackPopCleanup::Root { cleanup: true },
             )?;
         }
+        // TODO: (aleasims)
+        EntryFnType::Circuit => todo!("support circuit entry points in miri"),
     }
 
     Ok(ecx)

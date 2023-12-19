@@ -31,15 +31,18 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriInterpCx<'mir, 'tcx> {
                 let size = self.pointer_size();
                 // Just compare the bits. ScalarPairs are compared lexicographically.
                 // We thus always compare pairs and simply fill scalars up with 0.
+                // TODO: (aleasims) handle field type
                 let left = match **left {
                     Immediate::Scalar(l) => (l.to_bits(size)?, 0),
                     Immediate::ScalarPair(l1, l2) => (l1.to_bits(size)?, l2.to_bits(size)?),
                     Immediate::Uninit => panic!("we should never see uninit data here"),
+                    Immediate::Field(_) => todo!("support field immediates in miri"),
                 };
                 let right = match **right {
                     Immediate::Scalar(r) => (r.to_bits(size)?, 0),
                     Immediate::ScalarPair(r1, r2) => (r1.to_bits(size)?, r2.to_bits(size)?),
                     Immediate::Uninit => panic!("we should never see uninit data here"),
+                    Immediate::Field(_) => todo!("support field immediates in miri"),
                 };
                 let res = match bin_op {
                     Eq => left == right,

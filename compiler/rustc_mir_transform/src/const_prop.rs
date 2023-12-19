@@ -413,6 +413,16 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     fn check_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Option<()> {
+        if rvalue
+            .ty(&self.ecx.frame().body.local_decls, *self.ecx.tcx)
+            .is_curve()
+        {
+            // disable const prop for curve types for now
+            // this is a hotfix for https://github.com/NilFoundation/zkllvm-rslang/issues/61
+            // FIXME: (aleasims) how const evaluation should work for curves?
+            // https://github.com/NilFoundation/zkllvm-rslang/issues/62
+            return None;
+        }
         // Perform any special handling for specific Rvalue types.
         // Generally, checks here fall into one of two categories:
         //   1. Additional checking to provide useful lints to the user

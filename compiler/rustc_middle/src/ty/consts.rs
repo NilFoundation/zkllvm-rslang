@@ -8,10 +8,12 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_macros::HashStable;
 
+mod field;
 mod int;
 mod kind;
 mod valtree;
 
+pub use field::*;
 pub use int::*;
 pub use kind::*;
 use rustc_span::ErrorGuaranteed;

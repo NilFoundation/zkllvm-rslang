@@ -566,6 +566,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // Int, bool, and char operations are fine.
                 } else if ty.is_floating_point() {
                     self.check_op(ops::FloatingPointOp);
+                } else if is_field_or_curve(ty) {
+                    // Field and curve operations are fine.
                 } else {
                     span_bug!(self.span, "non-primitive type in `Rvalue::UnaryOp`: {:?}", ty);
                 }
@@ -578,6 +580,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 if is_int_bool_or_char(lhs_ty) && is_int_bool_or_char(rhs_ty) {
                     // Int, bool, and char operations are fine.
+                } else if is_field_or_curve(lhs_ty) && is_field_or_curve(rhs_ty) {
+                    // Field and curve operations are fine too.
                 } else if lhs_ty.is_fn_ptr() || lhs_ty.is_unsafe_ptr() {
                     assert_eq!(lhs_ty, rhs_ty);
                     assert!(
@@ -1084,6 +1088,10 @@ fn place_as_reborrow<'tcx>(
 
 fn is_int_bool_or_char(ty: Ty<'_>) -> bool {
     ty.is_bool() || ty.is_integral() || ty.is_char()
+}
+
+fn is_field_or_curve(ty: Ty<'_>) -> bool {
+    ty.is_field() || ty.is_curve()
 }
 
 fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol) {

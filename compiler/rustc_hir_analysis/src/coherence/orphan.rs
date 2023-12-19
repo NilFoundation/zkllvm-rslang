@@ -232,6 +232,8 @@ fn do_orphan_check_impl<'tcx>(
             | ty::Int(..)
             | ty::Uint(..)
             | ty::Float(..)
+            | ty::Field(..)
+            | ty::Curve(..)
             | ty::Str
             | ty::Array(..)
             | ty::Slice(..)

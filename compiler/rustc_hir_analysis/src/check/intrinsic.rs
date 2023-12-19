@@ -183,6 +183,129 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             }
         };
         (n_tps, 0, inputs, output, hir::Unsafety::Unsafe)
+    } else if let Some(name) = name_str.strip_prefix("assigner_") {
+        let (n_tps, inputs, output) = match name {
+            "exit_check" => (0, vec![tcx.types.bool], Ty::new_unit(tcx)),
+            _ if let Some(curve_name) = name.strip_prefix("curve_init_") => {
+                let curve_type = match curve_name {
+                    "bls12381" => tcx.types.__zkllvm_curve_bls12381,
+                    "curve25519" => tcx.types.__zkllvm_curve_curve25519,
+                    "pallas" => tcx.types.__zkllvm_curve_pallas,
+                    "vesta" => tcx.types.__zkllvm_curve_vesta,
+                    _ => {
+                        tcx.sess.emit_err(UnrecognizedIntrinsicFunction {
+                            span: it.span,
+                            name: intrinsic_name,
+                        });
+                        return;
+                    }
+                };
+                let base_type = curve_type.curve_base_field(tcx);
+                (0, vec![base_type, base_type], curve_type)
+            }
+            "sha2_256" => (
+                0,
+                vec![
+                    tcx.types.__zkllvm_field_pallas_base,
+                    tcx.types.__zkllvm_field_pallas_base,
+                    tcx.types.__zkllvm_field_pallas_base,
+                    tcx.types.__zkllvm_field_pallas_base,
+                ],
+                Ty::new_array(tcx, tcx.types.__zkllvm_field_pallas_base, 2),
+            ),
+            "sha2_512" => (
+                0,
+                vec![
+                    tcx.types.__zkllvm_curve_curve25519,
+                    tcx.types.__zkllvm_curve_curve25519,
+                    tcx.types.__zkllvm_field_pallas_base,
+                    tcx.types.__zkllvm_field_pallas_base,
+                    tcx.types.__zkllvm_field_pallas_base,
+                    tcx.types.__zkllvm_field_pallas_base,
+                ],
+                tcx.types.__zkllvm_field_curve25519_scalar,
+            ),
+            "sha2_256_bls12381" => (
+                0,
+                vec![
+                    tcx.types.__zkllvm_field_bls12381_base,
+                ],
+                tcx.types.__zkllvm_field_bls12381_base,
+            ),
+            "bls12_optimal_ate_pairing" => (
+                0,
+                vec![
+                    tcx.types.__zkllvm_curve_bls12381,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                ],
+                Ty::new_array(tcx, tcx.types.__zkllvm_field_bls12381_base, 12),
+            ),
+            "hash_to_curve" => (
+                0,
+                vec![
+                    tcx.types.__zkllvm_field_bls12381_base,
+                ],
+                tcx.types.__zkllvm_curve_bls12381,
+            ),
+            "is_in_g1_check" => (
+                0,
+                vec![
+                    tcx.types.__zkllvm_curve_bls12381,
+                ],
+                tcx.types.bool,
+            ),
+            "is_in_g2_check" => (
+                0,
+                vec![
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                ],
+                tcx.types.bool,
+            ),
+            "gt_multiplication" => (
+                0,
+                vec![
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                    tcx.types.__zkllvm_field_bls12381_base,
+                ],
+                Ty::new_array(tcx, tcx.types.__zkllvm_field_bls12381_base, 12),
+            ),
+            _ => {
+                tcx.sess.emit_err(UnrecognizedIntrinsicFunction {
+                    span: it.span,
+                    name: intrinsic_name,
+                });
+                return;
+            }
+        };
+        (n_tps, 0, inputs, output, hir::Unsafety::Unsafe)
     } else {
         let unsafety = intrinsic_operation_unsafety(tcx, intrinsic_id);
         let (n_tps, inputs, output) = match intrinsic_name {

@@ -222,6 +222,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     cast_ty
                 ),
                 Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
+                Immediate::Field(_) => todo!(),
             };
         }
     }

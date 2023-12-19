@@ -454,6 +454,7 @@ TrivialTypeTraversalAndLiftImpls! {
     ::rustc_target::abi::VariantIdx,
     crate::middle::region::Scope,
     crate::ty::FloatTy,
+    crate::ty::FieldTy,
     ::rustc_ast::InlineAsmOptions,
     ::rustc_ast::InlineAsmTemplatePiece,
     ::rustc_ast::NodeId,
@@ -492,6 +493,7 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::FreeRegion,
     crate::ty::InferTy,
     crate::ty::IntVarValue,
+    crate::ty::FieldVarValue,
     crate::ty::ParamConst,
     crate::ty::ParamTy,
     crate::ty::adjustment::PointerCoercion,
@@ -502,6 +504,7 @@ TrivialTypeTraversalAndLiftImpls! {
     ::rustc_span::symbol::Ident,
     ::rustc_errors::ErrorGuaranteed,
     interpret::Scalar,
+    interpret::ScalarField,
     rustc_target::abi::Size,
     ty::BoundVar,
 }
@@ -717,6 +720,8 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Str
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::Error(_)
             | ty::Infer(_)
@@ -766,6 +771,8 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Str
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::Error(_)
             | ty::Infer(_)

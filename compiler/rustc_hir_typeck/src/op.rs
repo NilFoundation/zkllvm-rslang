@@ -1119,6 +1119,7 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool 
                 || rhs.references_error()
                 || lhs.is_integral() && rhs.is_integral()
                 || lhs.is_floating_point() && rhs.is_floating_point()
+                || lhs.is_field() && rhs.is_field()
         }
 
         BinOpCategory::Bitwise => {

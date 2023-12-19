@@ -107,6 +107,7 @@ const LLVM_TOOLS: &[&str] = &[
     "llvm-dis",      // used to disassemble LLVM bitcode
     "llc",           // used to compile LLVM bytecode
     "opt",           // used to optimize LLVM bytecode
+    "llvm-link",     // used to link LLVM IR files
 ];
 
 /// LLD file names for all flavors.

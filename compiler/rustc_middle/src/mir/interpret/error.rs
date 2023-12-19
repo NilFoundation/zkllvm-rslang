@@ -364,6 +364,7 @@ pub enum ExpectedKind {
     FnPtr,
     EnumTag,
     Str,
+    Field,
 }
 
 impl From<PointerKind> for ExpectedKind {

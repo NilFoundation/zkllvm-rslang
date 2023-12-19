@@ -125,6 +125,9 @@ use std::io::{Read, Write};
 use std::num::{NonZeroU32, NonZeroU64};
 use std::sync::atomic::{AtomicU32, Ordering};
 
+use crypto_bigint::Encoding;
+use crypto_bigint::U384;
+
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
@@ -149,7 +152,7 @@ pub use self::error::{
     UnsupportedOpInfo, ValidationErrorInfo, ValidationErrorKind,
 };
 
-pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar};
+pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar, ScalarField};
 
 pub use self::allocation::{
     alloc_range, AllocBytes, AllocError, AllocRange, AllocResult, Allocation, ConstAllocation,
@@ -668,5 +671,36 @@ pub fn read_target_uint(endianness: Endian, mut source: &[u8]) -> Result<u128, i
         }
     };
     debug_assert!(source.len() == 0); // We should have consumed the source buffer.
+    uint
+}
+
+#[inline]
+pub fn write_target_field(
+    endianness: Endian,
+    mut target: &mut [u8],
+    data: U384,
+) -> Result<(), io::Error> {
+    match endianness {
+        Endian::Little => target.write(&data.to_le_bytes())?,
+        Endian::Big => target.write(&data.to_be_bytes()[16 - target.len()..])?,
+    };
+    debug_assert!(target.len() == 0);
+    Ok(())
+}
+
+#[inline]
+pub fn read_target_field(endianness: Endian, mut source: &[u8]) -> Result<U384, io::Error> {
+    let mut buf = [0u8; 48];
+    let uint = match endianness {
+        Endian::Little => {
+            source.read(&mut buf)?;
+            Ok(U384::from_le_bytes(buf))
+        }
+        Endian::Big => {
+            source.read(&mut buf[16 - source.len()..])?;
+            Ok(U384::from_be_bytes(buf))
+        }
+    };
+    debug_assert!(source.len() == 0);
     uint
 }

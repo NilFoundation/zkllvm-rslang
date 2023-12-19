@@ -341,7 +341,9 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_BUILTINS) {
         to_add.push(llvm::CreateAttrString(cx.llcx, "no-builtins"));
     }
-
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::CIRCUIT) {
+        to_add.push(AttributeKind::Circuit.create_attr(cx.llcx));
+    }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
         to_add.push(AttributeKind::Cold.create_attr(cx.llcx));
     }

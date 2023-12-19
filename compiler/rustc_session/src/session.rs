@@ -1438,6 +1438,12 @@ pub fn build_session(
     let asm_arch =
         if target_cfg.allow_asm { InlineAsmArch::from_str(&target_cfg.arch).ok() } else { None };
 
+    let sopts = if target_cfg.options.is_like_assigner {
+        options_for_assigner(handler, sopts)
+    } else {
+        sopts
+    };
+
     let sess = Session {
         target: target_cfg,
         host,
@@ -1739,4 +1745,29 @@ fn mk_emitter(output: ErrorOutputType) -> Box<dyn Emitter + sync::Send + 'static
         )),
     };
     emitter
+}
+
+/// Patch session options for assigner target.
+fn options_for_assigner(
+    handler: &EarlyErrorHandler,
+    mut sopts: config::Options,
+) -> config::Options {
+    let mut output_types = Vec::new();
+    for (output_type, path) in sopts.output_types.keys().zip(sopts.output_types.values()) {
+        if output_type.is_compatible_with_assigner_target() {
+            output_types.push((*output_type, path.clone()));
+        } else {
+            handler.early_warn(
+                format!(
+                    "dropping unsupported emit kind `{}` for target `{}`",
+                    output_type.shorthand(),
+                    sopts.target_triple,
+                ),
+            );
+        }
+    }
+    sopts.output_types = config::OutputTypes::new(&output_types);
+
+    sopts.unstable_opts.link_native_libraries = false;
+    sopts
 }

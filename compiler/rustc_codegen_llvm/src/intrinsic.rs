@@ -300,7 +300,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let tp_ty = fn_args.type_at(0);
                 let layout = self.layout_of(tp_ty).layout;
                 let use_integer_compare = match layout.abi() {
-                    Scalar(_) | ScalarPair(_, _) => true,
+                    Scalar(_) | ScalarPair(_, _) | Field(_) | Curve(_) => true,
                     Uninhabited | Vector { .. } => false,
                     Aggregate { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
@@ -380,6 +380,10 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     Ok(llval) => llval,
                     Err(()) => return,
                 }
+            }
+
+            _ if name.as_str().starts_with("assigner_") => {
+                assigner_intrinsic(self, name, args, ret_ty)
             }
 
             _ => bug!("unknown intrinsic '{}' -- should it have been lowered earlier?", name),
@@ -2114,5 +2118,124 @@ fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, boo
             Some((t.bit_width().unwrap_or(u64::from(cx.tcx.sess.target.pointer_width)), false))
         }
         _ => None,
+    }
+}
+
+/// Pack all LLVM values from `inputs` into `<N x T>`.
+fn pack_vector<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    type_: &'ll Type,
+    inputs: &[OperandRef<'tcx, &'ll Value>],
+) -> &'ll Value {
+    let mut vector_init = Vec::new();
+    for _ in 0..inputs.len() {
+        vector_init.push(bx.const_undef(type_));
+    }
+    let mut vector = bx.const_vector(&vector_init);
+    for (idx, input) in inputs.iter().enumerate() {
+        vector = bx.insert_element(vector, input.immediate(), bx.const_i32(idx as i32));
+    }
+    vector
+}
+
+/// Convert LLVM value `<N x T>` into `[N x T]`.
+fn unpack_vector_into_array<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    type_: &'ll Type,
+    input: &'ll Value,
+    n: i32,
+) -> &'ll Value {
+    let mut array_init = Vec::new();
+    for _ in 0..n {
+        array_init.push(bx.const_undef(type_));
+    }
+    let mut array = bx.const_array(type_, &array_init);
+    for i in 0..n {
+        let ret_i = bx.extract_element(input, bx.const_i32(i));
+        array = bx.insert_value(array, ret_i, i as u64);
+    }
+    array
+}
+
+fn assigner_intrinsic<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    name: Symbol,
+    args: &[OperandRef<'tcx, &'ll Value>],
+    ret_ty: Ty<'tcx>,
+) -> &'ll Value {
+    if let Some(truncated_name) = name.as_str().strip_prefix("assigner_") {
+        match truncated_name {
+            "exit_check" => bx.call_intrinsic("llvm.assigner.exit.check", &[args[0].immediate()]),
+            _ if truncated_name.starts_with("curve_init_") => {
+                let x = args[0].immediate();
+                let y = args[1].immediate();
+                let intr_name = format!("llvm.assigner.curve.init.{}", ret_ty);
+                bx.call_intrinsic(&intr_name, &[x, y])
+            },
+            "sha2_256" => {
+                let type_ = bx.type_field_pallas_base();
+                let x = pack_vector(bx, type_, &args[..2]);
+                let y = pack_vector(bx, type_, &args[2..]);
+                let ret_vector = bx.call_intrinsic(
+                    "llvm.assigner.sha2.256.v2__zkllvm_field_pallas_base",
+                    &[x, y],
+                );
+                unpack_vector_into_array(bx, type_, ret_vector, 2)
+            },
+            "sha2_512" => {
+                let type_ = bx.type_field_pallas_base();
+                let x = args[0].immediate();
+                let y = args[1].immediate();
+                let z = pack_vector(bx, type_, &args[2..6]);
+                bx.call_intrinsic(
+                    "llvm.assigner.sha2.512.__zkllvm_field_curve25519_scalar.__zkllvm_curve_curve25519.v4__zkllvm_field_pallas_base",
+                    &[x, y, z],
+                )
+            },
+            "sha2_256_bls12381" => bx.call_intrinsic(
+                "llvm.assigner.sha2.256.bls12381.__zkllvm_field_bls12381_base",
+                &[args[0].immediate()],
+            ),
+            "bls12_optimal_ate_pairing" => {
+                let type_ = bx.type_field_pallas_base();
+                let x = args[0].immediate();
+                let y = pack_vector(bx, type_, &args[1..5]);
+
+                let ret_vector = bx.call_intrinsic(
+                    "llvm.assigner.optimal.ate.pairing.v12__zkllvm_field_bls12381_base.__zkllvm_curve_bls12381.v4__zkllvm_field_bls12381_base",
+                    &[x, y],
+                );
+                unpack_vector_into_array(bx, type_, ret_vector, 12)
+            },
+            "hash_to_curve" => bx.call_intrinsic(
+                "llvm.assigner.hash.to.curve.__zkllvm_curve_bls12381.__zkllvm_field_bls12381_base",
+                &[args[0].immediate()],
+            ),
+            "is_in_g1_check" => bx.call_intrinsic(
+                "llvm.assigner.is.in.g1.check.__zkllvm_curve_bls12381",
+                &[args[0].immediate()],
+            ),
+            "is_in_g2_check" => {
+                let type_ = bx.type_field_bls12381_base();
+                let x = pack_vector(bx, type_, &args[0..4]);
+                bx.call_intrinsic(
+                    "llvm.assigner.is.in.g2.check.v4__zkllvm_field_bls12381_base",
+                    &[x],
+                )
+            },
+            "gt_multiplication" => {
+                let type_ = bx.type_field_bls12381_base();
+                let x = pack_vector(bx, type_, &args[0..12]);
+                let y = pack_vector(bx, type_, &args[12..24]);
+                let ret_vector = bx.call_intrinsic(
+                    "llvm.assigner.gt.multiplication.v12__zkllvm_field_bls12381_base",
+                    &[x, y],
+                );
+                unpack_vector_into_array(bx, type_, ret_vector, 12)
+            },
+            _ => bug!("unknown assigner intrinsic name: '{}'", name),
+        }
+    } else {
+        bug!("unknown assigner intrinsic name: '{}'", name)
     }
 }

@@ -598,6 +598,7 @@ fn produce_final_output_artifacts(
                 // them for making an rlib.
                 copy_if_one_unit(OutputType::Bitcode, true);
             }
+            OutputType::LlvmAssembly if sess.target.is_like_assigner => {}
             OutputType::LlvmAssembly => {
                 copy_if_one_unit(OutputType::LlvmAssembly, false);
             }
@@ -923,6 +924,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
         object,
         dwarf_object,
         bytecode: None,
+        llvm_ir: None,
     })
 }
 

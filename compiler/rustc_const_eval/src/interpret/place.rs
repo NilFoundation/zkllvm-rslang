@@ -427,6 +427,7 @@ where
             val.layout.ty.builtin_deref(true).expect("`ref_to_mplace` called on non-ptr type").ty;
         let layout = self.layout_of(pointee_type)?;
         let (ptr, meta) = match **val {
+            Immediate::Field(_) => todo!(),
             Immediate::Scalar(ptr) => (ptr, MemPlaceMeta::None),
             Immediate::ScalarPair(ptr, meta) => (ptr, MemPlaceMeta::Meta(meta)),
             Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
@@ -651,6 +652,9 @@ where
                                         assert_eq!(a_val.size(), a.size(self));
                                         assert_eq!(b_val.size(), b.size(self));
                                     }
+                                    (Immediate::Field(field), Abi::Field(f)) => {
+                                        assert_eq!(field.size(), f.size())
+                                    }
                                     (Immediate::Uninit, _) => {}
                                     (src, abi) => {
                                         bug!(
@@ -700,6 +704,16 @@ where
         };
 
         match value {
+            Immediate::Field(sf) => {
+                let Abi::Field(f) = layout.abi else { span_bug!(
+                        self.cur_span(),
+                        "write_immediate_to_mplace: invalid Field layout: {layout:#?}",
+                    )
+                };
+                let size = f.size();
+                assert_eq!(size, layout.size, "abi::Field size does not match layout size");
+                alloc.write_field(alloc_range(Size::ZERO, size), sf)
+            }
             Immediate::Scalar(scalar) => {
                 let Abi::Scalar(s) = layout.abi else {
                     span_bug!(

@@ -156,6 +156,46 @@ impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         self.isize_ty
     }
 
+    fn type_field_bls12381_base(&self) -> Self::Type {
+        unsafe { llvm::LLVMGaloisFieldBLS12381baseTypeInContext(self.llcx) }
+    }
+
+    fn type_field_bls12381_scalar(&self) -> Self::Type {
+        unsafe { llvm::LLVMGaloisFieldBLS12381scalarTypeInContext(self.llcx) }
+    }
+
+    fn type_field_curve25519_base(&self) -> Self::Type {
+        unsafe { llvm::LLVMGaloisFieldCurve25519baseTypeInContext(self.llcx) }
+    }
+
+    fn type_field_curve25519_scalar(&self) -> Self::Type {
+        unsafe { llvm::LLVMGaloisFieldCurve25519scalarTypeInContext(self.llcx) }
+    }
+
+    fn type_field_pallas_base(&self) -> Self::Type {
+        unsafe { llvm::LLVMGaloisFieldPallasbaseTypeInContext(self.llcx) }
+    }
+
+    fn type_field_pallas_scalar(&self) -> Self::Type {
+        unsafe { llvm::LLVMGaloisFieldPallasscalarTypeInContext(self.llcx) }
+    }
+
+    fn type_curve_bls12381(&self) -> Self::Type {
+        unsafe { llvm::LLVMEllipticCurveBLS12381TypeInContext(self.llcx) }
+    }
+
+    fn type_curve_curve25519(&self) -> Self::Type {
+        unsafe { llvm::LLVMEllipticCurveCurve25519TypeInContext(self.llcx) }
+    }
+
+    fn type_curve_pallas(&self) -> Self::Type {
+        unsafe { llvm::LLVMEllipticCurvePallasTypeInContext(self.llcx) }
+    }
+
+    fn type_curve_vesta(&self) -> Self::Type {
+        unsafe { llvm::LLVMEllipticCurveVestaTypeInContext(self.llcx) }
+    }
+
     fn type_f32(&self) -> &'ll Type {
         unsafe { llvm::LLVMFloatTypeInContext(self.llcx) }
     }

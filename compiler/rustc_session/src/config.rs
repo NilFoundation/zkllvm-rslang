@@ -515,6 +515,19 @@ impl OutputType {
             }
         }
     }
+
+    pub fn is_compatible_with_assigner_target(&self) -> bool {
+        match &self {
+            OutputType::Bitcode
+            | OutputType::LlvmAssembly
+            | OutputType::DepInfo
+            | OutputType::Mir
+            | OutputType::Metadata => true,
+            OutputType::Assembly
+            | OutputType::Exe
+            | OutputType::Object => false,
+        }
+    }
 }
 
 /// The type of diagnostics output to generate.
@@ -1119,6 +1132,7 @@ pub enum EntryFnType {
         sigpipe: u8,
     },
     Start,
+    Circuit,
 }
 
 #[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, Decodable)]

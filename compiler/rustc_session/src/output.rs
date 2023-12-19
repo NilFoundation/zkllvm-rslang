@@ -152,7 +152,8 @@ pub fn filename_for_input(
 
     match crate_type {
         CrateType::Rlib => {
-            OutFileName::Real(outputs.out_directory.join(&format!("lib{libname}.rlib")))
+            let suffix = if sess.target.is_like_assigner { ".ll" } else { ".rlib" };
+            OutFileName::Real(outputs.out_directory.join(&format!("lib{libname}{suffix}")))
         }
         CrateType::Cdylib | CrateType::ProcMacro | CrateType::Dylib => {
             let (prefix, suffix) = (&sess.target.dll_prefix, &sess.target.dll_suffix);

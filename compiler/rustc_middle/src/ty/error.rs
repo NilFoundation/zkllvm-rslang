@@ -51,6 +51,7 @@ pub enum TypeError<'tcx> {
     ArgumentSorts(ExpectedFound<Ty<'tcx>>, usize),
     IntMismatch(ExpectedFound<ty::IntVarValue>),
     FloatMismatch(ExpectedFound<ty::FloatTy>),
+    FieldMismatch(ExpectedFound<ty::FieldTy>),
     Traits(ExpectedFound<DefId>),
     VariadicMismatch(ExpectedFound<bool>),
 
@@ -172,6 +173,12 @@ impl<'tcx> TypeError<'tcx> {
                 values.found.name_str()
             )
             .into(),
+            FieldMismatch(ref values) => format!(
+                "expected `{}`, found `{}`",
+                values.expected.name_str(),
+                values.found.name_str()
+            )
+            .into(),
             VariadicMismatch(ref values) => format!(
                 "expected {} fn, found {} function",
                 if values.expected { "variadic" } else { "non-variadic" },
@@ -207,7 +214,7 @@ impl<'tcx> TypeError<'tcx> {
             CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | ConstnessMismatch(_)
             | PolarityMismatch(_) | Mismatch | AbiMismatch(_) | FixedArraySize(_)
             | ArgumentSorts(..) | Sorts(_) | IntMismatch(_) | FloatMismatch(_)
-            | VariadicMismatch(_) | TargetFeatureCast(_) => false,
+            | FieldMismatch(_) | VariadicMismatch(_) | TargetFeatureCast(_) => false,
 
             Mutability
             | ArgumentMutability(_)
@@ -229,6 +236,7 @@ impl<'tcx> TypeError<'tcx> {
 impl<'tcx> Ty<'tcx> {
     pub fn sort_string(self, tcx: TyCtxt<'tcx>) -> Cow<'static, str> {
         match *self.kind() {
+            ty::Field(_) | ty::Curve(_) => format!("`{}`", self).into(),
             ty::Foreign(def_id) => format!("extern type `{}`", tcx.def_path_str(def_id)).into(),
             ty::FnDef(def_id, ..) => match tcx.def_kind(def_id) {
                 DefKind::Ctor(CtorOf::Struct, _) => "struct constructor".into(),
@@ -247,11 +255,13 @@ impl<'tcx> Ty<'tcx> {
             ty::Infer(ty::TyVar(_)) => "inferred type".into(),
             ty::Infer(ty::IntVar(_)) => "integer".into(),
             ty::Infer(ty::FloatVar(_)) => "floating-point number".into(),
+            ty::Infer(ty::FieldVar(_)) => "field".into(),
             ty::Placeholder(..) => "placeholder type".into(),
             ty::Bound(..) => "bound type".into(),
             ty::Infer(ty::FreshTy(_)) => "fresh type".into(),
             ty::Infer(ty::FreshIntTy(_)) => "fresh integral type".into(),
             ty::Infer(ty::FreshFloatTy(_)) => "fresh floating-point type".into(),
+            ty::Infer(ty::FreshFieldTy(_)) => "fresh field type".into(),
             ty::Alias(ty::Projection | ty::Inherent, _) => "associated type".into(),
             ty::Param(p) => format!("type parameter `{p}`").into(),
             ty::Alias(ty::Opaque, ..) => if tcx.ty_is_opaque_future(self) { "future".into() } else { "opaque type".into() },
@@ -272,6 +282,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Char
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::Str
             | ty::Never => "type".into(),

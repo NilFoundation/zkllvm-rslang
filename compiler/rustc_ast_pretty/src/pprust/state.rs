@@ -226,6 +226,7 @@ pub fn literal_to_string(lit: token::Lit) -> String {
             format!("cr{delim}\"{symbol}\"{delim}", delim = "#".repeat(n as usize))
         }
         token::Integer | token::Float | token::Bool | token::Err => symbol.to_string(),
+        token::Field => symbol.to_string(),
     };
 
     if let Some(suffix) = suffix {

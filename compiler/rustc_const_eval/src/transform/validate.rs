@@ -806,7 +806,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 use BinOp::*;
                 let a = vals.0.ty(&self.body.local_decls, self.tcx);
                 let b = vals.1.ty(&self.body.local_decls, self.tcx);
-                if crate::util::binop_right_homogeneous(*op) {
+                let mut right_homogeneous = crate::util::binop_right_homogeneous(*op);
+                let is_algebraic = a.is_field() || b.is_field() || a.is_curve() || b.is_curve();
+                if is_algebraic && matches!(op, Mul | Div) {
+                    // mul and div are not homogeneous operations for algebraic types
+                    right_homogeneous = false;
+                }
+                if right_homogeneous {
                     if let Eq | Lt | Le | Ne | Ge | Gt = op {
                         // The function pointer types can have lifetimes
                         if !self.mir_assign_valid_types(a, b) {
@@ -832,7 +838,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             self.fail(location, format!("Cannot offset by non-isize type {b:?}"));
                         }
                     }
-                    Eq | Lt | Le | Ne | Ge | Gt => {
+                    Lt | Le | Ge | Gt  => {
                         for x in [a, b] {
                             check_kinds!(
                                 x,
@@ -841,6 +847,24 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                     | ty::Char
                                     | ty::Int(..)
                                     | ty::Uint(..)
+                                    | ty::Float(..)
+                                    | ty::Field(..)
+                                    | ty::RawPtr(..)
+                                    | ty::FnPtr(..)
+                            )
+                        }
+                    }
+                    Eq | Ne  => {
+                        for x in [a, b] {
+                            check_kinds!(
+                                x,
+                                "Cannot {op:?} compare type {:?}",
+                                ty::Bool
+                                    | ty::Char
+                                    | ty::Int(..)
+                                    | ty::Uint(..)
+                                    | ty::Field(..)
+                                    | ty::Curve(..)
                                     | ty::Float(..)
                                     | ty::RawPtr(..)
                                     | ty::FnPtr(..)
@@ -866,12 +890,55 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             )
                         }
                     }
-                    Add | Sub | Mul | Div | Rem => {
+                    Add | Sub => {
+                        for x in [a, b] {
+                            check_kinds!(
+                                x,
+                                "Cannot perform arithmetic on type {:?}",
+                                ty::Uint(..) | ty::Int(..) | ty::Float(..) | ty::Field(..) | ty::Curve(..)
+                            )
+                        }
+                        if a != b {
+                            self.fail(
+                                location,
+                                format!(
+                                    "Cannot perform arithmetic on unequal types {:?} and {:?}",
+                                    a, b
+                                ),
+                            );
+                        }
+                    }
+                    Mul | Div if a.is_curve() => {
+                        let f = a.curve_scalar_field(self.tcx);
+                        if f != b {
+                            self.fail(
+                                location,
+                                format!(
+                                    "Cannot multiply or divide {:?} by {:?}",
+                                    a, b
+                                ),
+                            );
+                        }
+                    }
+                    Mul if b.is_curve() => {
+                        let f = b.curve_scalar_field(self.tcx);
+                        if f != a {
+                            self.fail(
+                                location,
+                                format!(
+                                    "Cannot multiply {:?} by {:?}",
+                                    a, b
+                                ),
+                            );
+                        }
+                    }
+                    Div if b.is_curve() => self.fail(location, format!("Cannot divide by {:?}", b)),
+                    Mul | Div | Rem => {
                         for x in [a, b] {
                             check_kinds!(
                                 x,
                                 "Cannot perform arithmetic {op:?} on type {:?}",
-                                ty::Uint(..) | ty::Int(..) | ty::Float(..)
+                                ty::Uint(..) | ty::Int(..) | ty::Float(..) | ty::Field(..)
                             )
                         }
                     }
@@ -881,13 +948,17 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 use BinOp::*;
                 let a = vals.0.ty(&self.body.local_decls, self.tcx);
                 let b = vals.1.ty(&self.body.local_decls, self.tcx);
+                if a.is_curve() || b.is_curve() {
+                    // TODO: (aleasims) how we should handle checked operations for curves and fields?
+                    todo!("checked ops for curves");
+                }
                 match op {
                     Add | Sub | Mul => {
                         for x in [a, b] {
                             check_kinds!(
                                 x,
                                 "Cannot perform checked arithmetic on type {:?}",
-                                ty::Uint(..) | ty::Int(..)
+                                ty::Uint(..) | ty::Int(..) | ty::Field(..) | ty::Curve(..)
                             )
                         }
                         if a != b {
@@ -906,7 +977,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let a = operand.ty(&self.body.local_decls, self.tcx);
                 match op {
                     UnOp::Neg => {
-                        check_kinds!(a, "Cannot negate type {:?}", ty::Int(..) | ty::Float(..))
+                        check_kinds!(a, "Cannot negate type {:?}", ty::Int(..) | ty::Float(..) | ty::Field(..) | ty::Curve(..))
                     }
                     UnOp::Not => {
                         check_kinds!(

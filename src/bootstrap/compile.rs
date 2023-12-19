@@ -1798,6 +1798,9 @@ pub fn run_cargo(
                     // librustc_driver.so, so it is still possible to link against them.
                     keep |= filename.ends_with(".rmeta");
                 }
+            } else if filename.contains("assigner-unknown-unknown") {
+                // FIXME: (aleasims) we actually want to check target somehow 
+                keep |= filename.ends_with(".rmeta") || filename.ends_with(".ll");
             } else {
                 // In all other cases keep all rlibs
                 keep |= filename.ends_with(".rlib");

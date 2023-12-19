@@ -195,6 +195,7 @@ pub enum AttributeKind {
     AllocatedPointer = 38,
     AllocAlign = 39,
     SanitizeSafeStack = 40,
+    Circuit = 41,
 }
 
 /// LLVMIntPredicate
@@ -292,17 +293,19 @@ pub enum TypeKind {
     PPC_FP128 = 6,
     Label = 7,
     Integer = 8,
-    Function = 9,
-    Struct = 10,
-    Array = 11,
-    Pointer = 12,
-    Vector = 13,
-    Metadata = 14,
-    X86_MMX = 15,
-    Token = 16,
-    ScalableVector = 17,
-    BFloat = 18,
-    X86_AMX = 19,
+    GaloisField = 9,
+    EllipticCurve = 10,
+    Function = 11,
+    Struct = 12,
+    Array = 13,
+    Pointer = 14,
+    Vector = 15,
+    Metadata = 16,
+    X86_MMX = 17,
+    Token = 18,
+    ScalableVector = 19,
+    BFloat = 20,
+    X86_AMX = 21,
 }
 
 impl TypeKind {
@@ -317,6 +320,8 @@ impl TypeKind {
             TypeKind::PPC_FP128 => rustc_codegen_ssa::common::TypeKind::PPC_FP128,
             TypeKind::Label => rustc_codegen_ssa::common::TypeKind::Label,
             TypeKind::Integer => rustc_codegen_ssa::common::TypeKind::Integer,
+            TypeKind::GaloisField => rustc_codegen_ssa::common::TypeKind::GaloisField,
+            TypeKind::EllipticCurve => rustc_codegen_ssa::common::TypeKind::EllipticCurve,
             TypeKind::Function => rustc_codegen_ssa::common::TypeKind::Function,
             TypeKind::Struct => rustc_codegen_ssa::common::TypeKind::Struct,
             TypeKind::Array => rustc_codegen_ssa::common::TypeKind::Array,
@@ -855,6 +860,22 @@ extern "C" {
     pub fn LLVMFloatTypeInContext(C: &Context) -> &Type;
     pub fn LLVMDoubleTypeInContext(C: &Context) -> &Type;
 
+    // Operations on galois field types
+    pub fn LLVMGaloisFieldPallasbaseTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMGaloisFieldPallasscalarTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMGaloisFieldVestabaseTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMGaloisFieldVestascalarTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMGaloisFieldBLS12381baseTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMGaloisFieldBLS12381scalarTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMGaloisFieldCurve25519baseTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMGaloisFieldCurve25519scalarTypeInContext(C: &Context) -> &Type;
+
+    // Operations of elliptic curve types
+    pub fn LLVMEllipticCurveBLS12381TypeInContext(C: &Context) -> &Type;
+    pub fn LLVMEllipticCurveCurve25519TypeInContext(C: &Context) -> &Type;
+    pub fn LLVMEllipticCurvePallasTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMEllipticCurveVestaTypeInContext(C: &Context) -> &Type;
+
     // Operations on function types
     pub fn LLVMFunctionType<'a>(
         ReturnType: &'a Type,
@@ -933,6 +954,9 @@ extern "C" {
         high: &mut u64,
         low: &mut u64,
     ) -> bool;
+
+    // Operations on field constants
+    pub fn LLVMConstField<'a>(FieldTy: &'a Type, ConstantVal: &'a Value) -> &'a Value;
 
     // Operations on composite constants
     pub fn LLVMConstStringInContext(
@@ -1210,6 +1234,12 @@ extern "C" {
         RHS: &'a Value,
         Name: *const c_char,
     ) -> &'a Value;
+    pub fn LLVMBuildCMul<'a>(
+        B: &Builder<'a>,
+        LHS: &'a Value,
+        RHS: &'a Value,
+        Name: *const c_char,
+    ) -> &'a Value;
     pub fn LLVMBuildUDiv<'a>(
         B: &Builder<'a>,
         LHS: &'a Value,
@@ -1235,6 +1265,12 @@ extern "C" {
         Name: *const c_char,
     ) -> &'a Value;
     pub fn LLVMBuildFDiv<'a>(
+        B: &Builder<'a>,
+        LHS: &'a Value,
+        RHS: &'a Value,
+        Name: *const c_char,
+    ) -> &'a Value;
+    pub fn LLVMBuildCDiv<'a>(
         B: &Builder<'a>,
         LHS: &'a Value,
         RHS: &'a Value,

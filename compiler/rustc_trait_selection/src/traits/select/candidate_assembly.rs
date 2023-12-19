@@ -427,6 +427,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Int(_)
                 | ty::Uint(_)
                 | ty::Float(_)
+                | ty::Field(_)
+                | ty::Curve(_)
                 | ty::Adt(_, _)
                 | ty::Foreign(_)
                 | ty::Str
@@ -514,6 +516,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // The auto impl might apply; we don't know.
                     candidates.ambiguous = true;
                 }
+                ty::Infer(ty::FieldVar(_)) => {
+                    candidates.ambiguous = true;
+                }
                 ty::Generator(_, _, movability)
                     if self.tcx().lang_items().unpin_trait() == Some(def_id) =>
                 {
@@ -531,6 +536,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                    bug!(
+                        "asked to assemble auto trait candidates of unexpected type: {:?}",
+                        self_ty
+                    );
+                }
+
+                ty::Infer(ty::FreshFieldTy(_)) => {
                     bug!(
                         "asked to assemble auto trait candidates of unexpected type: {:?}",
                         self_ty
@@ -557,6 +569,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Int(_)
                 | ty::Uint(_)
                 | ty::Float(_)
+                | ty::Field(_)
+                | ty::Curve(_)
                 | ty::Str
                 | ty::Array(_, _)
                 | ty::Slice(_)
@@ -931,9 +945,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Char
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::Infer(ty::IntVar(_))
             | ty::Infer(ty::FloatVar(_))
+            | ty::Infer(ty::FieldVar(_))
             | ty::Str
             | ty::RawPtr(_)
             | ty::Ref(..)
@@ -1007,6 +1024,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Char
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::Adt(_, _)
             | ty::Foreign(_)
@@ -1070,6 +1089,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Float(_)
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Adt(..)
             | ty::Foreign(..)
             | ty::Str
@@ -1093,7 +1114,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Infer(
                 ty::InferTy::IntVar(_)
                 | ty::InferTy::FloatVar(_)
+                | ty::InferTy::FieldVar(_)
                 | ty::InferTy::FreshIntTy(_)
+                | ty::InferTy::FreshFieldTy(_)
                 | ty::InferTy::FreshFloatTy(_),
             ) => {}
             ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_)) => {

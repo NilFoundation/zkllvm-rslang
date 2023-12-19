@@ -710,6 +710,8 @@ fn encode_ty<'tcx>(
         ty::Alias(..)
         | ty::Bound(..)
         | ty::Error(..)
+        | ty::Field(_)
+        | ty::Curve(_)
         | ty::GeneratorWitness(..)
         | ty::GeneratorWitnessMIR(..)
         | ty::Infer(..)
@@ -966,6 +968,8 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
 
         ty::Bound(..)
         | ty::Error(..)
+        | ty::Field(_)
+        | ty::Curve(_)
         | ty::GeneratorWitnessMIR(..)
         | ty::Infer(..)
         | ty::Param(..)

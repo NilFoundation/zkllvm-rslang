@@ -5,6 +5,7 @@
 use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::visit::{TypeVisitable, TypeVisitor};
 use crate::{ConstKind, FloatTy, InferTy, IntTy, Interner, UintTy, UniverseIndex};
+use crate::{CurveTy, FieldTy};
 use rustc_data_structures::functor::IdFunctor;
 use rustc_data_structures::sync::Lrc;
 use rustc_index::{Idx, IndexVec};
@@ -293,6 +294,18 @@ impl fmt::Debug for FloatTy {
     }
 }
 
+impl fmt::Debug for FieldTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name_str())
+    }
+}
+
+impl fmt::Debug for CurveTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name_str())
+    }
+}
+
 impl fmt::Debug for InferTy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use InferTy::*;
@@ -300,9 +313,11 @@ impl fmt::Debug for InferTy {
             TyVar(ref v) => v.fmt(f),
             IntVar(ref v) => v.fmt(f),
             FloatVar(ref v) => v.fmt(f),
+            FieldVar(ref v) => v.fmt(f),
             FreshTy(v) => write!(f, "FreshTy({v:?})"),
             FreshIntTy(v) => write!(f, "FreshIntTy({v:?})"),
             FreshFloatTy(v) => write!(f, "FreshFloatTy({v:?})"),
+            FreshFieldTy(v) => write!(f, "FreshFieldTy({v:?})"),
         }
     }
 }
@@ -319,6 +334,7 @@ impl<I: Interner<InferTy = InferTy>> DebugWithInfcx<I> for InferTy {
                 IntVar(_) | FloatVar(_) | FreshTy(_) | FreshIntTy(_) | FreshFloatTy(_) => {
                     unreachable!()
                 }
+                FieldVar(_) | FreshFieldTy(_) => unreachable!()
             },
         }
     }

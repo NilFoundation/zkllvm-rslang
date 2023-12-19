@@ -504,6 +504,9 @@ lint_ty_qualified = usage of qualified `ty::{$ty}`
 lint_tykind = usage of `ty::TyKind`
     .help = try using `Ty` instead
 
+lint_overflowing_field = literal out of range for `{$ty}`
+    .note = the literal `{$lit}` does not fit into the type `{$ty}` whose range is -(p-1)..p, where `p={$modulus}` is a field modulus
+
 lint_tykind_kind = usage of `ty::TyKind::<kind>`
     .suggestion = try using `ty::<kind>` directly
 

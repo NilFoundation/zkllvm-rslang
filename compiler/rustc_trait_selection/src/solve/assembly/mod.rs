@@ -457,6 +457,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Float(_)
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Adt(_, _)
             | ty::Foreign(_)
             | ty::Str
@@ -518,6 +520,30 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 }
             }
 
+            ty::Infer(ty::FieldVar(_)) => {
+                use ty::FieldTy::*;
+                // This causes a compiler error if any new float kinds are added.
+                let (
+                    Bls12381Base
+                    | Bls12381Scalar
+                    | Curve25519Base
+                    | Curve25519Scalar
+                    | PallasBase
+                    | PallasScalar): ty::FieldTy;
+                let possible_fields = [
+                    SimplifiedType::Field(Bls12381Base),
+                    SimplifiedType::Field(Bls12381Scalar),
+                    SimplifiedType::Field(Curve25519Base),
+                    SimplifiedType::Field(Curve25519Scalar),
+                    SimplifiedType::Field(PallasBase),
+                    SimplifiedType::Field(PallasScalar),
+                ];
+
+                for simp in possible_fields {
+                    consider_impls_for_simplified_type(simp);
+                }
+            }
+
             // The only traits applying to aliases and placeholders are blanket impls.
             //
             // Impls which apply to an alias after normalization are handled by
@@ -531,6 +557,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
             // These variants should not exist as a self type.
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            | ty::Infer(ty::FreshFieldTy(_))
             | ty::Param(_)
             | ty::Bound(_, _) => bug!("unexpected self type: {self_ty}"),
         }
@@ -667,6 +694,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Float(_)
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Adt(_, _)
             | ty::Foreign(_)
             | ty::Str
@@ -686,11 +715,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Param(_)
             | ty::Placeholder(..)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Infer(ty::FieldVar(_))
             | ty::Alias(ty::Inherent, _)
             | ty::Alias(ty::Weak, _)
             | ty::Error(_) => return,
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
             | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
+            ty::Infer(ty::FreshFieldTy(_)) => bug!("unexpected self type for `{goal:?}`"),
             // Excluding IATs and type aliases here as they don't have meaningful item bounds.
             ty::Alias(ty::Projection | ty::Opaque, alias_ty) => alias_ty,
         };
@@ -824,6 +855,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Float(_)
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Adt(_, _)
             | ty::Foreign(_)
             | ty::Str
@@ -843,9 +876,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Param(_)
             | ty::Placeholder(..)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Infer(ty::FieldVar(_))
             | ty::Error(_) => return,
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
             | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
+            ty::Infer(ty::FreshFieldTy(_)) => bug!("unexpected self type for `{goal:?}`"),
             ty::Dynamic(bounds, ..) => bounds,
         };
 

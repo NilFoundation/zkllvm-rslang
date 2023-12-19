@@ -1,3 +1,4 @@
+use num::{Num, BigUint};
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
 use rustc_apfloat::ieee::{Double, Single};
@@ -17,6 +18,7 @@ use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::interpret::ScalarField;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{
     self, BindingMode, Expr, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir,
@@ -26,6 +28,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_span::Symbol;
 use rustc_target::abi::FieldIdx;
+use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
 use super::lints;
@@ -1019,6 +1022,62 @@ pub(crate) fn parse_float_into_scalar(
             Some(Scalar::from_f64(f))
         }
     }
+}
+
+pub(crate) fn parse_field_into_constval<'tcx>(
+    num: Symbol,
+    field_ty: ty::FieldTy,
+    neg: bool,
+) -> Option<ConstValue<'tcx>> {
+    parse_field_into_scalar_field(num, field_ty, neg).map(ConstValue::Field)
+}
+
+fn parse_field_into_scalar_field(
+    num: Symbol,
+    field_ty: ty::FieldTy,
+    neg: bool,
+) -> Option<ScalarField> {
+    // FIXME: (aleasims) parse literal without using external type BigUint
+    // https://github.com/NilFoundation/zkllvm-rslang/issues/12
+    let s = num.as_str();
+    let base = match s.as_bytes() {
+        [b'0', b'x', ..] => 16,
+        [b'0', b'o', ..] => 8,
+        [b'0', b'b', ..] => 2,
+        _ => 10,
+    };
+    let s = &s[if base != 10 { 2 } else { 0 }..];
+
+    let big_uint = BigUint::from_str_radix(s, base).ok()?;
+
+    let mut bytes_be = big_uint.to_bytes_be();
+    debug_assert!(bytes_be.len() <= 48);
+
+    let mut rest = vec![0u8; 48 - bytes_be.len()];
+    rest.append(&mut bytes_be);
+
+    let size = Size::from_bits(field_ty.bit_width());
+    let mut scalar = ScalarField::from_be_bytes(rest.as_slice().try_into().unwrap(), size);
+
+    let modulus = match field_ty {
+        ty::FieldTy::Bls12381Base => ScalarField::BLS12381_BASE_MODULUS,
+        ty::FieldTy::Bls12381Scalar => ScalarField::BLS12381_SCALAR_MODULUS,
+        ty::FieldTy::Curve25519Base => ScalarField::CURVE25519_BASE_MODULUS,
+        ty::FieldTy::Curve25519Scalar => ScalarField::CURVE25519_SCALAR_MODULUS,
+        ty::FieldTy::PallasBase => ScalarField::PALLAS_BASE_MODULUS,
+        ty::FieldTy::PallasScalar => ScalarField::PALLAS_SCALAR_MODULUS,
+    };
+
+    // Deal with overflow
+    if scalar.data() >= modulus.data() {
+        scalar = ScalarField::from_u384(scalar.data().wrapping_rem(&modulus.data()), size);
+    }
+
+    Some(if neg && scalar.data() > 0u32.into() {
+        ScalarField::from_u384(modulus.data().saturating_sub(&scalar.data()), size)
+    } else {
+        scalar
+    })
 }
 
 ///////////////////////////////////////////////////////////////////////////

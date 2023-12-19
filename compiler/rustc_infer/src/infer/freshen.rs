@@ -217,7 +217,32 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
                 ),
             ),
 
+            ty::FieldVar(v) => Some(
+                self.freshen_ty(
+                    self.infcx
+                        .inner
+                        .borrow_mut()
+                        .field_unification_table()
+                        .probe_value(v)
+                        .map(|v| v.to_type(self.infcx.tcx)),
+                    ty::FieldVar(v),
+                    |n| Ty::new_fresh_field(self.infcx.tcx, n),
+                ),
+            ),
+
             ty::FreshTy(ct) | ty::FreshIntTy(ct) | ty::FreshFloatTy(ct) => {
+                if ct >= self.ty_freshen_count {
+                    bug!(
+                        "Encountered a freshend type with id {} \
+                          but our counter is only at {}",
+                        ct,
+                        self.ty_freshen_count
+                    );
+                }
+                None
+            }
+
+            ty::FreshFieldTy(ct) => {
                 if ct >= self.ty_freshen_count {
                     bug!(
                         "Encountered a freshend type with id {} \

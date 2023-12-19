@@ -259,6 +259,7 @@ const NUM_PREINTERNED_TY_VARS: u32 = 100;
 const NUM_PREINTERNED_FRESH_TYS: u32 = 20;
 const NUM_PREINTERNED_FRESH_INT_TYS: u32 = 3;
 const NUM_PREINTERNED_FRESH_FLOAT_TYS: u32 = 3;
+const NUM_PREINTERNED_FRESH_FIELD_TYS: u32 = 3;
 
 // This number may seem high, but it is reached in all but the smallest crates.
 const NUM_PREINTERNED_RE_VARS: u32 = 500;
@@ -266,6 +267,16 @@ const NUM_PREINTERNED_RE_LATE_BOUNDS_I: u32 = 2;
 const NUM_PREINTERNED_RE_LATE_BOUNDS_V: u32 = 20;
 
 pub struct CommonTypes<'tcx> {
+    pub __zkllvm_curve_bls12381: Ty<'tcx>,
+    pub __zkllvm_curve_curve25519: Ty<'tcx>,
+    pub __zkllvm_curve_pallas: Ty<'tcx>,
+    pub __zkllvm_curve_vesta: Ty<'tcx>,
+    pub __zkllvm_field_bls12381_base: Ty<'tcx>,
+    pub __zkllvm_field_bls12381_scalar: Ty<'tcx>,
+    pub __zkllvm_field_curve25519_base: Ty<'tcx>,
+    pub __zkllvm_field_curve25519_scalar: Ty<'tcx>,
+    pub __zkllvm_field_pallas_base: Ty<'tcx>,
+    pub __zkllvm_field_pallas_scalar: Ty<'tcx>,
     pub unit: Ty<'tcx>,
     pub bool: Ty<'tcx>,
     pub char: Ty<'tcx>,
@@ -304,6 +315,9 @@ pub struct CommonTypes<'tcx> {
 
     /// Pre-interned `Infer(ty::FreshFloatTy(n))` for small values of `n`.
     pub fresh_float_tys: Vec<Ty<'tcx>>,
+
+    /// Pre-interned `Infer(ty::FreshFieldTy(n))` for small values of `n`.
+    pub fresh_field_tys: Vec<Ty<'tcx>>,
 }
 
 pub struct CommonLifetimes<'tcx> {
@@ -344,8 +358,20 @@ impl<'tcx> CommonTypes<'tcx> {
             (0..NUM_PREINTERNED_FRESH_INT_TYS).map(|n| mk(Infer(ty::FreshIntTy(n)))).collect();
         let fresh_float_tys: Vec<_> =
             (0..NUM_PREINTERNED_FRESH_FLOAT_TYS).map(|n| mk(Infer(ty::FreshFloatTy(n)))).collect();
+        let fresh_field_tys: Vec<_> =
+            (0..NUM_PREINTERNED_FRESH_FIELD_TYS).map(|n| mk(Infer(ty::FreshFieldTy(n)))).collect();
 
         CommonTypes {
+            __zkllvm_curve_bls12381: mk(Curve(ty::CurveTy::Bls12381)),
+            __zkllvm_curve_curve25519: mk(Curve(ty::CurveTy::Curve25519)),
+            __zkllvm_curve_pallas: mk(Curve(ty::CurveTy::Pallas)),
+            __zkllvm_curve_vesta: mk(Curve(ty::CurveTy::Vesta)),
+            __zkllvm_field_bls12381_base: mk(Field(ty::FieldTy::Bls12381Base)),
+            __zkllvm_field_bls12381_scalar: mk(Field(ty::FieldTy::Bls12381Scalar)),
+            __zkllvm_field_curve25519_base: mk(Field(ty::FieldTy::Curve25519Base)),
+            __zkllvm_field_curve25519_scalar: mk(Field(ty::FieldTy::Curve25519Scalar)),
+            __zkllvm_field_pallas_base: mk(Field(ty::FieldTy::PallasBase)),
+            __zkllvm_field_pallas_scalar: mk(Field(ty::FieldTy::PallasScalar)),
             unit: mk(Tuple(List::empty())),
             bool: mk(Bool),
             char: mk(Char),
@@ -373,6 +399,7 @@ impl<'tcx> CommonTypes<'tcx> {
             fresh_tys,
             fresh_int_tys,
             fresh_float_tys,
+            fresh_field_tys,
         }
     }
 }
@@ -1301,7 +1328,7 @@ macro_rules! sty_debug_print {
                 for &InternedInSet(t) in types {
                     let variant = match t.internee {
                         ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
-                            ty::Float(..) | ty::Str | ty::Never => continue,
+                            ty::Field(..) | ty::Curve(..) | ty::Float(..) | ty::Str | ty::Never => continue,
                         ty::Error(_) => /* unimportant */ continue,
                         $(ty::$variant(..) => &mut $variant,)*
                     };

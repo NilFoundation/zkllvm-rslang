@@ -279,6 +279,8 @@ where
             | ty::Char
             | ty::Int(..)
             | ty::Uint(..)
+            | ty::Field(..)
+            | ty::Curve(..)
             | ty::Float(..)
             | ty::Str
             | ty::Never

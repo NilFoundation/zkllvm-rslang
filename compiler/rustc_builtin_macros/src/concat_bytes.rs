@@ -40,6 +40,9 @@ fn invalid_type_err(
         Ok(ast::LitKind::Float(_, _)) => {
             cx.emit_err(ConcatBytesInvalid { span, lit_kind: "float", sugg: None });
         }
+        Ok(ast::LitKind::Field(_)) => {
+            todo!()
+        }
         Ok(ast::LitKind::Bool(_)) => {
             cx.emit_err(ConcatBytesInvalid { span, lit_kind: "boolean", sugg: None });
         }

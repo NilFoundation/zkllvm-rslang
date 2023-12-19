@@ -18,6 +18,7 @@ use super::{
     InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, PlaceTy, Pointer,
     Projectable, Provenance, Scalar,
 };
+use super::ScalarField;
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
 ///
@@ -28,6 +29,8 @@ use super::{
 /// defined on `Immediate`, and do not have to work with a `Place`.
 #[derive(Copy, Clone, Debug)]
 pub enum Immediate<Prov: Provenance = AllocId> {
+    /// A single field value.
+    Field(ScalarField),
     /// A single scalar value (must have *initialized* `Scalar` ABI).
     Scalar(Scalar<Prov>),
     /// A pair of two scalar value (must have `ScalarPair` ABI where both fields are
@@ -41,6 +44,13 @@ impl<Prov: Provenance> From<Scalar<Prov>> for Immediate<Prov> {
     #[inline(always)]
     fn from(val: Scalar<Prov>) -> Self {
         Immediate::Scalar(val)
+    }
+}
+
+impl<Prov: Provenance> From<ScalarField> for Immediate<Prov> {
+    #[inline(always)]
+    fn from(val: ScalarField) -> Self {
+        Immediate::Field(val)
     }
 }
 
@@ -70,6 +80,7 @@ impl<Prov: Provenance> Immediate<Prov> {
     pub fn to_scalar(self) -> Scalar<Prov> {
         match self {
             Immediate::Scalar(val) => val,
+            Immediate::Field(..) => bug!("Got a field where a scalar was expected"),
             Immediate::ScalarPair(..) => bug!("Got a scalar pair where a scalar was expected"),
             Immediate::Uninit => bug!("Got uninit where a scalar was expected"),
         }
@@ -80,8 +91,20 @@ impl<Prov: Provenance> Immediate<Prov> {
     pub fn to_scalar_pair(self) -> (Scalar<Prov>, Scalar<Prov>) {
         match self {
             Immediate::ScalarPair(val1, val2) => (val1, val2),
+            Immediate::Field(..) => bug!("Got a field where a scalar pair was expected"),
             Immediate::Scalar(..) => bug!("Got a scalar where a scalar pair was expected"),
             Immediate::Uninit => bug!("Got uninit where a scalar pair was expected"),
+        }
+    }
+
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    pub fn to_field(self) -> ScalarField {
+        match self {
+            Immediate::Scalar(..) => bug!("Got a scalar where a field was expected"),
+            Immediate::Field(val) => val,
+            Immediate::ScalarPair(..) => bug!("Got a scalar pair where a field was expected"),
+            Immediate::Uninit => bug!("Got uninit where a field was expected"),
         }
     }
 }
@@ -114,6 +137,9 @@ impl<Prov: Provenance> std::fmt::Display for ImmTy<'_, Prov> {
         }
         ty::tls::with(|tcx| {
             match self.imm {
+                Immediate::Field(fl) => {
+                    write!(f, "({:x}): {}", fl, self.layout.ty)
+                }
                 Immediate::Scalar(s) => {
                     if let Some(ty) = tcx.lift(self.layout.ty) {
                         let cx = FmtPrinter::new(tcx, Namespace::ValueNS);
@@ -254,6 +280,8 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
                     match (self.layout.abi, layout.abi) {
                         (Abi::Scalar(..), Abi::Scalar(..)) => true,
                         (Abi::ScalarPair(..), Abi::ScalarPair(..)) => true,
+                        (Abi::Field(..), Abi::Field(..)) => true,
+                        (Abi::Curve(..), Abi::Curve(..)) => true,
                         _ => false,
                     },
                     "cannot project into {} immediate with equally-sized field {}\nouter ABI: {:#?}\nfield ABI: {:#?}",
@@ -452,8 +480,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 )?;
                 Some(ImmTy { imm: Immediate::ScalarPair(a_val, b_val), layout: mplace.layout })
             }
+            Abi::Field(f) => {
+                let size = f.size();
+                assert_eq!(size, mplace.layout.size, "abi::Scalar size does not match layout size");
+                let field = alloc.read_field(alloc_range(Size::ZERO, size))?;
+                Some(ImmTy { imm: field.into(), layout: mplace.layout })
+            },
             _ => {
-                // Neither a scalar nor scalar pair.
+                // Neither a scalar nor scalar pair, nor a field.
                 None
             }
         })
@@ -495,6 +529,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             op.layout().abi,
             Abi::Scalar(abi::Scalar::Initialized { .. })
                 | Abi::ScalarPair(abi::Scalar::Initialized { .. }, abi::Scalar::Initialized { .. })
+                | Abi::Field(..) | Abi::Curve(..)
         ) {
             span_bug!(
                 self.cur_span(),
@@ -567,7 +602,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Immediate::Uninit => {
                     throw_ub!(InvalidUninitBytes(None))
                 }
-                Immediate::Scalar(..) | Immediate::ScalarPair(..) => {
+                Immediate::Field(..) | Immediate::Scalar(..) | Immediate::ScalarPair(..) => {
                     bug!("arrays/slices can never have Scalar/ScalarPair layout")
                 }
             },
@@ -766,6 +801,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self,
                 ))
             }
+            ConstValue::Field(f) => Operand::Immediate(Immediate::Field(f)),
         };
         Ok(OpTy { op, layout, align: Some(layout.align.abi) })
     }
@@ -777,9 +813,9 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
-    static_assert_size!(Immediate, 48);
-    static_assert_size!(ImmTy<'_>, 64);
-    static_assert_size!(Operand, 56);
-    static_assert_size!(OpTy<'_>, 80);
+    static_assert_size!(Immediate, 64);
+    static_assert_size!(ImmTy<'_>, 80);
+    static_assert_size!(Operand, 64);
+    static_assert_size!(OpTy<'_>, 88);
     // tidy-alphabetical-end
 }

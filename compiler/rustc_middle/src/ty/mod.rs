@@ -87,6 +87,7 @@ pub use self::closure::{
 pub use self::consts::{
     Const, ConstData, ConstInt, Expr, InferConst, ScalarInt, UnevaluatedConst, ValTree,
 };
+pub use self::consts::ScalarField;
 pub use self::context::{
     tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed,
 };
@@ -2644,6 +2645,26 @@ pub fn uint_ty(uty: ast::UintTy) -> UintTy {
         ast::UintTy::U32 => UintTy::U32,
         ast::UintTy::U64 => UintTy::U64,
         ast::UintTy::U128 => UintTy::U128,
+    }
+}
+
+pub fn field_ty(fty: ast::FieldTy) -> FieldTy {
+    match fty {
+        ast::FieldTy::Bls12381Base => FieldTy::Bls12381Base,
+        ast::FieldTy::Bls12381Scalar => FieldTy::Bls12381Scalar,
+        ast::FieldTy::Curve25519Base => FieldTy::Curve25519Base,
+        ast::FieldTy::Curve25519Scalar => FieldTy::Curve25519Scalar,
+        ast::FieldTy::PallasBase => FieldTy::PallasBase,
+        ast::FieldTy::PallasScalar => FieldTy::PallasScalar,
+    }
+}
+
+pub fn curve_ty(fty: ast::CurveTy) -> CurveTy {
+    match fty {
+        ast::CurveTy::Bls12381 => CurveTy::Bls12381,
+        ast::CurveTy::Curve25519 => CurveTy::Curve25519,
+        ast::CurveTy::Pallas => CurveTy::Pallas,
+        ast::CurveTy::Vesta => CurveTy::Vesta,
     }
 }
 

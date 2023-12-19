@@ -1831,6 +1831,9 @@ pub enum LitKind {
     /// stored as a symbol rather than `f64` so that `LitKind` can impl `Eq`
     /// and `Hash`.
     Float(Symbol, LitFloatType),
+    /// A field literal (`1F`). Stored as a symbol because its value is too large
+    /// to be stored in a single integer.
+    Field(Symbol),
     /// A boolean literal (`true`, `false`).
     Bool(bool),
     /// Placeholder for a literal that wasn't well-formed in some way.
@@ -1857,7 +1860,7 @@ impl LitKind {
 
     /// Returns `true` if this is a numeric literal.
     pub fn is_numeric(&self) -> bool {
-        matches!(self, LitKind::Int(..) | LitKind::Float(..))
+        matches!(self, LitKind::Int(..) | LitKind::Float(..) | LitKind::Field(..))
     }
 
     /// Returns `true` if this literal has no suffix.
@@ -1870,7 +1873,7 @@ impl LitKind {
     pub fn is_suffixed(&self) -> bool {
         match *self {
             // suffixed variants
-            LitKind::Int(_, LitIntType::Signed(..) | LitIntType::Unsigned(..))
+            LitKind::Int(_, LitIntType::Signed(..) | LitIntType::Unsigned(..)) | LitKind::Field(..)
             | LitKind::Float(_, LitFloatType::Suffixed(..)) => true,
             // unsuffixed variants
             LitKind::Str(..)
@@ -1901,6 +1904,72 @@ pub struct FnSig {
     pub header: FnHeader,
     pub decl: P<FnDecl>,
     pub span: Span,
+}
+
+/// Represents elliptic curve type.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+pub enum CurveTy {
+    Bls12381,
+    Curve25519,
+    Pallas,
+    Vesta,
+}
+
+impl CurveTy {
+    pub fn name_str(self) -> &'static str {
+        match self {
+            CurveTy::Bls12381 => "__zkllvm_curve_bls12381",
+            CurveTy::Curve25519 => "__zkllvm_curve_curve25519",
+            CurveTy::Pallas => "__zkllvm_curve_pallas",
+            CurveTy::Vesta => "__zkllvm_curve_vesta",
+        }
+    }
+
+    pub fn name(self) -> Symbol {
+        match self {
+            CurveTy::Bls12381 => sym::__zkllvm_curve_bls12381,
+            CurveTy::Curve25519 => sym::__zkllvm_curve_curve25519,
+            CurveTy::Pallas => sym::__zkllvm_curve_pallas,
+            CurveTy::Vesta => sym::__zkllvm_curve_vesta,
+        }
+    }
+}
+
+/// Represents algebraic field type.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+pub enum FieldTy {
+    Bls12381Base,
+    Bls12381Scalar,
+    Curve25519Base,
+    Curve25519Scalar,
+    PallasBase,
+    PallasScalar,
+}
+
+impl FieldTy {
+    pub fn name_str(self) -> &'static str {
+        match self {
+            FieldTy::Bls12381Base => "__zkllvm_field_bls12381_base",
+            FieldTy::Bls12381Scalar => "__zkllvm_field_bls12381_scalar",
+            FieldTy::Curve25519Base => "__zkllvm_field_curve25519_base",
+            FieldTy::Curve25519Scalar => "__zkllvm_field_curve25519_scalar",
+            FieldTy::PallasBase => "__zkllvm_field_pallas_base",
+            FieldTy::PallasScalar => "__zkllvm_field_pallas_scalar",
+        }
+    }
+
+    pub fn name(self) -> Symbol {
+        match self {
+            FieldTy::Bls12381Base => sym::__zkllvm_field_bls12381_base,
+            FieldTy::Bls12381Scalar => sym::__zkllvm_field_bls12381_scalar,
+            FieldTy::Curve25519Base => sym::__zkllvm_field_curve25519_base,
+            FieldTy::Curve25519Scalar => sym::__zkllvm_field_curve25519_scalar,
+            FieldTy::PallasBase => sym::__zkllvm_field_pallas_base,
+            FieldTy::PallasScalar => sym::__zkllvm_field_pallas_scalar,
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]

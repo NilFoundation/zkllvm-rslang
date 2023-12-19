@@ -1,5 +1,5 @@
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
+use rustc_middle::ty::{self, ConstVid, FieldVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
 
 use super::type_variable::TypeVariableOrigin;
 use super::InferCtxt;
@@ -40,6 +40,7 @@ struct VariableLengths {
     const_var_len: usize,
     int_var_len: usize,
     float_var_len: usize,
+    field_var_len: usize,
     region_constraints_len: usize,
 }
 
@@ -51,6 +52,7 @@ impl<'tcx> InferCtxt<'tcx> {
             const_var_len: inner.const_unification_table().len(),
             int_var_len: inner.int_unification_table().len(),
             float_var_len: inner.float_unification_table().len(),
+            field_var_len: inner.field_unification_table().len(),
             region_constraints_len: inner.unwrap_region_constraints().num_region_vars(),
         }
     }
@@ -123,6 +125,10 @@ impl<'tcx> InferCtxt<'tcx> {
                         &mut inner.float_unification_table(),
                         variable_lengths.float_var_len,
                     );
+                    let field_vars = vars_since_snapshot(
+                        &mut inner.field_unification_table(),
+                        variable_lengths.field_var_len,
+                    );
                     let region_vars = inner
                         .unwrap_region_constraints()
                         .vars_since_snapshot(variable_lengths.region_constraints_len);
@@ -136,6 +142,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         type_vars,
                         int_vars,
                         float_vars,
+                        field_vars,
                         region_vars,
                         const_vars,
                     };
@@ -171,6 +178,7 @@ pub struct InferenceFudger<'a, 'tcx> {
     type_vars: (Range<TyVid>, Vec<TypeVariableOrigin>),
     int_vars: Range<IntVid>,
     float_vars: Range<FloatVid>,
+    field_vars: Range<FieldVid>,
     region_vars: (Range<RegionVid>, Vec<RegionVariableOrigin>),
     const_vars: (Range<ConstVid<'tcx>>, Vec<ConstVariableOrigin>),
 }
@@ -211,6 +219,13 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
             ty::Infer(ty::InferTy::FloatVar(vid)) => {
                 if self.float_vars.contains(&vid) {
                     self.infcx.next_float_var()
+                } else {
+                    ty
+                }
+            }
+            ty::Infer(ty::InferTy::FieldVar(vid)) => {
+                if self.field_vars.contains(&vid) {
+                    self.infcx.next_field_var()
                 } else {
                     ty
                 }

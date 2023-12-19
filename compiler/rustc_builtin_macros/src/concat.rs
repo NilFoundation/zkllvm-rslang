@@ -29,6 +29,9 @@ pub fn expand_concat(
                 Ok(ast::LitKind::Int(i, _)) => {
                     accumulator.push_str(&i.to_string());
                 }
+                Ok(ast::LitKind::Field(..)) => {
+                    todo!("field constant in built-in macro")
+                }
                 Ok(ast::LitKind::Bool(b)) => {
                     accumulator.push_str(&b.to_string());
                 }

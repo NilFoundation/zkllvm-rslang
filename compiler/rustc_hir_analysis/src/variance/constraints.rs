@@ -230,6 +230,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             | ty::Char
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::Str
             | ty::Never

@@ -15,6 +15,7 @@ use crate::errors::{
     AttrOnlyInFunctions, AttrOnlyOnMain, AttrOnlyOnRootMain, ExternMain, MultipleRustcMain,
     MultipleStartFunctions, NoMainErr, UnixSigpipeValues,
 };
+use crate::errors::MultipleCircuitFunctions;
 
 struct EntryContext<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -25,6 +26,9 @@ struct EntryContext<'tcx> {
     /// The function that has the attribute 'start' on it.
     start_fn: Option<(LocalDefId, Span)>,
 
+    /// The function that has the attribute 'circuit' on it.
+    circuit_fn: Option<(LocalDefId, Span)>,
+
     /// The functions that one might think are `main` but aren't, e.g.
     /// main functions not defined at the top level. For diagnostics.
     non_main_fns: Vec<Span>,
@@ -32,21 +36,31 @@ struct EntryContext<'tcx> {
 
 fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
     let any_exe = tcx.crate_types().iter().any(|ty| *ty == CrateType::Executable);
-    if !any_exe {
+    let assigner_target = tcx.sess.target.is_like_assigner;
+    if !any_exe && !assigner_target {
         // No need to find a main function.
         return None;
     }
 
     // If the user wants no main function at all, then stop here.
-    if attr::contains_name(&tcx.hir().attrs(CRATE_HIR_ID), sym::no_main) {
+    if attr::contains_name(&tcx.hir().attrs(CRATE_HIR_ID), sym::no_main) && !assigner_target {
         return None;
     }
 
-    let mut ctxt =
-        EntryContext { tcx, attr_main_fn: None, start_fn: None, non_main_fns: Vec::new() };
+    let mut ctxt = EntryContext {
+        tcx,
+        attr_main_fn: None,
+        start_fn: None,
+        circuit_fn: None,
+        non_main_fns: Vec::new(),
+    };
 
     for id in tcx.hir().items() {
         find_item(id, &mut ctxt);
+    }
+
+    if assigner_target {
+        return ctxt.circuit_fn.map(|(local_def_id, _)| (local_def_id.to_def_id(), EntryFnType::Circuit));
     }
 
     configure_main(tcx, &ctxt)
@@ -60,6 +74,8 @@ fn entry_point_type(ctxt: &EntryContext<'_>, id: ItemId, at_root: bool) -> Entry
     let attrs = ctxt.tcx.hir().attrs(id.hir_id());
     if attr::contains_name(attrs, sym::start) {
         EntryPointType::Start
+    } else if attr::contains_name(attrs, sym::circuit) {
+        EntryPointType::Circuit
     } else if attr::contains_name(attrs, sym::rustc_main) {
         EntryPointType::RustcMainAttr
     } else {
@@ -127,6 +143,17 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
                     span: ctxt.tcx.def_span(id.owner_id),
                     labeled: ctxt.tcx.def_span(id.owner_id.to_def_id()),
                     previous: ctxt.start_fn.unwrap().1,
+                });
+            }
+        }
+        EntryPointType::Circuit => {
+            if ctxt.circuit_fn.is_none() {
+                ctxt.circuit_fn = Some((id.owner_id.def_id, ctxt.tcx.def_span(id.owner_id)))
+            } else {
+                ctxt.tcx.sess.emit_err(MultipleCircuitFunctions {
+                    span: ctxt.tcx.def_span(id.owner_id),
+                    labeled: ctxt.tcx.def_span(id.owner_id.to_def_id()),
+                    previous: ctxt.circuit_fn.unwrap().1,
                 });
             }
         }

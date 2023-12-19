@@ -518,6 +518,28 @@ impl<'a> StringReader<'a> {
                 }
                 (token::Float, self.symbol_from_to(start, end))
             }
+            rustc_lexer::LiteralKind::Field { base, empty_field } => {
+                if empty_field {
+                    let span = self.mk_sp(start, end);
+                    self.sess.emit_err(errors::NoDigitsLiteral { span });
+                    (token::Field, sym::integer(0))
+                } else {
+                    if matches!(base, Base::Binary | Base::Octal) {
+                        let base = base as u32;
+                        let s = self.str_from_to(start + BytePos(2), end);
+                        for (idx, c) in s.char_indices() {
+                            let span = self.mk_sp(
+                                start + BytePos::from_usize(2 + idx),
+                                start + BytePos::from_usize(2 + idx + c.len_utf8()),
+                            );
+                            if c != '_' && c.to_digit(base).is_none() {
+                                self.sess.emit_err(errors::InvalidDigitLiteral { span, base });
+                            }
+                        }
+                    }
+                    (token::Field, self.symbol_from_to(start, end))
+                }
+            }
         }
     }
 

@@ -240,23 +240,33 @@ impl<'tcx> BinOp {
             | &BinOp::AddUnchecked
             | &BinOp::Sub
             | &BinOp::SubUnchecked
-            | &BinOp::Mul
             | &BinOp::MulUnchecked
-            | &BinOp::Div
             | &BinOp::Rem
             | &BinOp::BitXor
             | &BinOp::BitAnd
             | &BinOp::BitOr => {
-                // these should be integers or floats of the same size.
+                // these should be integers or floats or fields of the same size.
                 assert_eq!(lhs_ty, rhs_ty);
                 lhs_ty
+            }
+            &BinOp::Mul
+            | &BinOp::Div => {
+                if lhs_ty.is_curve() {
+                    lhs_ty
+                } else if rhs_ty.is_curve() {
+                    rhs_ty
+                } else {
+                    // these should be integers or floats or fields of the same size.
+                    assert_eq!(lhs_ty, rhs_ty);
+                    lhs_ty
+                }
             }
             &BinOp::Shl
             | &BinOp::ShlUnchecked
             | &BinOp::Shr
             | &BinOp::ShrUnchecked
             | &BinOp::Offset => {
-                lhs_ty // lhs_ty can be != rhs_ty
+                lhs_ty
             }
             &BinOp::Eq | &BinOp::Lt | &BinOp::Le | &BinOp::Ne | &BinOp::Ge | &BinOp::Gt => {
                 tcx.types.bool

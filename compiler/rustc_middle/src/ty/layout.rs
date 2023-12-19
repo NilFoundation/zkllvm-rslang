@@ -153,6 +153,60 @@ impl PrimitiveExt for Primitive {
     }
 }
 
+pub trait FieldExt {
+    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
+    fn from_field_ty(fty: ty::FieldTy) -> Field;
+}
+
+impl FieldExt for Field {
+    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        match self {
+            Field::Bls12381Base => tcx.types.__zkllvm_field_bls12381_base,
+            Field::Bls12381Scalar => tcx.types.__zkllvm_field_bls12381_scalar,
+            Field::Curve25519Base => tcx.types.__zkllvm_field_curve25519_base,
+            Field::Curve25519Scalar => tcx.types.__zkllvm_field_curve25519_scalar,
+            Field::PallasBase => tcx.types.__zkllvm_field_pallas_base,
+            Field::PallasScalar => tcx.types.__zkllvm_field_pallas_scalar,
+        }
+    }
+
+    fn from_field_ty(fty: ty::FieldTy) -> Field {
+        match fty {
+            ty::FieldTy::Bls12381Base => Field::Bls12381Base,
+            ty::FieldTy::Bls12381Scalar => Field::Bls12381Scalar,
+            ty::FieldTy::Curve25519Base => Field::Curve25519Base,
+            ty::FieldTy::Curve25519Scalar => Field::Curve25519Scalar,
+            ty::FieldTy::PallasBase => Field::PallasBase,
+            ty::FieldTy::PallasScalar => Field::PallasScalar,
+        }
+    }
+}
+
+pub trait CurveExt {
+    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
+    fn from_curve_ty(cty: ty::CurveTy) -> Curve;
+}
+
+impl CurveExt for Curve {
+    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        match self {
+            Curve::Bls12381 => tcx.types.__zkllvm_curve_bls12381,
+            Curve::Curve25519 => tcx.types.__zkllvm_curve_curve25519,
+            Curve::Pallas => tcx.types.__zkllvm_curve_pallas,
+            Curve::Vesta => tcx.types.__zkllvm_curve_vesta,
+        }
+    }
+
+    fn from_curve_ty(cty: ty::CurveTy) -> Curve {
+        match cty {
+            ty::CurveTy::Bls12381 => Curve::Bls12381,
+            ty::CurveTy::Curve25519 => Curve::Curve25519,
+            ty::CurveTy::Pallas => Curve::Pallas,
+            ty::CurveTy::Vesta => Curve::Vesta,
+        }
+    }
+}
+
 /// The first half of a fat pointer.
 ///
 /// - For a trait object, this is the address of the box.
@@ -797,6 +851,8 @@ where
                 | ty::Char
                 | ty::Int(_)
                 | ty::Uint(_)
+                | ty::Field(_)
+                | ty::Curve(_)
                 | ty::Float(_)
                 | ty::FnPtr(_)
                 | ty::Never

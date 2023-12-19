@@ -605,6 +605,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 | ty::Char
                 | ty::Int(..)
                 | ty::Uint(..)
+                | ty::Field(..)
+                | ty::Curve(..)
                 | ty::Float(..)
                 | ty::Error(_)
                 | ty::Str
@@ -623,6 +625,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
                 // Can only infer to `ty::Float(_)`.
                 ty::Infer(ty::FloatVar(_)) => {}
+
+                // Can only infer to `ty::Field(_)`.
+                ty::Infer(ty::FieldVar(_)) => {}
 
                 ty::Slice(subty) => {
                     self.require_sized(subty, traits::SliceOrArrayElem);

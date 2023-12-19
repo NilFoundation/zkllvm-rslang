@@ -34,6 +34,7 @@ use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, InferTy, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
+use rustc_middle::ty::FieldVid;
 use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgs, GenericArgsRef};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -115,6 +116,9 @@ pub struct InferCtxtInner<'tcx> {
     /// Map from floating variable to the kind of float it represents.
     float_unification_storage: ut::UnificationTableStorage<ty::FloatVid>,
 
+    /// Map from field variable to the kind of field it represents.
+    field_unification_storage: ut::UnificationTableStorage<ty::FieldVid>,
+
     /// Tracks the set of region variables and the constraints between them.
     ///
     /// This is initially `Some(_)` but when
@@ -172,6 +176,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             const_unification_storage: ut::UnificationTableStorage::new(),
             int_unification_storage: ut::UnificationTableStorage::new(),
             float_unification_storage: ut::UnificationTableStorage::new(),
+            field_unification_storage: ut::UnificationTableStorage::new(),
             region_constraint_storage: Some(RegionConstraintStorage::new()),
             region_obligations: vec![],
             opaque_type_storage: Default::default(),
@@ -216,6 +221,11 @@ impl<'tcx> InferCtxtInner<'tcx> {
     #[inline]
     fn float_unification_table(&mut self) -> UnificationTable<'_, 'tcx, ty::FloatVid> {
         self.float_unification_storage.with_log(&mut self.undo_log)
+    }
+
+    #[inline]
+    fn field_unification_table(&mut self) -> UnificationTable<'_, 'tcx, ty::FieldVid> {
+        self.field_unification_storage.with_log(&mut self.undo_log)
     }
 
     #[inline]
@@ -345,6 +355,7 @@ impl<'tcx> ty::InferCtxtLike<TyCtxt<'tcx>> for InferCtxt<'tcx> {
                 Ok(_) => None,
             },
             IntVar(_) | FloatVar(_) | FreshTy(_) | FreshIntTy(_) | FreshFloatTy(_) => None,
+            FieldVar(_) | FreshFieldTy(_) => None,
         }
     }
 
@@ -539,6 +550,7 @@ pub enum NllRegionVariableOrigin {
 pub enum FixupError<'tcx> {
     UnresolvedIntTy(IntVid),
     UnresolvedFloatTy(FloatVid),
+    UnresolvedFieldTy(FieldVid),
     UnresolvedTy(TyVid),
     UnresolvedConst(ConstVid<'tcx>),
 }
@@ -565,6 +577,11 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
                 f,
                 "cannot determine the type of this number; \
                  add a suffix to specify the type explicitly"
+            ),
+            UnresolvedFieldTy(_) => write!(
+                f,
+                "cannot determine the type of this field number; \
+                 declare this value with explicit type"
             ),
             UnresolvedTy(_) => write!(f, "unconstrained type"),
             UnresolvedConst(_) => write!(f, "unconstrained const value"),
@@ -1074,6 +1091,14 @@ impl<'tcx> InferCtxt<'tcx> {
         Ty::new_float_var(self.tcx, self.next_float_var_id())
     }
 
+    fn next_field_var_id(&self) -> FieldVid {
+        self.inner.borrow_mut().field_unification_table().new_key(None)
+    }
+
+    pub fn next_field_var(&self) -> Ty<'tcx> {
+        Ty::new_field_var(self.tcx, self.next_field_var_id())
+    }
+
     /// Creates a fresh region variable with the next available index.
     /// The variable will be created in the maximum universe created
     /// thus far, allowing it to name any region created thus far.
@@ -1317,6 +1342,17 @@ impl<'tcx> InferCtxt<'tcx> {
             value.to_type(self.tcx)
         } else {
             Ty::new_float_var(self.tcx, inner.float_unification_table().find(vid))
+        }
+    }
+
+    /// Resolves a field var to a rigid field type, if it was constrained to one,
+    /// or else the root field var in the unification table.
+    pub fn opportunistic_resolve_field_var(&self, vid: ty::FieldVid) -> Ty<'tcx> {
+        let mut inner = self.inner.borrow_mut();
+        if let Some(value) = inner.field_unification_table().probe_value(vid) {
+            value.to_type(self.tcx)
+        } else {
+            Ty::new_field_var(self.tcx, inner.field_unification_table().find(vid))
         }
     }
 
@@ -1639,6 +1675,10 @@ impl<'tcx> InferCtxt<'tcx> {
                 self.inner.borrow_mut().float_unification_table().probe_value(v).is_some()
             }
 
+            TyOrConstInferVar::TyField(v) => {
+                self.inner.borrow_mut().field_unification_table().probe_value(v).is_some()
+            }
+
             TyOrConstInferVar::Const(v) => {
                 // If `probe_value` returns a `Known` value, it never equals
                 // `ty::ConstKind::Infer(ty::InferConst::Var(v))`.
@@ -1717,6 +1757,8 @@ pub enum TyOrConstInferVar<'tcx> {
     TyInt(IntVid),
     /// Equivalent to `ty::Infer(ty::FloatVar(_))`.
     TyFloat(FloatVid),
+    /// Equivalent to `ty::Infer(ty::FieldVar(_))`.
+    TyField(FieldVid),
 
     /// Equivalent to `ty::ConstKind::Infer(ty::InferConst::Var(_))`.
     Const(ConstVid<'tcx>),
@@ -1741,6 +1783,7 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
             ty::Infer(ty::TyVar(v)) => Some(TyOrConstInferVar::Ty(v)),
             ty::Infer(ty::IntVar(v)) => Some(TyOrConstInferVar::TyInt(v)),
             ty::Infer(ty::FloatVar(v)) => Some(TyOrConstInferVar::TyFloat(v)),
+            ty::Infer(ty::FieldVar(v)) => Some(TyOrConstInferVar::TyField(v)),
             _ => None,
         }
     }
@@ -1846,7 +1889,16 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
                 .probe_value(v)
                 .map(|v| v.to_type(self.infcx.tcx)),
 
+            ty::FieldVar(v) => self
+                .infcx
+                .inner
+                .borrow_mut()
+                .field_unification_table()
+                .probe_value(v)
+                .map(|v| v.to_type(self.infcx.tcx)),
+
             ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => None,
+            ty::FreshFieldTy(_) => None,
         }
     }
 }

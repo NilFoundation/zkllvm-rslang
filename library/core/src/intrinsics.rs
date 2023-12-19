@@ -2491,6 +2491,211 @@ extern "rust-intrinsic" {
     pub fn option_payload_ptr<T>(arg: *const Option<T>) -> *const T;
 }
 
+#[cfg(not(bootstrap))]
+extern "rust-intrinsic" {
+    /// Fail proof in `value` is `true`.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_allowed_through_unstable_modules]
+    pub fn assigner_exit_check(value: bool);
+}
+
+#[cfg(not(bootstrap))]
+extern "rust-intrinsic" {
+    /// Initialize Bls12381 element with two base field elements.
+    pub fn assigner_curve_init_bls12381(
+        x: __zkllvm_field_bls12381_base,
+        y: __zkllvm_field_bls12381_base,
+    ) -> __zkllvm_curve_bls12381;
+
+    /// Initialize Curve25519 element with two base field elements.
+    pub fn assigner_curve_init_curve25519(
+        x: __zkllvm_field_curve25519_base,
+        y: __zkllvm_field_curve25519_base,
+    ) -> __zkllvm_curve_curve25519;
+
+    /// Initialize Pallas element with two base field elements.
+    pub fn assigner_curve_init_pallas(
+        x: __zkllvm_field_pallas_base,
+        y: __zkllvm_field_pallas_base,
+    ) -> __zkllvm_curve_pallas;
+
+    /// Initialize Vesta element with two base field elements.
+    pub fn assigner_curve_init_vesta(
+        x: __zkllvm_field_pallas_scalar,
+        y: __zkllvm_field_pallas_scalar,
+    ) -> __zkllvm_curve_vesta;
+}
+
+/// Compute SHA2-256 hash.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_allowed_through_unstable_modules]
+#[inline]
+pub fn assigner_sha2_256(
+    x: [__zkllvm_field_pallas_base; 2],
+    y: [__zkllvm_field_pallas_base; 2],
+) -> [__zkllvm_field_pallas_base; 2] {
+    extern "rust-intrinsic" {
+        pub fn assigner_sha2_256(
+            x1: __zkllvm_field_pallas_base,
+            y1: __zkllvm_field_pallas_base,
+            x2: __zkllvm_field_pallas_base,
+            y2: __zkllvm_field_pallas_base,
+        ) -> [__zkllvm_field_pallas_base; 2];
+    }
+
+    unsafe { assigner_sha2_256(x[0], x[1], y[0], y[1]) }
+}
+
+/// Compute SHA2-256 hash for BLS12-381 base field.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_allowed_through_unstable_modules]
+#[inline]
+pub fn assigner_sha2_256_bls12381(x: __zkllvm_field_bls12381_base) -> __zkllvm_field_bls12381_base {
+    extern "rust-intrinsic" {
+        pub fn assigner_sha2_256_bls12381(
+            x: __zkllvm_field_bls12381_base,
+        ) -> __zkllvm_field_bls12381_base;
+    }
+
+    unsafe { assigner_sha2_256_bls12381(x) }
+}
+
+/// Compute SHA2-512 hash.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_allowed_through_unstable_modules]
+#[inline]
+pub fn assigner_sha2_512(
+    x: __zkllvm_curve_curve25519,
+    y: __zkllvm_curve_curve25519,
+    z: [__zkllvm_field_pallas_base; 4],
+) -> __zkllvm_field_curve25519_scalar {
+    extern "rust-intrinsic" {
+        pub fn assigner_sha2_512(
+            x: __zkllvm_curve_curve25519,
+            y: __zkllvm_curve_curve25519,
+            z1: __zkllvm_field_pallas_base,
+            z2: __zkllvm_field_pallas_base,
+            z3: __zkllvm_field_pallas_base,
+            z4: __zkllvm_field_pallas_base,
+        ) -> __zkllvm_field_curve25519_scalar;
+    }
+
+    unsafe { assigner_sha2_512(x, y, z[0], z[1], z[2], z[3]) }
+}
+
+/// BSL12 optimal ate pairing.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_allowed_through_unstable_modules]
+#[inline]
+pub fn assigner_bls12_optimal_ate_pairing(
+    x: __zkllvm_curve_bls12381,
+    y: [__zkllvm_field_bls12381_base; 4],
+) -> [__zkllvm_field_bls12381_base; 12] {
+    extern "rust-intrinsic" {
+        pub fn assigner_bls12_optimal_ate_pairing(
+            x: __zkllvm_curve_bls12381,
+            y1: __zkllvm_field_bls12381_base,
+            y2: __zkllvm_field_bls12381_base,
+            y3: __zkllvm_field_bls12381_base,
+            y4: __zkllvm_field_bls12381_base,
+        ) -> [__zkllvm_field_bls12381_base; 12];
+    }
+
+    unsafe { assigner_bls12_optimal_ate_pairing(x, y[0], y[1], y[2], y[3]) }
+}
+
+/// Hash to curve.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_allowed_through_unstable_modules]
+#[inline]
+pub fn assigner_hash_to_curve(x: __zkllvm_field_bls12381_base) -> __zkllvm_curve_bls12381 {
+    extern "rust-intrinsic" {
+        pub fn assigner_hash_to_curve(x: __zkllvm_field_bls12381_base) -> __zkllvm_curve_bls12381;
+    }
+
+    unsafe { assigner_hash_to_curve(x) }
+}
+
+/// Check if in g1.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_allowed_through_unstable_modules]
+#[inline]
+pub fn assigner_is_in_g1_check(x: __zkllvm_curve_bls12381) -> bool {
+    extern "rust-intrinsic" {
+        pub fn assigner_is_in_g1_check(x: __zkllvm_curve_bls12381) -> bool;
+    }
+
+    unsafe { assigner_is_in_g1_check(x) }
+}
+
+/// Check if in g2.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_allowed_through_unstable_modules]
+#[inline]
+pub fn assigner_is_in_g2_check(x: [__zkllvm_field_bls12381_base; 4]) -> bool {
+    extern "rust-intrinsic" {
+        pub fn assigner_is_in_g2_check(
+            x1: __zkllvm_field_bls12381_base,
+            x2: __zkllvm_field_bls12381_base,
+            x3: __zkllvm_field_bls12381_base,
+            x4: __zkllvm_field_bls12381_base,
+        ) -> bool;
+    }
+
+    unsafe { assigner_is_in_g2_check(x[0], x[1], x[2], x[3]) }
+}
+
+/// gT multiplication.
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_allowed_through_unstable_modules]
+#[inline]
+pub fn assigner_gt_multiplication(
+    x: [__zkllvm_field_bls12381_base; 12],
+    y: [__zkllvm_field_bls12381_base; 12],
+) -> [__zkllvm_field_bls12381_base; 12] {
+    extern "rust-intrinsic" {
+        pub fn assigner_gt_multiplication(
+            x1: __zkllvm_field_bls12381_base,
+            x2: __zkllvm_field_bls12381_base,
+            x3: __zkllvm_field_bls12381_base,
+            x4: __zkllvm_field_bls12381_base,
+            x5: __zkllvm_field_bls12381_base,
+            x6: __zkllvm_field_bls12381_base,
+            x7: __zkllvm_field_bls12381_base,
+            x8: __zkllvm_field_bls12381_base,
+            x9: __zkllvm_field_bls12381_base,
+            x10: __zkllvm_field_bls12381_base,
+            x11: __zkllvm_field_bls12381_base,
+            x12: __zkllvm_field_bls12381_base,
+            y1: __zkllvm_field_bls12381_base,
+            y2: __zkllvm_field_bls12381_base,
+            y3: __zkllvm_field_bls12381_base,
+            y4: __zkllvm_field_bls12381_base,
+            y5: __zkllvm_field_bls12381_base,
+            y6: __zkllvm_field_bls12381_base,
+            y7: __zkllvm_field_bls12381_base,
+            y8: __zkllvm_field_bls12381_base,
+            y9: __zkllvm_field_bls12381_base,
+            y10: __zkllvm_field_bls12381_base,
+            y11: __zkllvm_field_bls12381_base,
+            y12: __zkllvm_field_bls12381_base,
+        ) -> [__zkllvm_field_bls12381_base; 12];
+    }
+
+    unsafe { assigner_gt_multiplication(
+        x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11],
+        y[0], y[1], y[2], y[3], y[4], y[5], y[6], y[7], y[8], y[9], y[10], y[11],
+    ) }
+}
+
 // Some functions are defined here because they accidentally got made
 // available in this module on stable. See <https://github.com/rust-lang/rust/issues/15702>.
 // (`transmute` also falls into this category, but it cannot be wrapped due to the

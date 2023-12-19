@@ -108,6 +108,20 @@ macro_rules! add_impl {
 
 add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
+#[cfg(not(bootstrap))]
+add_impl! {
+    __zkllvm_curve_bls12381
+    __zkllvm_curve_curve25519
+    __zkllvm_curve_pallas
+    __zkllvm_curve_vesta
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
+
 /// The subtraction operator `-`.
 ///
 /// Note that `Rhs` is `Self` by default, but this is not mandatory. For
@@ -215,6 +229,20 @@ macro_rules! sub_impl {
 }
 
 sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+
+#[cfg(not(bootstrap))]
+sub_impl! {
+    __zkllvm_curve_bls12381
+    __zkllvm_curve_curve25519
+    __zkllvm_curve_pallas
+    __zkllvm_curve_vesta
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
 
 /// The multiplication operator `*`.
 ///
@@ -344,6 +372,51 @@ macro_rules! mul_impl {
 }
 
 mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+
+#[cfg(not(bootstrap))]
+mul_impl! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
+
+#[cfg(not(bootstrap))]
+macro_rules! mul_curve_impl {
+    ($($t:ty, $s:ty)*) => ($(
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl Mul<$s> for $t {
+            type Output = $t;
+
+            #[inline]
+            #[rustc_inherit_overflow_checks]
+            fn mul(self, other: $s) -> $t { self * other }
+        }
+
+        forward_ref_binop! { impl Mul, mul for $t, $s }
+
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl Mul<$t> for $s {
+            type Output = $t;
+
+            #[inline]
+            #[rustc_inherit_overflow_checks]
+            fn mul(self, other: $t) -> $t { self * other }
+        }
+
+        forward_ref_binop! { impl Mul, mul for $s, $t }
+    )*)
+}
+
+#[cfg(not(bootstrap))]
+mul_curve_impl! {
+    __zkllvm_curve_bls12381, __zkllvm_field_bls12381_scalar
+    __zkllvm_curve_curve25519, __zkllvm_field_curve25519_scalar
+    __zkllvm_curve_pallas, __zkllvm_field_pallas_scalar
+    __zkllvm_curve_vesta, __zkllvm_field_pallas_base
+}
 
 /// The division operator `/`.
 ///
@@ -502,6 +575,60 @@ macro_rules! div_impl_float {
 
 div_impl_float! { f32 f64 }
 
+#[cfg(not(bootstrap))]
+macro_rules! div_impl_field {
+    ($($t:ty)*) => ($(
+        /// This operation rounds towards zero, truncating any
+        /// fractional part of the exact result.
+        ///
+        /// # Panics
+        ///
+        /// This operation will panic if `other == 0`.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl Div for $t {
+            type Output = $t;
+
+            #[inline]
+            fn div(self, other: $t) -> $t { self / other }
+        }
+
+        forward_ref_binop! { impl Div, div for $t, $t }
+    )*)
+}
+
+#[cfg(not(bootstrap))]
+div_impl_field! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
+
+#[cfg(not(bootstrap))]
+macro_rules! div_curve_impl {
+    ($($t:ty, $s:ty)*) => ($(
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl Div<$s> for $t {
+            type Output = $t;
+
+            #[inline]
+            fn div(self, other: $s) -> $t { self / other }
+        }
+
+        forward_ref_binop! { impl Div, div for $t, $s }
+    )*)
+}
+
+#[cfg(not(bootstrap))]
+div_curve_impl! {
+    __zkllvm_curve_bls12381, __zkllvm_field_bls12381_scalar
+    __zkllvm_curve_curve25519, __zkllvm_field_curve25519_scalar
+    __zkllvm_curve_pallas, __zkllvm_field_pallas_scalar
+    __zkllvm_curve_vesta, __zkllvm_field_pallas_base
+}
+
 /// The remainder operator `%`.
 ///
 /// Note that `Rhs` is `Self` by default, but this is not mandatory.
@@ -618,6 +745,37 @@ macro_rules! rem_impl_float {
 
 rem_impl_float! { f32 f64 }
 
+#[cfg(not(bootstrap))]
+macro_rules! rem_impl_field {
+    ($($t:ty)*) => ($(
+        /// This operation satisfies `n % d == n - (n / d) * d`. The
+        /// result has the same sign as the left operand.
+        ///
+        /// # Panics
+        ///
+        /// This operation will panic if `other == 0`.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl Rem for $t {
+            type Output = $t;
+
+            #[inline]
+            fn rem(self, other: $t) -> $t { self % other }
+        }
+
+        forward_ref_binop! { impl Rem, rem for $t, $t }
+    )*)
+}
+
+#[cfg(not(bootstrap))]
+rem_impl_field! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
+
 /// The unary negation operator `-`.
 ///
 /// # Examples
@@ -693,6 +851,37 @@ macro_rules! neg_impl {
 
 neg_impl! { isize i8 i16 i32 i64 i128 f32 f64 }
 
+#[cfg(not(bootstrap))]
+macro_rules! neg_impl_field {
+    ($($t:ty)*) => ($(
+        /// This operations returns the inverse element by addition in the field.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl Neg for $t {
+            type Output = $t;
+
+            #[inline]
+            #[rustc_inherit_overflow_checks]
+            fn neg(self) -> $t { -self }
+        }
+
+        forward_ref_unop! { impl Neg, neg for $t }
+    )*)
+}
+
+#[cfg(not(bootstrap))]
+neg_impl_field! {
+    __zkllvm_curve_bls12381
+    __zkllvm_curve_curve25519
+    __zkllvm_curve_pallas
+    __zkllvm_curve_vesta
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
+
 /// The addition assignment operator `+=`.
 ///
 /// # Examples
@@ -758,6 +947,20 @@ macro_rules! add_assign_impl {
 }
 
 add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+
+#[cfg(not(bootstrap))]
+add_assign_impl! {
+    __zkllvm_curve_bls12381
+    __zkllvm_curve_curve25519
+    __zkllvm_curve_pallas
+    __zkllvm_curve_vesta
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
 
 /// The subtraction assignment operator `-=`.
 ///
@@ -825,6 +1028,20 @@ macro_rules! sub_assign_impl {
 
 sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
+#[cfg(not(bootstrap))]
+sub_assign_impl! {
+    __zkllvm_curve_bls12381
+    __zkllvm_curve_curve25519
+    __zkllvm_curve_pallas
+    __zkllvm_curve_vesta
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
+
 /// The multiplication assignment operator `*=`.
 ///
 /// # Examples
@@ -882,6 +1099,38 @@ macro_rules! mul_assign_impl {
 
 mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
+#[cfg(not(bootstrap))]
+mul_assign_impl! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
+
+#[cfg(not(bootstrap))]
+macro_rules! mul_assign_curve_impl {
+    ($($t:ty, $s:ty)+) => ($(
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
+        impl MulAssign<$s> for $t {
+            #[inline]
+            #[rustc_inherit_overflow_checks]
+            fn mul_assign(&mut self, other: $s) { *self *= other }
+        }
+
+        forward_ref_op_assign! { impl MulAssign, mul_assign for $t, $s }
+    )+)
+}
+
+#[cfg(not(bootstrap))]
+mul_assign_curve_impl! {
+    __zkllvm_curve_bls12381, __zkllvm_field_bls12381_scalar
+    __zkllvm_curve_curve25519, __zkllvm_field_curve25519_scalar
+    __zkllvm_curve_pallas, __zkllvm_field_pallas_scalar
+    __zkllvm_curve_vesta, __zkllvm_field_pallas_base
+}
+
 /// The division assignment operator `/=`.
 ///
 /// # Examples
@@ -937,6 +1186,37 @@ macro_rules! div_assign_impl {
 }
 
 div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+
+#[cfg(not(bootstrap))]
+div_assign_impl! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}
+
+#[cfg(not(bootstrap))]
+macro_rules! div_assign_curve_impl {
+    ($($t:ty, $s:ty)+) => ($(
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
+        impl DivAssign<$s> for $t {
+            #[inline]
+            fn div_assign(&mut self, other: $s) { *self /= other }
+        }
+
+        forward_ref_op_assign! { impl DivAssign, div_assign for $t, $s }
+    )+)
+}
+
+#[cfg(not(bootstrap))]
+div_assign_curve_impl! {
+    __zkllvm_curve_bls12381, __zkllvm_field_bls12381_scalar
+    __zkllvm_curve_curve25519, __zkllvm_field_curve25519_scalar
+    __zkllvm_curve_pallas, __zkllvm_field_pallas_scalar
+    __zkllvm_curve_vesta, __zkllvm_field_pallas_base
+}
 
 /// The remainder assignment operator `%=`.
 ///
@@ -997,3 +1277,13 @@ macro_rules! rem_assign_impl {
 }
 
 rem_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+
+#[cfg(not(bootstrap))]
+rem_assign_impl! {
+    __zkllvm_field_bls12381_base
+    __zkllvm_field_bls12381_scalar
+    __zkllvm_field_curve25519_base
+    __zkllvm_field_curve25519_scalar
+    __zkllvm_field_pallas_base
+    __zkllvm_field_pallas_scalar
+}

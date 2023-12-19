@@ -1,5 +1,7 @@
 //! Code related to parsing literals.
 
+use num::{Num, BigUint};
+
 use crate::ast::{self, LitKind, MetaItemLit, StrStyle};
 use crate::token::{self, Token};
 use rustc_lexer::unescape::{
@@ -40,6 +42,7 @@ pub enum LitError {
     NonDecimalFloat(u32),
     IntTooLarge(u32),
     NulInCStr(Range<usize>),
+    FieldTooLarge(u32),
 }
 
 impl LitKind {
@@ -70,6 +73,10 @@ impl LitKind {
             // so all the handling is done internally.
             token::Integer => return integer_lit(symbol, suffix),
             token::Float => return float_lit(symbol, suffix),
+            token::Field => {
+                assert!(suffix.is_some());
+                return field_lit(symbol, suffix.unwrap())
+            },
 
             token::Str => {
                 // If there are no characters requiring special treatment we can
@@ -265,6 +272,9 @@ impl fmt::Display for LitKind {
                     ast::LitFloatType::Unsuffixed => {}
                 }
             }
+            LitKind::Field(symbol) => {
+                write!(f, "{symbol}")?;
+            }
             LitKind::Bool(b) => write!(f, "{}", if b { "true" } else { "false" })?,
             LitKind::Err => {
                 // This only shows up in places like `-Zunpretty=hir` output, so we
@@ -302,6 +312,7 @@ impl MetaItemLit {
             LitKind::Char(_) => token::Char,
             LitKind::Int(..) => token::Integer,
             LitKind::Float(..) => token::Float,
+            LitKind::Field(..) => token::Field,
             LitKind::Err => token::Err,
         };
 
@@ -395,4 +406,33 @@ fn integer_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitErr
         let from_lexer = base < 10 && s.chars().any(|c| c.to_digit(10).is_some_and(|d| d >= base));
         if from_lexer { LitError::LexerError } else { LitError::IntTooLarge(base) }
     })
+}
+
+fn field_lit(symbol: Symbol, suffix: Symbol) -> Result<LitKind, LitError> {
+    debug!("field_lit: {:?}, {:?}", symbol, suffix);
+
+    let symbol = strip_underscores(symbol);
+    let s = symbol.as_str();
+
+    let base = match s.as_bytes() {
+        [b'0', b'x', ..] => 16,
+        [b'0', b'o', ..] => 8,
+        [b'0', b'b', ..] => 2,
+        _ => 10,
+    };
+
+    match suffix {
+        sym::G | sym::g => {}
+        _ => {
+            return Err(LitError::InvalidSuffix);
+        }
+    }
+
+    let s = &s[if base != 10 { 2 } else { 0 }..];
+    let big_uint = BigUint::from_str_radix(s, base).map_err(|_| LitError::LexerError)?;
+    if big_uint.to_bytes_be().len() > 48 {
+        Err(LitError::FieldTooLarge(base))
+    } else {
+        Ok(LitKind::Field(symbol))        
+    }
 }

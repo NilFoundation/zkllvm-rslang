@@ -26,6 +26,7 @@ use super::{
     GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Provenance,
     Scalar,
 };
+use super::ScalarField;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum MemoryKind<T> {
@@ -984,6 +985,16 @@ impl<'tcx, 'a, Prov: Provenance, Extra, Bytes: AllocBytes>
             .write_uninit(&self.tcx, self.range)
             .map_err(|e| e.to_interp_error(self.alloc_id))?)
     }
+
+    /// `range` is relative to this allocation reference, not the base of the allocation.
+    pub fn write_field(&mut self, range: AllocRange, val: ScalarField) -> InterpResult<'tcx> {
+        let range = self.range.subrange(range);
+        debug!("write_field at {:?}{range:?}: {val:?}", self.alloc_id);
+        Ok(self
+            .alloc
+            .write_field(&self.tcx, range, val)
+            .map_err(|e| e.to_interp_error(self.alloc_id))?)
+    }
 }
 
 impl<'tcx, 'a, Prov: Provenance, Extra, Bytes: AllocBytes> AllocRef<'a, 'tcx, Prov, Extra, Bytes> {
@@ -1013,6 +1024,20 @@ impl<'tcx, 'a, Prov: Provenance, Extra, Bytes: AllocBytes> AllocRef<'a, 'tcx, Pr
             alloc_range(offset, self.tcx.data_layout().pointer_size),
             /*read_provenance*/ true,
         )
+    }
+
+    /// `range` is relative to this allocation reference, not the base of the allocation.
+    pub fn read_field(
+        &self,
+        range: AllocRange,
+    ) -> InterpResult<'tcx, ScalarField> {
+        let range = self.range.subrange(range);
+        let res = self
+            .alloc
+            .read_field(&self.tcx, range)
+            .map_err(|e| e.to_interp_error(self.alloc_id))?;
+        debug!("read_field at {:?}{range:?}: {res:?}", self.alloc_id);
+        Ok(res)
     }
 
     /// `range` is relative to this allocation reference, not the base of the allocation.

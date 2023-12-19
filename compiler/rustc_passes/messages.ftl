@@ -177,6 +177,11 @@ passes_doc_cfg_hide_takes_list =
 passes_doc_expect_str =
     doc {$attr_name} attribute expects a string: #[doc({$attr_name} = "a")]
 
+passes_multiple_circuit_functions =
+    multiple `circuit` functions
+    .label = multiple `circuit` functions
+    .previous = previous `#[circuit]` function here
+
 passes_doc_fake_variadic_not_valid =
     `#[doc(fake_variadic)]` must be used on the first of a set of tuple or fn pointer trait impls with varying arity
 

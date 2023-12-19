@@ -402,6 +402,10 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         if !cx.codegen_unit().contains_item(&MonoItem::Fn(instance)) {
             return None;
         }
+        if entry_type == EntryFnType::Circuit {
+            // We don't need a wrapper for circuit function.
+            return None;
+        }
     } else if !cx.codegen_unit().is_primary() {
         // We want to create the wrapper only when the codegen unit is the primary one
         return None;
@@ -606,6 +610,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 object: Some(file_name),
                 dwarf_object: None,
                 bytecode: None,
+                llvm_ir: None,
             }
         })
     });

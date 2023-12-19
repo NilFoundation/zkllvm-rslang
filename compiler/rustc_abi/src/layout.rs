@@ -213,6 +213,8 @@ pub trait LayoutCalculator {
                     }
                     Abi::Vector { element, count: _ } => hide_niches(element),
                     Abi::Aggregate { sized: _ } => {}
+                    Abi::Field(_) => { todo!() }
+                    Abi::Curve(_) => { todo!() }
                 }
                 st.largest_niche = None;
                 return Some(st);
@@ -1095,6 +1097,12 @@ fn univariant(
                         // But scalar pairs are Rust-specific and get
                         // treated as aggregates by C ABIs anyway.
                         Abi::ScalarPair(..) => {
+                            abi = field.abi();
+                        }
+                        // Plain fields and curves are unpacked always.
+                        // We don't care about C ABI.
+                        // See issue: https://github.com/NilFoundation/zkllvm-rslang/issues/67
+                        Abi::Field(_) | Abi::Curve(_) => {
                             abi = field.abi();
                         }
                         _ => {}

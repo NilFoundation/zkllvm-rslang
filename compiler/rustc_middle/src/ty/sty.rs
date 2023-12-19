@@ -1887,6 +1887,11 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn new_field_var(tcx: TyCtxt<'tcx>, v: ty::FieldVid) -> Ty<'tcx> {
+        Ty::new_infer(tcx, FieldVar(v))
+    }
+
+    #[inline]
     pub fn new_fresh(tcx: TyCtxt<'tcx>, n: u32) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
         tcx.types
@@ -1914,6 +1919,16 @@ impl<'tcx> Ty<'tcx> {
             .get(n as usize)
             .copied()
             .unwrap_or_else(|| Ty::new_infer(tcx, ty::FreshFloatTy(n)))
+    }
+
+    #[inline]
+    pub fn new_fresh_field(tcx: TyCtxt<'tcx>, n: u32) -> Ty<'tcx> {
+        // Use a pre-interned one when possible.
+        tcx.types
+            .fresh_field_tys
+            .get(n as usize)
+            .copied()
+            .unwrap_or_else(|| Ty::new_infer(tcx, ty::FreshFieldTy(n)))
     }
 
     #[inline]
@@ -2001,6 +2016,30 @@ impl<'tcx> Ty<'tcx> {
             U32 => tcx.types.u32,
             U64 => tcx.types.u64,
             U128 => tcx.types.u128,
+        }
+    }
+
+    #[inline]
+    pub fn new_field(tcx: TyCtxt<'tcx>, f: ty::FieldTy) -> Ty<'tcx> {
+        use ty::FieldTy::*;
+        match f {
+            Bls12381Base => tcx.types.__zkllvm_field_bls12381_base,
+            Bls12381Scalar => tcx.types.__zkllvm_field_bls12381_scalar,
+            Curve25519Base => tcx.types.__zkllvm_field_curve25519_base,
+            Curve25519Scalar => tcx.types.__zkllvm_field_curve25519_scalar,
+            PallasBase => tcx.types.__zkllvm_field_pallas_base,
+            PallasScalar => tcx.types.__zkllvm_field_pallas_scalar,
+        }
+    }
+
+    #[inline]
+    pub fn new_curve(tcx: TyCtxt<'tcx>, c: ty::CurveTy) -> Ty<'tcx> {
+        use ty::CurveTy::*;
+        match c {
+            Bls12381 => tcx.types.__zkllvm_curve_bls12381,
+            Curve25519 => tcx.types.__zkllvm_curve_curve25519,
+            Pallas => tcx.types.__zkllvm_curve_pallas,
+            Vesta => tcx.types.__zkllvm_curve_vesta,
         }
     }
 
@@ -2431,12 +2470,14 @@ impl<'tcx> Ty<'tcx> {
             self.kind(),
             Bool | Char
                 | Int(_)
+                | Field(_)
+                | Curve(_)
                 | Float(_)
                 | Uint(_)
                 | FnDef(..)
                 | FnPtr(_)
                 | RawPtr(_)
-                | Infer(IntVar(_) | FloatVar(_))
+                | Infer(IntVar(_) | FloatVar(_) | FieldVar(_))
         )
     }
 
@@ -2482,6 +2523,16 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn is_field(self) -> bool {
+        matches!(self.kind(), Infer(FieldVar(_)) | Field(_))
+    }
+
+    #[inline]
+    pub fn is_curve(self) -> bool {
+        matches!(self.kind(), Curve(_))
+    }
+
+    #[inline]
     pub fn is_fresh_ty(self) -> bool {
         matches!(self.kind(), Infer(FreshTy(_)))
     }
@@ -2498,7 +2549,8 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_numeric(self) -> bool {
-        self.is_integral() || self.is_floating_point()
+        // FIXME: (aleasims) should we treat fields as numeric?
+        self.is_integral() || self.is_floating_point() || self.is_field()
     }
 
     #[inline]
@@ -2568,6 +2620,38 @@ impl<'tcx> Ty<'tcx> {
             Ref(_, ty, mutbl) => Some(TypeAndMut { ty: *ty, mutbl: *mutbl }),
             RawPtr(mt) if explicit => Some(*mt),
             _ => None,
+        }
+    }
+
+    /// Return base field type corresponding to given curve type.
+    ///
+    /// **Panics** if `self` is not curve type.
+    pub fn curve_base_field(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        if let TyKind::Curve(curve_ty) = self.kind() {
+            match curve_ty {
+                ty::CurveTy::Bls12381 => tcx.types.__zkllvm_field_bls12381_base,
+                ty::CurveTy::Curve25519 => tcx.types.__zkllvm_field_curve25519_base,
+                ty::CurveTy::Pallas => tcx.types.__zkllvm_field_pallas_base,
+                ty::CurveTy::Vesta => tcx.types.__zkllvm_field_pallas_scalar,
+            }
+        } else {
+            bug!("not a curve type given to Ty::curve_scalar_field")
+        }
+    }
+
+    /// Return scalar field type corresponding to given curve type.
+    ///
+    /// **Panics** if `self` is not curve type.
+    pub fn curve_scalar_field(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        if let TyKind::Curve(curve_ty) = self.kind() {
+            match curve_ty {
+                ty::CurveTy::Bls12381 => tcx.types.__zkllvm_field_bls12381_scalar,
+                ty::CurveTy::Curve25519 => tcx.types.__zkllvm_field_curve25519_scalar,
+                ty::CurveTy::Pallas => tcx.types.__zkllvm_field_pallas_scalar,
+                ty::CurveTy::Vesta => tcx.types.__zkllvm_field_pallas_base,
+            }
+        } else {
+            bug!("not a curve type given to Ty::curve_scalar_field")
         }
     }
 
@@ -2679,6 +2763,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Char
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::Adt(..)
             | ty::Foreign(_)
@@ -2696,11 +2782,11 @@ impl<'tcx> Ty<'tcx> {
             | ty::Never
             | ty::Tuple(_)
             | ty::Error(_)
-            | ty::Infer(IntVar(_) | FloatVar(_)) => tcx.types.u8,
+            | ty::Infer(IntVar(_) | FloatVar(_) | FieldVar(_)) => tcx.types.u8,
 
             ty::Bound(..)
             | ty::Placeholder(_)
-            | ty::Infer(FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            | ty::Infer(FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) | ty::FreshFieldTy(_)) => {
                 bug!("`discriminant_ty` applied to unexpected type: {:?}", self)
             }
         }
@@ -2716,10 +2802,12 @@ impl<'tcx> Ty<'tcx> {
         let tail = tcx.struct_tail_with_normalize(self, normalize, || {});
         match tail.kind() {
             // Sized types
-            ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_) | ty::FieldVar(_))
             | ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::FnDef(..)
             | ty::FnPtr(_)
@@ -2755,7 +2843,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Infer(ty::TyVar(_))
             | ty::Bound(..)
             | ty::Placeholder(..)
-            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) | ty::FreshFieldTy(_)) => {
                 bug!("`ptr_metadata_ty` applied to unexpected type: {:?} (tail = {:?})", self, tail)
             }
         }
@@ -2803,10 +2891,12 @@ impl<'tcx> Ty<'tcx> {
     /// this method doesn't return `Option<bool>`.
     pub fn is_trivially_sized(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind() {
-            ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_) | ty::FieldVar(_))
             | ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::FnDef(..)
             | ty::FnPtr(_)
@@ -2834,6 +2924,10 @@ impl<'tcx> Ty<'tcx> {
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`is_trivially_sized` applied to unexpected type: {:?}", self)
             }
+
+            ty::Infer(ty::FreshFieldTy(_)) => {
+                bug!("`is_trivially_sized` applied to unexpected type: {:?}", self)
+            }
         }
     }
 
@@ -2852,9 +2946,11 @@ impl<'tcx> Ty<'tcx> {
             // These aren't even `Clone`
             ty::Str | ty::Slice(..) | ty::Foreign(..) | ty::Dynamic(..) => false,
 
-            ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
+            ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_) | ty::InferTy::FieldVar(_))
             | ty::Int(..)
             | ty::Uint(..)
+            | ty::Field(..)
+            | ty::Curve(..)
             | ty::Float(..) => true,
 
             // The voldemort ZSTs are fine.
@@ -2899,6 +2995,20 @@ impl<'tcx> Ty<'tcx> {
         match self.kind() {
             ty::Bool => Some(sym::bool),
             ty::Char => Some(sym::char),
+            ty::Field(f) => match f {
+                ty::FieldTy::Bls12381Base => Some(sym::__zkllvm_field_bls12381_base),
+                ty::FieldTy::Bls12381Scalar => Some(sym::__zkllvm_field_bls12381_scalar),
+                ty::FieldTy::Curve25519Base => Some(sym::__zkllvm_field_curve25519_base),
+                ty::FieldTy::Curve25519Scalar => Some(sym::__zkllvm_field_curve25519_scalar),
+                ty::FieldTy::PallasBase => Some(sym::__zkllvm_field_pallas_base),
+                ty::FieldTy::PallasScalar => Some(sym::__zkllvm_field_pallas_scalar),
+            },
+            ty::Curve(c) => match c {
+                ty::CurveTy::Bls12381 => Some(sym::__zkllvm_curve_bls12381),
+                ty::CurveTy::Curve25519 => Some(sym::__zkllvm_curve_curve25519),
+                ty::CurveTy::Pallas => Some(sym::__zkllvm_curve_pallas),
+                ty::CurveTy::Vesta => Some(sym::__zkllvm_curve_vesta),
+            }
             ty::Float(f) => match f {
                 ty::FloatTy::F32 => Some(sym::f32),
                 ty::FloatTy::F64 => Some(sym::f64),

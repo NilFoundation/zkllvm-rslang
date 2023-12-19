@@ -22,6 +22,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{
     Abi, FieldIdx, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
 };
+use rustc_target::abi::Field as FieldAbi;
 
 use std::hash::Hash;
 
@@ -29,6 +30,7 @@ use super::{
     AllocId, CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy,
     Machine, MemPlaceMeta, OpTy, Pointer, Projectable, Scalar, ValueVisitor,
 };
+use super::ScalarField;
 
 // for the validation errors
 use super::InterpError::UndefinedBehavior as Ub;
@@ -316,6 +318,14 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         Ok(self.read_immediate(op, expected)?.to_scalar())
     }
 
+    fn read_field(
+        &self,
+        op: &OpTy<'tcx, M::Provenance>,
+        expected: ExpectedKind,
+    ) -> InterpResult<'tcx, ScalarField> {
+        Ok(self.read_immediate(op, expected)?.to_field())
+    }
+
     fn check_wide_ptr_meta(
         &mut self,
         meta: MemPlaceMeta<M::Provenance>,
@@ -517,6 +527,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 )?;
                 Ok(true)
             }
+            ty::Field(_) => {
+                self.read_field(value, ExpectedKind::Field)?;
+                Ok(true)
+            }
             ty::RawPtr(..) => {
                 let place =
                     self.ecx.ref_to_mplace(&self.read_immediate(value, ExpectedKind::RawPtr)?)?;
@@ -578,6 +592,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             // Some types only occur during typechecking, they have no layout.
             // We should not see them here and we could not check them anyway.
             ty::Error(_)
+            | ty::Curve(_)
             | ty::Infer(..)
             | ty::Placeholder(..)
             | ty::Bound(..)
@@ -636,6 +651,15 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 OutOfRange { value: format!("{bits}"), range: valid_range, max_value }
             )
         }
+    }
+
+    fn visit_scalar_field(
+        &mut self,
+        _field: ScalarField,
+        _field_layout: FieldAbi,
+    ) -> InterpResult<'tcx> {
+        // FIXME: (aleasims) perform some checks here.
+        Ok(())
     }
 }
 
@@ -776,6 +800,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                             throw_validation_failure!(self.path, Uninit { expected }),
                         Immediate::Scalar(..) | Immediate::ScalarPair(..) =>
                             bug!("arrays/slices can never have Scalar/ScalarPair layout"),
+                        Immediate::Field(..) =>
+                            bug!("arrays/slices can never have Field layout"),
                     }
                 };
 
@@ -868,6 +894,13 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     self.visit_scalar(a, a_layout)?;
                     self.visit_scalar(b, b_layout)?;
                 }
+            }
+            Abi::Field(f_layout) => {
+                let field = self.read_field(op, ExpectedKind::Field)?;
+                self.visit_scalar_field(field, f_layout)?;
+            }
+            Abi::Curve(_) => {
+                // Do nothing.
             }
             Abi::Vector { .. } => {
                 // No checks here, we assume layout computation gets this right.

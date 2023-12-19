@@ -2098,10 +2098,12 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
 
         match self_ty.kind() {
-            ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_) | ty::FieldVar(_))
             | ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::FnDef(..)
             | ty::FnPtr(_)
@@ -2145,6 +2147,10 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
+
+            ty::Infer(ty::FreshFieldTy(_)) => {
+                bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
+            }
         }
     }
 
@@ -2163,7 +2169,10 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Uint(_)
             | ty::Int(_)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Infer(ty::FieldVar(_))
             | ty::Bool
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::Char
             | ty::RawPtr(..)
@@ -2263,6 +2272,10 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
+
+            ty::Infer(ty::FreshFieldTy(_)) => {
+                bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
+            }
         }
     }
 
@@ -2286,11 +2299,13 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
+            | ty::Field(_)
+            | ty::Curve(_)
             | ty::Float(_)
             | ty::FnDef(..)
             | ty::FnPtr(_)
             | ty::Error(_)
-            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_) | ty::FieldVar(_))
             | ty::Never
             | ty::Char => ty::Binder::dummy(Vec::new()),
 
@@ -2303,7 +2318,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Foreign(..)
             | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
             | ty::Bound(..)
-            | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) | ty::FreshFieldTy(_)) => {
                 bug!("asked to assemble constituent types of unexpected type: {:?}", t);
             }
 

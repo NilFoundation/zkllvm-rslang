@@ -16,6 +16,8 @@ use super::{
     ScalarSizeMismatch,
 };
 
+pub use crate::ty::ScalarField;
+
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
 #[derive(Copy, Clone, HashStable, TyEncodable, TyDecodable, Debug, Hash, Eq, PartialEq)]
 pub struct ConstAlloc<'tcx> {
@@ -49,16 +51,20 @@ pub enum ConstValue<'tcx> {
         /// Offset into `alloc`
         offset: Size,
     },
+
+    /// Only used for field values.
+    Field(ScalarField),
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ConstValue<'_>, 32);
+static_assert_size!(ConstValue<'_>, 64);
 
 impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar<AllocId>> {
         match *self {
-            ConstValue::ByRef { .. } | ConstValue::Slice { .. } | ConstValue::ZeroSized => None,
+            ConstValue::ByRef { .. } | ConstValue::Slice { .. } | ConstValue::ZeroSized
+            | ConstValue::Field(_) => None,
             ConstValue::Scalar(val) => Some(val),
         }
     }
@@ -103,6 +109,10 @@ impl<'tcx> ConstValue<'tcx> {
 
     pub fn from_target_usize(i: u64, cx: &impl HasDataLayout) -> Self {
         ConstValue::Scalar(Scalar::from_target_usize(i, cx))
+    }
+
+    pub fn from_field_be_bytes(bytes_be: &[u8; 48], size: Size) -> Self {
+        ConstValue::Field(ScalarField::from_be_bytes(bytes_be, size))
     }
 }
 

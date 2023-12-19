@@ -112,3 +112,6 @@ session_unleashed_feature_help_unnamed = skipping check that does not even have 
 session_unstable_virtual_function_elimination = `-Zvirtual-function-elimination` requires `-Clto`
 
 session_unsupported_dwarf_version = requested DWARF version {$dwarf_version} is greater than 5
+
+session_field_literal_too_large = field literal is too large
+    .note = value exceeds limit of `{$limit}`

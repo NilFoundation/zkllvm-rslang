@@ -1056,6 +1056,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
                             allocs.push(ptr.provenance.get_alloc_id());
                         }
                     }
+                    LocalValue::Live(Operand::Immediate(Immediate::Field(fl))) => {
+                        write!(fmt, " {:?}", fl)?;
+                    }
                 }
 
                 write!(fmt, ": {:?}", self.ecx.dump_allocs(allocs.into_iter().flatten().collect()))

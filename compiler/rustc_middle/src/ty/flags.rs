@@ -92,6 +92,8 @@ impl FlagComputation {
             &ty::Bool
             | &ty::Char
             | &ty::Int(_)
+            | &ty::Field(_)
+            | &ty::Curve(_)
             | &ty::Float(_)
             | &ty::Uint(_)
             | &ty::Never
@@ -162,11 +164,11 @@ impl FlagComputation {
             &ty::Infer(infer) => {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 match infer {
-                    ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
+                    ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) | ty::FreshFieldTy(_) => {
                         self.add_flags(TypeFlags::HAS_TY_FRESH)
                     }
 
-                    ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) => {
+                    ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) | ty::FieldVar(_) => {
                         self.add_flags(TypeFlags::HAS_TY_INFER)
                     }
                 }

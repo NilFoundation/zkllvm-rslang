@@ -128,6 +128,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         .emit();
                 }
             }
+            sym::circuit => codegen_fn_attrs.flags |= CodegenFnAttrFlags::CIRCUIT,
             sym::no_coverage => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_COVERAGE,
             sym::rustc_std_internal_symbol => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL

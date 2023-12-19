@@ -90,7 +90,9 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::Char
             | ty::Int(_)
             | ty::Uint(_)
+            | ty::Field(_)
             | ty::Float(_)
+            | ty::Curve(_)
             | ty::Foreign(_)
             | ty::Str
             | ty::Array(_, _)

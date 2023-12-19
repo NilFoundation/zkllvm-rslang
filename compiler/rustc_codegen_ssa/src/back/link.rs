@@ -92,6 +92,30 @@ pub fn link_binary<'a>(
             }
         });
 
+        if sess.target.is_like_assigner && sess.opts.output_types.contains_key(&OutputType::LlvmAssembly) {
+            let tmpdir = TempFileBuilder::new()
+                .prefix("rustc")
+                .tempdir()
+                .unwrap_or_else(|error| sess.emit_fatal(errors::CreateTempDir { error }));
+            let path = MaybeTempDir::new(tmpdir, sess.opts.cg.save_temps);
+            // TODO: (aleasims) deal with out filename properly here
+            let out_filename = out_filename(
+                sess,
+                crate_type,
+                outputs,
+                codegen_results.crate_info.local_crate_name,
+            );
+            link_natively(
+                sess,
+                archive_builder_builder,
+                crate_type,
+                out_filename.as_path(),
+                codegen_results,
+                path.as_ref(),
+            )?;
+            continue;
+        }
+
         if outputs.outputs.should_link() {
             let tmpdir = TempFileBuilder::new()
                 .prefix("rustc")
@@ -207,6 +231,19 @@ pub fn link_binary<'a>(
         // Remove the temporary files if output goes to stdout
         for temp in tempfiles_for_stdout_output {
             ensure_removed(sess.diagnostic(), &temp);
+        }
+
+        // Remove temp .ll files used to link for assigner.
+        // This actually changes the behaviour of `--emit=llvm-ir` flag,
+        // because no original LLVM IR files will be stored.
+        // Maybe we should introduce new codegen flag in case the user wants to preserve
+        // these files.
+        if sess.target.is_like_assigner {
+            for module in &codegen_results.modules {
+                if let Some(ref llvm_ir) = module.llvm_ir {
+                    ensure_removed(sess.diagnostic(), llvm_ir);
+                }
+            }
         }
 
         // If no requested outputs require linking, then the object temporaries should
@@ -1187,6 +1224,7 @@ fn add_sanitizer_libraries(sess: &Session, crate_type: CrateType, linker: &mut d
     // are currently distributed as static libraries which should be linked to
     // executables only.
     let needs_runtime = !sess.target.is_like_android
+        && !sess.target.is_like_assigner
         && match crate_type {
             CrateType::Executable => true,
             CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro => sess.target.is_like_osx,
@@ -1319,6 +1357,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     }
                     LinkerFlavor::Bpf => "bpf-linker",
                     LinkerFlavor::Ptx => "rust-ptx-linker",
+                    LinkerFlavor::LlvmLink => "llvm-link",
                 }),
                 flavor,
             )),
@@ -1952,6 +1991,13 @@ fn add_local_crate_regular_objects(cmd: &mut dyn Linker, codegen_results: &Codeg
     }
 }
 
+/// Add LLVM IR files containing code from the current crate.
+fn add_local_crate_llvm_ir_objects(cmd: &mut dyn Linker, codegen_results: &CodegenResults) {
+    for obj in codegen_results.modules.iter().filter_map(|m| m.llvm_ir.as_ref()) {
+        cmd.add_object(obj);
+    }
+}
+
 /// Add object files for allocator code linked once for the whole crate tree.
 fn add_local_crate_allocator_objects(cmd: &mut dyn Linker, codegen_results: &CodegenResults) {
     if let Some(obj) = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref()) {
@@ -2126,6 +2172,9 @@ fn linker_with_args<'a>(
     add_local_crate_regular_objects(cmd, codegen_results);
     add_local_crate_metadata_objects(cmd, crate_type, codegen_results);
     add_local_crate_allocator_objects(cmd, codegen_results);
+    if sess.target.is_like_assigner {
+        add_local_crate_llvm_ir_objects(cmd, codegen_results);
+    }
 
     // Avoid linking to dynamic libraries unless they satisfy some undefined symbols
     // at the point at which they are specified on the command line.
@@ -2614,6 +2663,12 @@ fn add_upstream_rust_crates<'a>(
 
         let mut bundled_libs = Default::default();
         match linkage {
+            Linkage::Static if sess.target.is_like_assigner => {
+                add_assigner_static_crate(cmd, codegen_results, cnum);
+            }
+            Linkage::NotLinked if sess.target.is_like_assigner => {
+                // do nothing
+            }
             Linkage::Static | Linkage::IncludedFromDylib | Linkage::NotLinked => {
                 if link_static_crate {
                     bundled_libs = codegen_results.crate_info.native_libraries[&cnum]
@@ -2826,6 +2881,21 @@ fn add_static_crate<'a>(
             link_upstream(&dst);
         }
     });
+}
+
+fn add_assigner_static_crate(
+    cmd: &mut dyn Linker,
+    codegen_results: &CodegenResults,
+    cnum: CrateNum,
+) {
+    let src = &codegen_results.crate_info.used_crate_source[&cnum];
+    // TODO: (aleasims) It would be better to have crate source as .ll file directly.
+    // For now we use .rmeta path and only change the extension,
+    // which will probably work fine, but not looks good.
+    let cratepath = &src.rmeta.as_ref().unwrap().0;
+    let cratename = cratepath.file_stem().unwrap().to_str().unwrap();
+    let llpath = cratepath.parent().unwrap().to_path_buf().join(format!("{cratename}.ll"));
+    cmd.add_object(&llpath);
 }
 
 // Same thing as above, but for dynamic crates instead of static crates.

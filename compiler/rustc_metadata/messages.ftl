@@ -34,6 +34,9 @@ metadata_consider_building_std =
 metadata_consider_downloading_target =
     consider downloading the target with `rustup target add {$locator_triple}`
 
+metadata_rmeta_required =
+    crate `{$crate_name}` required to be available in rmeta format, but was not found in this form
+
 metadata_crate_dep_multiple =
     cannot satisfy dependencies so `{$crate_name}` only shows up once
     .help = having upstream crates all available in one format will likely make this go away

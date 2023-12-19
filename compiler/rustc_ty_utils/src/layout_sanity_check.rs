@@ -238,6 +238,21 @@ pub(super) fn sanity_check_layout<'tcx>(
                 assert!(align >= element.align(cx).abi); // just sanity-checking `vector_align`.
                 // FIXME: Do some kind of check of the inner type, like for Scalar and ScalarPair.
             }
+            Abi::Field(field) => {
+                let size = field.size();
+                let align = Field::align().abi;
+                assert_eq!(
+                    layout.layout.size(),
+                    size,
+                    "size mismatch between ABI and layout in {layout:#?}"
+                );
+                assert_eq!(
+                    layout.layout.align().abi,
+                    align,
+                    "alignment mismatch between ABI and layout in {layout:#?}"
+                );
+            }
+            Abi::Curve(_) => {}
             Abi::Uninhabited | Abi::Aggregate { .. } => {} // Nothing to check.
         }
     }

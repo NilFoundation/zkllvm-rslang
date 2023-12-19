@@ -68,6 +68,7 @@ pub enum LitKind {
     Byte,
     Char,
     Integer, // e.g. `1`, `1u8`, `1f32`
+    Field,
     Float,   // e.g. `1.`, `1.0`, `1e3f32`
     Str,
     StrRaw(u8), // raw string delimited by `n` hash symbols
@@ -146,7 +147,7 @@ impl fmt::Display for Lit {
             CStrRaw(n) => {
                 write!(f, "cr{delim}\"{symbol}\"{delim}", delim = "#".repeat(n as usize))?
             }
-            Integer | Float | Bool | Err => write!(f, "{symbol}")?,
+            Integer | Field | Float | Bool | Err => write!(f, "{}", symbol)?,
         }
 
         if let Some(suffix) = suffix {
@@ -172,6 +173,7 @@ impl LitKind {
             Byte => "byte",
             Char => "char",
             Integer => "integer",
+            Field => "field",
             Float => "float",
             Str | StrRaw(..) => "string",
             ByteStr | ByteStrRaw(..) => "byte string",
@@ -181,7 +183,7 @@ impl LitKind {
     }
 
     pub(crate) fn may_have_suffix(self) -> bool {
-        matches!(self, Integer | Float | Err)
+        matches!(self, Integer | Float | Field | Err)
     }
 }
 
@@ -719,7 +721,9 @@ impl Token {
     pub fn is_numeric_lit(&self) -> bool {
         matches!(
             self.kind,
-            Literal(Lit { kind: LitKind::Integer, .. }) | Literal(Lit { kind: LitKind::Float, .. })
+            Literal(Lit { kind: LitKind::Integer, .. })
+            | Literal(Lit { kind: LitKind::Float, .. })
+            | Literal(Lit { kind: LitKind::Field, .. })
         )
     }
 

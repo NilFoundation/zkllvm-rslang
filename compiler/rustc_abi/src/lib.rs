@@ -889,6 +889,86 @@ impl Integer {
     }
 }
 
+/// Galois fields.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, HashStable_Generic)]
+pub enum Field {
+    Bls12381Base,
+    Bls12381Scalar,
+    Curve25519Base,
+    Curve25519Scalar,
+    PallasBase,
+    PallasScalar,
+}
+
+impl Field {
+    #[inline]
+    pub fn size(self) -> Size {
+        match self {
+            Field::Bls12381Base => Size::from_bytes(48),
+            Field::Bls12381Scalar => Size::from_bytes(32),
+            Field::Curve25519Base => Size::from_bytes(32),
+            Field::Curve25519Scalar => Size::from_bytes(32),
+            Field::PallasBase => Size::from_bytes(32),
+            Field::PallasScalar => Size::from_bytes(32),
+        }
+    }
+
+    /// Return real size of field values.
+    /// This should not be confused with `self.size().bits()`, which will return
+    /// rounded bit size. This size is not byte-aligned.
+    pub fn real_bits(self) -> u64 {
+        match self {
+            Field::Bls12381Base => 381,
+            Field::Bls12381Scalar => 255,
+            Field::Curve25519Base => 255,
+            Field::Curve25519Scalar => 253,
+            Field::PallasBase => 255,
+            Field::PallasScalar => 255,
+        }
+    }
+
+    pub fn align() -> AbiAndPrefAlign {
+        AbiAndPrefAlign::new(Align::from_bytes(0).unwrap())
+    }
+}
+
+/// Elliptic curves.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, HashStable_Generic)]
+pub enum Curve {
+    Bls12381,
+    Curve25519,
+    Pallas,
+    Vesta,
+}
+
+impl Curve {
+    #[inline]
+    pub fn size(self) -> Size {
+        match self {
+            Curve::Bls12381 => Field::Bls12381Base.size() * 2,
+            Curve::Curve25519 => Field::Curve25519Base.size() * 2,
+            Curve::Pallas => Field::PallasBase.size() * 2,
+            Curve::Vesta => Field::PallasScalar.size() * 2,
+        }
+    }
+
+    /// Return real size of field values.
+    /// This should not be confused with `self.size().bits()`, which will return
+    /// rounded bit size. This size is not byte-aligned.
+    pub fn real_bits(self) -> u64 {
+        match self {
+            Curve::Bls12381 => Field::Bls12381Base.real_bits() * 2,
+            Curve::Curve25519 => Field::Curve25519Base.real_bits() * 2,
+            Curve::Pallas => Field::PallasBase.real_bits() * 2,
+            Curve::Vesta => Field::PallasScalar.real_bits() * 2,
+        }
+    }
+
+    pub fn align() -> AbiAndPrefAlign {
+        AbiAndPrefAlign::new(Align::from_bytes(0).unwrap())
+    }
+}
+
 /// Fundamental unit of memory access and layout.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
@@ -1265,6 +1345,8 @@ pub enum Abi {
         /// If true, the size is exact, otherwise it's only a lower bound.
         sized: bool,
     },
+    Field(Field),
+    Curve(Curve),
 }
 
 impl Abi {
@@ -1273,6 +1355,8 @@ impl Abi {
     pub fn is_unsized(&self) -> bool {
         match *self {
             Abi::Uninhabited | Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
+            Abi::Field(_) => false,
+            Abi::Curve(_) => false,
             Abi::Aggregate { sized } => !sized,
         }
     }
@@ -1306,11 +1390,25 @@ impl Abi {
         matches!(*self, Abi::Scalar(_))
     }
 
+    /// Returns `true` is this is a field type
+    #[inline]
+    pub fn is_field(&self) -> bool {
+        matches!(*self, Abi::Field(_))
+    }
+
+    /// Returns `true` is this is a curve type
+    #[inline]
+    pub fn is_curve(&self) -> bool {
+        matches!(*self, Abi::Curve(_))
+    }
+
     /// Returns the fixed alignment of this ABI, if any is mandated.
     pub fn inherent_align<C: HasDataLayout>(&self, cx: &C) -> Option<AbiAndPrefAlign> {
         Some(match *self {
             Abi::Scalar(s) => s.align(cx),
             Abi::ScalarPair(s1, s2) => s1.align(cx).max(s2.align(cx)),
+            Abi::Field(_) => Field::align(),
+            Abi::Curve(_) => Curve::align(),
             Abi::Vector { element, count } => {
                 cx.data_layout().vector_align(element.size(cx) * count)
             }
@@ -1330,6 +1428,8 @@ impl Abi {
                 let field2_offset = s1.size(cx).align_to(s2.align(cx).abi);
                 (field2_offset + s2.size(cx)).align_to(self.inherent_align(cx)?.abi)
             }
+            Abi::Field(f) => f.size(),
+            Abi::Curve(c) => c.size(),
             Abi::Vector { element, count } => {
                 // No padding in vectors, except possibly for trailing padding
                 // to make the size a multiple of align (e.g. for vectors of size 3).
@@ -1344,6 +1444,8 @@ impl Abi {
         match *self {
             Abi::Scalar(s) => Abi::Scalar(s.to_union()),
             Abi::ScalarPair(s1, s2) => Abi::ScalarPair(s1.to_union(), s2.to_union()),
+            Abi::Field(_) => unreachable!("cannot convert field ABI to union"),
+            Abi::Curve(_) => unreachable!("cannot convert curve ABI to union"),
             Abi::Vector { element, count } => Abi::Vector { element: element.to_union(), count },
             Abi::Uninhabited | Abi::Aggregate { .. } => Abi::Aggregate { sized: true },
         }
@@ -1554,6 +1656,36 @@ impl LayoutS {
             unadjusted_abi_align: align.abi,
         }
     }
+
+    pub fn field(field: Field) -> Self {
+        let size = field.size();
+        let align = Field::align();
+        LayoutS {
+            variants: Variants::Single { index: FIRST_VARIANT },
+            fields: FieldsShape::Primitive,
+            abi: Abi::Field(field),
+            largest_niche: None,
+            size,
+            align,
+            max_repr_align: None,
+            unadjusted_abi_align: align.abi,
+        }
+    }
+
+    pub fn curve(curve: Curve) -> Self {
+        let size = curve.size();
+        let align = Curve::align();
+        LayoutS {
+            variants: Variants::Single { index: FIRST_VARIANT },
+            fields: FieldsShape::Primitive,
+            abi: Abi::Curve(curve),
+            largest_niche: None,
+            size,
+            align,
+            max_repr_align: None,
+            unadjusted_abi_align: align.abi,
+        }
+    }
 }
 
 impl fmt::Debug for LayoutS {
@@ -1672,6 +1804,8 @@ impl LayoutS {
     pub fn is_zst(&self) -> bool {
         match self.abi {
             Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
+            Abi::Field(_) => false,
+            Abi::Curve(_) => false,
             Abi::Uninhabited => self.size.bytes() == 0,
             Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
         }

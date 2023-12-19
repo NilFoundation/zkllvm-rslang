@@ -156,6 +156,8 @@ pub enum LinkerFlavor {
     Bpf,
     /// Linker tool for Nvidia PTX.
     Ptx,
+    /// Linker tool for LLVM IR (for "assigner" target).
+    LlvmLink,
 }
 
 /// Linker flavors available externally through command line (`-Clinker-flavor`)
@@ -182,6 +184,7 @@ pub enum LinkerFlavorCli {
     Em,
     BpfLinker,
     PtxLinker,
+    LlvmIrLinker,
 }
 
 impl LinkerFlavorCli {
@@ -197,6 +200,7 @@ impl LinkerFlavorCli {
             | LinkerFlavorCli::Bpf
             | LinkerFlavorCli::Ptx
             | LinkerFlavorCli::BpfLinker
+            | LinkerFlavorCli::LlvmIrLinker
             | LinkerFlavorCli::PtxLinker => true,
             LinkerFlavorCli::Gcc
             | LinkerFlavorCli::Ld
@@ -277,6 +281,7 @@ impl LinkerFlavor {
             LinkerFlavorCli::Em => LinkerFlavor::EmCc,
             LinkerFlavorCli::BpfLinker => LinkerFlavor::Bpf,
             LinkerFlavorCli::PtxLinker => LinkerFlavor::Ptx,
+            LinkerFlavorCli::LlvmIrLinker => LinkerFlavor::LlvmLink,
         }
     }
 
@@ -297,6 +302,7 @@ impl LinkerFlavor {
             LinkerFlavor::EmCc => LinkerFlavorCli::Em,
             LinkerFlavor::Bpf => LinkerFlavorCli::BpfLinker,
             LinkerFlavor::Ptx => LinkerFlavorCli::PtxLinker,
+            LinkerFlavor::LlvmLink => LinkerFlavorCli::LlvmIrLinker,
         }
     }
 
@@ -317,10 +323,14 @@ impl LinkerFlavor {
             LinkerFlavorCli::Lld(_) => (Some(Cc::No), Some(Lld::Yes)),
             LinkerFlavorCli::Em => (Some(Cc::Yes), Some(Lld::Yes)),
             LinkerFlavorCli::BpfLinker | LinkerFlavorCli::PtxLinker => (None, None),
+            LinkerFlavorCli::LlvmIrLinker => (None, None),
         }
     }
 
     fn infer_linker_hints(linker_stem: &str) -> (Option<Cc>, Option<Lld>) {
+        if linker_stem == "llvm-link" {
+            return (Some(Cc::No), Some(Lld::No));
+        }
         // Remove any version postfix.
         let stem = linker_stem
             .rsplit_once('-')
@@ -366,6 +376,7 @@ impl LinkerFlavor {
             LinkerFlavor::Unix(cc) => LinkerFlavor::Unix(cc_hint.unwrap_or(cc)),
             LinkerFlavor::Msvc(lld) => LinkerFlavor::Msvc(lld_hint.unwrap_or(lld)),
             LinkerFlavor::EmCc | LinkerFlavor::Bpf | LinkerFlavor::Ptx => self,
+            LinkerFlavor::LlvmLink => self,
         }
     }
 
@@ -412,6 +423,7 @@ impl LinkerFlavor {
             | LinkerFlavor::Unix(..)
             | LinkerFlavor::EmCc
             | LinkerFlavor::Bpf
+            | LinkerFlavor::LlvmLink
             | LinkerFlavor::Ptx => LldFlavor::Ld,
             LinkerFlavor::Darwin(..) => LldFlavor::Ld64,
             LinkerFlavor::WasmLld(..) => LldFlavor::Wasm,
@@ -437,6 +449,7 @@ impl LinkerFlavor {
             | LinkerFlavor::Msvc(_)
             | LinkerFlavor::Unix(_)
             | LinkerFlavor::Bpf
+            | LinkerFlavor::LlvmLink
             | LinkerFlavor::Ptx => false,
         }
     }
@@ -456,6 +469,7 @@ impl LinkerFlavor {
             | LinkerFlavor::Msvc(_)
             | LinkerFlavor::Unix(_)
             | LinkerFlavor::Bpf
+            | LinkerFlavor::LlvmLink
             | LinkerFlavor::Ptx => false,
         }
     }
@@ -517,6 +531,7 @@ linker_flavor_cli_impls! {
     (LinkerFlavorCli::Em) "em"
     (LinkerFlavorCli::BpfLinker) "bpf-linker"
     (LinkerFlavorCli::PtxLinker) "ptx-linker"
+    (LinkerFlavorCli::LlvmIrLinker) "llvm-link"
 }
 
 impl ToJson for LinkerFlavorCli {
@@ -1535,6 +1550,8 @@ supported_targets! {
     ("aarch64-unknown-linux-ohos", aarch64_unknown_linux_ohos),
     ("armv7-unknown-linux-ohos", armv7_unknown_linux_ohos),
     ("x86_64-unknown-linux-ohos", x86_64_unknown_linux_ohos),
+
+    ("assigner-unknown-unknown", assigner_unknown_unknown),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -1815,6 +1832,9 @@ pub struct TargetOptions {
     pub is_like_wasm: bool,
     /// Whether a target toolchain is like Android, implying a Linux kernel and a Bionic libc
     pub is_like_android: bool,
+    /// Whether a target is like Assigner.
+    /// This will imply using LLVM IR files as output and link them after emitting.
+    pub is_like_assigner: bool,
     /// Default supported version of DWARF on this platform.
     /// Useful because some platforms (osx, bsd) only want up to DWARF2.
     pub default_dwarf_version: u32,
@@ -2044,6 +2064,7 @@ fn add_link_args_iter(
         | LinkerFlavor::Unix(..)
         | LinkerFlavor::EmCc
         | LinkerFlavor::Bpf
+        | LinkerFlavor::LlvmLink
         | LinkerFlavor::Ptx => {}
     }
 }
@@ -2159,6 +2180,7 @@ impl Default for TargetOptions {
             is_like_msvc: false,
             is_like_wasm: false,
             is_like_android: false,
+            is_like_assigner: false,
             default_dwarf_version: 4,
             allows_weak_linkage: true,
             has_rpath: false,

@@ -22,6 +22,7 @@ use super::{
     Pointer, PointerArithmetic, Provenance, ResourceExhaustionInfo, Scalar, ScalarSizeMismatch,
     UndefinedBehaviorInfo, UnsupportedOpInfo,
 };
+use super::{write_target_field, read_target_field, ScalarField};
 use crate::ty;
 use init_mask::*;
 use provenance_map::*;
@@ -608,6 +609,49 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
             assert_eq!(range.size, cx.data_layout().pointer_size);
             self.provenance.insert_ptr(range.start, provenance, cx);
         }
+
+        Ok(())
+    }
+
+    /// Reads a field.
+    pub fn read_field(
+        &self,
+        cx: &impl HasDataLayout,
+        range: AllocRange,
+    ) -> AllocResult<ScalarField> {
+        // First and foremost, if anything is uninit, bail.
+        if self.init_mask.is_range_initialized(range).is_err() {
+            return Err(AllocError::InvalidUninitBytes(None));
+        }
+
+        // Get the integer part of the result. We HAVE TO check provenance before returning this!
+        let bytes = self.get_bytes_unchecked(range);
+        let bits = read_target_field(cx.data_layout().endian, bytes).unwrap();
+
+        // Fallback path for when we cannot treat provenance bytewise or ignore it.
+        assert!(!Prov::OFFSET_IS_ADDR);
+        if !self.provenance.range_empty(range, cx) {
+            return Err(AllocError::ReadPartialPointer(range.start));
+        }
+        // There is no provenance, we can just return the bits.
+        Ok(ScalarField::from_u384(bits, range.size))
+    }
+
+    /// Writes a field.
+    #[instrument(skip(self, cx), level = "debug")]
+    pub fn write_field(
+        &mut self,
+        cx: &impl HasDataLayout,
+        range: AllocRange,
+        val: ScalarField,
+    ) -> AllocResult {
+        assert!(self.mutability == Mutability::Mut);
+
+        let bytes = val.data();
+
+        let endian = cx.data_layout().endian;
+        let dst = self.get_bytes_mut(cx, range)?;
+        write_target_field(endian, dst, bytes).unwrap();
 
         Ok(())
     }

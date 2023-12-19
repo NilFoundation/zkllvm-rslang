@@ -127,6 +127,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Char
             | ty::Int(..)
             | ty::Uint(..)
+            | ty::Field(..)
+            | ty::Curve(..)
             | ty::Float(_)
             | ty::Array(..)
             | ty::GeneratorWitness(..)
@@ -769,7 +771,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                                 ty::Int(_)
                                 | ty::Uint(_)
                                 | ty::Float(_)
-                                | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(_)) => {
+                                | ty::Infer(ty::InferTy::IntVar(_)
+                                    | ty::InferTy::FloatVar(_)
+                                    | ty::InferTy::FieldVar(_)) => {
                                     Err(CastError::NeedDeref)
                                 }
                                 _ => Err(CastError::NeedViaPtr),

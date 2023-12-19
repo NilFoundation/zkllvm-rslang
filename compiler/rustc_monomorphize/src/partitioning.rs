@@ -114,6 +114,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
 use rustc_middle::ty::{self, visit::TypeVisitableExt, InstanceDef, TyCtxt};
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
+use rustc_session::config::EntryFnType;
 use rustc_session::CodegenUnits;
 use rustc_span::symbol::Symbol;
 
@@ -799,6 +800,17 @@ fn mono_item_visibility<'tcx>(
     if tcx.lang_items().start_fn() == Some(def_id) {
         *can_be_internalized = false;
         return Visibility::Hidden;
+    }
+
+    // We explicitly set circuit function visibility to default, so it won't be eliminated.
+    let entry = tcx.entry_fn(());
+    if tcx.sess.target.is_like_assigner {
+        if let Some((entry_id, entry_type)) = entry {
+            if entry_id == def_id && entry_type == EntryFnType::Circuit {
+                *can_be_internalized = false;
+                return Visibility::Default;
+            }
+        }
     }
 
     let is_generic = instance.args.non_erasable_generics().next().is_some();

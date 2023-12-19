@@ -102,6 +102,12 @@ impl ToType for ty::FloatVarValue {
     }
 }
 
+impl ToType for ty::FieldVarValue {
+    fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        Ty::new_field(tcx, self.0)
+    }
+}
+
 // Generic consts.
 
 #[derive(Copy, Clone, Debug)]

@@ -686,9 +686,22 @@ impl<'ll> CodegenCx<'ll, '_> {
         let t_metadata = self.type_metadata();
         let t_token = self.type_token();
 
+        let t_field_bls12381_base = self.type_field_bls12381_base();
+        let t_field_curve25519_base = self.type_field_curve25519_base();
+        let t_field_curve25519_scalar = self.type_field_curve25519_scalar();
+        let t_field_pallas_base = self.type_field_pallas_base();
+        let t_field_pallas_scalar = self.type_field_pallas_scalar();
+        let t_curve_bls12381 = self.type_curve_bls12381();
+        let t_curve_curve25519 = self.type_curve_curve25519();
+        let t_curve_pallas = self.type_curve_pallas();
+        let t_curve_vesta = self.type_curve_vesta();
+        let t_fpb_v2 = self.type_vector(self.type_field_pallas_base(), 2);
+        let t_fpb_v4 = self.type_vector(self.type_field_pallas_base(), 4);
+        let t_fblsb_v12 = self.type_vector(self.type_field_bls12381_base(), 12);
+        let t_fblsb_v4 = self.type_vector(self.type_field_bls12381_base(), 4);
+
         ifn!("llvm.wasm.get.exception", fn(t_token) -> ptr);
         ifn!("llvm.wasm.get.ehselector", fn(t_token) -> t_i32);
-
         ifn!("llvm.wasm.trunc.unsigned.i32.f32", fn(t_f32) -> t_i32);
         ifn!("llvm.wasm.trunc.unsigned.i32.f64", fn(t_f64) -> t_i32);
         ifn!("llvm.wasm.trunc.unsigned.i64.f32", fn(t_f32) -> t_i64);
@@ -900,6 +913,27 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         ifn!("llvm.assume", fn(i1) -> void);
         ifn!("llvm.prefetch", fn(ptr, t_i32, t_i32, t_i32) -> void);
+
+        ifn!("llvm.assigner.exit.check", fn(i1) -> void);
+        ifn!("llvm.assigner.curve.init.__zkllvm_curve_bls12381", fn(t_field_bls12381_base, t_field_bls12381_base) -> t_curve_bls12381);
+        ifn!("llvm.assigner.curve.init.__zkllvm_curve_curve25519", fn(t_field_curve25519_base, t_field_curve25519_base) -> t_curve_curve25519);
+        ifn!("llvm.assigner.curve.init.__zkllvm_curve_pallas", fn(t_field_pallas_base, t_field_pallas_base) -> t_curve_pallas);
+        ifn!("llvm.assigner.curve.init.__zkllvm_curve_vesta", fn(t_field_pallas_scalar, t_field_pallas_scalar) -> t_curve_vesta);
+
+        ifn!("llvm.assigner.sha2.256.v2__zkllvm_field_pallas_base", fn(t_fpb_v2, t_fpb_v2) -> t_fpb_v2);
+        ifn!("llvm.assigner.sha2.512.__zkllvm_field_curve25519_scalar.__zkllvm_curve_curve25519.v4__zkllvm_field_pallas_base",
+            fn(t_curve_curve25519, t_curve_curve25519, t_fpb_v4) -> t_field_curve25519_scalar);
+
+        ifn!("llvm.assigner.sha2.256.bls12381.__zkllvm_field_bls12381_base",
+            fn(t_field_bls12381_base) -> t_field_bls12381_base);
+        ifn!("llvm.assigner.optimal.ate.pairing.v12__zkllvm_field_bls12381_base.__zkllvm_curve_bls12381.v4__zkllvm_field_bls12381_base",
+            fn(t_curve_bls12381, t_fblsb_v4) -> t_fblsb_v12);
+        ifn!("llvm.assigner.hash.to.curve.__zkllvm_curve_bls12381.__zkllvm_field_bls12381_base",
+            fn(t_field_bls12381_base) -> t_curve_bls12381);
+        ifn!("llvm.assigner.is.in.g1.check.__zkllvm_curve_bls12381", fn(t_curve_bls12381) -> i1);
+        ifn!("llvm.assigner.is.in.g2.check.v4__zkllvm_field_bls12381_base", fn(t_fblsb_v4) -> i1);
+        ifn!("llvm.assigner.gt.multiplication.v12__zkllvm_field_bls12381_base",
+            fn(t_fblsb_v12, t_fblsb_v12) -> t_fblsb_v12);
 
         // This isn't an "LLVM intrinsic", but LLVM's optimization passes
         // recognize it like one (including turning it into `bcmp` sometimes)
